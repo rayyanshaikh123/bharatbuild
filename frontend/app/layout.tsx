@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AppProvider } from "@/components/providers/AppProvider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -26,20 +26,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Inline script to avoid flash-of-incorrect-theme on first paint */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var k='theme';var v=localStorage.getItem(k);if(v){document.documentElement.classList.toggle('dark',v==='dark')}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.toggle('dark',true)}}catch(e){}})()`,
-          }}
-        />
-      </head>
       <body
-        className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased transition-colors duration-300`}
+        className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
           {children}
-        </AppProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

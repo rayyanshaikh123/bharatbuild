@@ -1,112 +1,450 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+@import "tw-animate-css";
 
-:root{
-  --brand-orange: #F97316;
-  --brand-navy: #07102a;
-  --surface: #ffffff;
-  --muted: #64748b;
-  --card-border: rgba(14, 22, 35, 0.06);
-  --glass: rgba(255,255,255,0.04);
-  --background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
-  --foreground: #0f172a;
-  --grid-accent: rgba(249,115,22,0.08);
-  --grid-accent-weak: rgba(249,115,22,0.04);
+/* =============================================================================
+   SHADCN THEME CONFIGURATION
+   -----------------------------------------------------------------------------
+   Edit the values below to customize your theme. These are the primary colors
+   and design tokens used throughout the application.
+   ============================================================================= */
+
+:root {
+  --background: rgb(253, 251, 247);
+  --foreground: rgb(74, 59, 51);
+  --card: rgb(248, 244, 238);
+  --card-foreground: rgb(74, 59, 51);
+  --popover: rgb(248, 244, 238);
+  --popover-foreground: rgb(74, 59, 51);
+  --primary: rgb(166, 91, 33);
+  --primary-foreground: rgb(255, 255, 255);
+  --secondary: rgb(228, 192, 144);
+  --secondary-foreground: rgb(87, 83, 78);
+  --muted: rgb(241, 233, 218);
+  --muted-foreground: rgb(120, 113, 108);
+  --accent: rgb(242, 218, 186);
+  --accent-foreground: rgb(87, 83, 78);
+  --destructive: rgb(153, 27, 27);
+  --destructive-foreground: rgb(255, 255, 255);
+  --border: rgb(228, 217, 188);
+  --input: rgb(228, 217, 188);
+  --ring: rgb(180, 83, 9);
+  --chart-1: rgb(180, 83, 9);
+  --chart-2: rgb(120, 113, 108);
+  --chart-3: rgb(161, 98, 7);
+  --chart-4: rgb(120, 113, 108);
+  --chart-5: rgb(202, 138, 4);
+  --sidebar: rgb(241, 233, 218);
+  --sidebar-foreground: rgb(74, 59, 51);
+  --sidebar-primary: rgb(180, 83, 9);
+  --sidebar-primary-foreground: rgb(255, 255, 255);
+  --sidebar-accent: rgb(161, 98, 7);
+  --sidebar-accent-foreground: rgb(255, 255, 255);
+  --sidebar-border: rgb(228, 217, 188);
+  --sidebar-ring: rgb(180, 83, 9);
+  --font-sans: Oxanium, sans-serif;
+  --font-serif: Merriweather, serif;
+  --font-mono: Fira Code, monospace;
+  --radius: 0.3rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.18;
+  --shadow-color: hsl(28 18% 25%);
+  --shadow-2xs: 0px 2px 3px 0px hsl(28 18% 25% / 0.09);
+  --shadow-xs: 0px 2px 3px 0px hsl(28 18% 25% / 0.09);
+  --shadow-sm: 0px 2px 3px 0px hsl(28 18% 25% / 0.18), 0px 1px 2px -1px hsl(28 18% 25% / 0.18);
+  --shadow: 0px 2px 3px 0px hsl(28 18% 25% / 0.18), 0px 1px 2px -1px hsl(28 18% 25% / 0.18);
+  --shadow-md: 0px 2px 3px 0px hsl(28 18% 25% / 0.18), 0px 2px 4px -1px hsl(28 18% 25% / 0.18);
+  --shadow-lg: 0px 2px 3px 0px hsl(28 18% 25% / 0.18), 0px 4px 6px -1px hsl(28 18% 25% / 0.18);
+  --shadow-xl: 0px 2px 3px 0px hsl(28 18% 25% / 0.18), 0px 8px 10px -1px hsl(28 18% 25% / 0.18);
+  --shadow-2xl: 0px 2px 3px 0px hsl(28 18% 25% / 0.45);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Custom variables for landing page effects */
+  --grid-accent: rgba(166, 91, 33, 0.08);
+  --grid-accent-weak: rgba(166, 91, 33, 0.04);
 }
 
-/* Dark mode variables */
-.dark{
-  --surface: #0b1220;
-  --muted: #94a3b8;
-  --card-border: rgba(255,255,255,0.04);
-  --glass: rgba(2,6,23,0.6);
-  --background: linear-gradient(180deg, #060812 0%, #071028 100%);
-  --foreground: #e6eef8;
-  --grid-accent: rgba(249,115,22,0.16);
-  --grid-accent-weak: rgba(249,115,22,0.08);
+.dark {
+  --background: rgb(28, 25, 23);
+  --foreground: rgb(245, 245, 244);
+  --card: rgb(41, 37, 36);
+  --card-foreground: rgb(245, 245, 244);
+  --popover: rgb(41, 37, 36);
+  --popover-foreground: rgb(245, 245, 244);
+  --primary: rgb(249, 115, 22);
+  --primary-foreground: rgb(255, 255, 255);
+  --secondary: rgb(87, 83, 78);
+  --secondary-foreground: rgb(231, 229, 228);
+  --muted: rgb(32, 29, 26);
+  --muted-foreground: rgb(168, 162, 158);
+  --accent: rgb(30, 66, 82);
+  --accent-foreground: rgb(231, 229, 228);
+  --destructive: rgb(220, 38, 38);
+  --destructive-foreground: rgb(255, 255, 255);
+  --border: rgb(68, 64, 60);
+  --input: rgb(68, 64, 60);
+  --ring: rgb(249, 115, 22);
+  --chart-1: rgb(249, 115, 22);
+  --chart-2: rgb(14, 165, 233);
+  --chart-3: rgb(234, 179, 8);
+  --chart-4: rgb(168, 162, 158);
+  --chart-5: rgb(120, 113, 108);
+  --sidebar: rgb(41, 37, 36);
+  --sidebar-foreground: rgb(245, 245, 244);
+  --sidebar-primary: rgb(249, 115, 22);
+  --sidebar-primary-foreground: rgb(255, 255, 255);
+  --sidebar-accent: rgb(14, 165, 233);
+  --sidebar-accent-foreground: rgb(12, 42, 77);
+  --sidebar-border: rgb(68, 64, 60);
+  --sidebar-ring: rgb(249, 115, 22);
+  --font-sans: Oxanium, sans-serif;
+  --font-serif: Merriweather, serif;
+  --font-mono: Fira Code, monospace;
+  --radius: 0.3rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.18;
+  --shadow-color: hsl(0 0% 5%);
+  --shadow-2xs: 0px 2px 3px 0px hsl(0 0% 5% / 0.09);
+  --shadow-xs: 0px 2px 3px 0px hsl(0 0% 5% / 0.09);
+  --shadow-sm: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 1px 2px -1px hsl(0 0% 5% / 0.18);
+  --shadow: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 1px 2px -1px hsl(0 0% 5% / 0.18);
+  --shadow-md: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 2px 4px -1px hsl(0 0% 5% / 0.18);
+  --shadow-lg: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 4px 6px -1px hsl(0 0% 5% / 0.18);
+  --shadow-xl: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 8px 10px -1px hsl(0 0% 5% / 0.18);
+  --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 5% / 0.45);
+
+  /* Custom variables for landing page effects - dark mode */
+  --grid-accent: rgba(249, 115, 22, 0.16);
+  --grid-accent-weak: rgba(249, 115, 22, 0.08);
 }
 
-/* Base page improvements */
-html,body,#root{height:100%;}
-body{
-  font-family: var(--font-plus-jakarta-sans), Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+/* =============================================================================
+   TAILWIND THEME MAPPINGS
+   -----------------------------------------------------------------------------
+   Maps CSS variables to Tailwind classes. Do not edit unless you know what
+   you're doing.
+   ============================================================================= */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans), Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   background: var(--background);
   color: var(--foreground);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background 0.5s ease, color 0.3s ease;
+  letter-spacing: var(--tracking-normal);
 }
 
-/* Brand helpers */
-.bg-brand-orange{ background-color: var(--brand-orange) !important; }
-.text-brand-orange{ color: var(--brand-orange) !important; }
-.border-brand{ border-color: var(--card-border) !important; }
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
 
-/* Sidebar refinements */
-.sidebar-refined{ background: linear-gradient(180deg, rgba(7,16,42,0.98) 0%, rgba(3,10,30,0.95) 100%); box-shadow: 0 6px 30px rgba(2,6,23,0.4); transition: background 0.3s ease; }
-.sidebar-refined .nav-item{ transition: all .18s ease; }
-.sidebar-refined .nav-item.active{ background: linear-gradient(90deg, rgba(249,115,22,0.14), rgba(249,115,22,0.04)); border-radius: 0.6rem; color: white; }
-
-/* Header */
-.header-glass{ background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.7)); backdrop-filter: blur(6px); transition: background 0.3s ease; }
-.dark .header-glass{ background: linear-gradient(180deg, rgba(10,14,20,0.6), rgba(7,10,20,0.55)); }
-
-/* Cards */
-.professional-card{ background: var(--surface); border: 1px solid var(--card-border); box-shadow: 0 6px 20px rgba(2,6,23,0.06); border-radius: 14px; transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
-.dark .professional-card{ box-shadow: 0 6px 24px rgba(2,6,23,0.5); }
-
-.card-title{ font-weight:800; letter-spacing:0.2px; }
-.card-sub{ color: var(--muted); font-weight:700; font-size:12px; }
-
-/* Buttons */
-.btn-primary{ background: var(--brand-orange); color: white; border-radius: 12px; padding: 10px 14px; font-weight:800; }
-.btn-outline{ border:1px solid rgba(2,6,23,0.06); padding:8px 12px; border-radius:10px; }
-
-/* Dot grid and subtle background */
-.dot-grid{ background-image: radial-gradient(rgba(14,22,35,0.04) 1px, transparent 1px); background-size: 20px 20px; }
-.dark .dot-grid{ background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px); }
-
-/* Utility small tweaks */
-.muted{ color: var(--muted); }
-.mono{ font-family: 'IBM Plex Mono', monospace; }
-
-/* Ensure important UI elements remain legible */
-.text-contrast{ color: #0b1220; }
-.dark .text-contrast{ color: #e6eef8; }
-
-/* Make sidebar and header use new helpers */
-aside.lg\:flex.w-64 { padding-top: 0; }
-aside.lg\:flex.w-64 .p-8 { padding: 1.25rem 1.25rem; }
-
-/* Responsive tweaks */
-@media (max-width: 1024px){
-  .header-glass{ padding: 0.5rem 1rem; }
+/* Dot grid background */
+.dot-grid {
+  background-image: radial-gradient(var(--foreground) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.03;
 }
 
-/* Header refinements */
-.header-glass { border-bottom: 1px solid rgba(2,6,23,0.06); }
-.dark .header-glass { border-bottom: 1px solid rgba(255,255,255,0.04); }
+/* Text utilities */
+.muted {
+  color: var(--muted-foreground);
+}
 
-/* Sidebar refinements */
-.sidebar-refined { padding-top: 0; }
-.sidebar-refined .p-8 { padding: 1.25rem; }
-.sidebar-refined .nav-item{ display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.9rem; border-radius:0.6rem; color:var(--muted); }
-.sidebar-refined .nav-item.active{ background: linear-gradient(90deg, rgba(249,115,22,0.14), rgba(249,115,22,0.04)); color: #fff; }
-.sidebar-refined .nav-item:hover{ color: #fff; transform: translateX(4px); }
+.mono {
+  font-family: var(--font-mono);
+}
 
-/* Status badge system using data attribute for consistent theming */
-.status-badge{ padding:0.2rem 0.45rem; font-size:11px; font-weight:800; border-radius:6px; border:1px solid transparent; display:inline-block; }
-.status-badge[data-status="ACTIVE"]{ background: rgba(16,185,129,0.08); color: #059669; border-color: rgba(16,185,129,0.12); }
-.status-badge[data-status="DELAYED"]{ background: rgba(239,68,68,0.06); color: #DC2626; border-color: rgba(239,68,68,0.12); }
-.status-badge[data-status="COMPLETE"]{ background: rgba(59,130,246,0.06); color: #2563EB; border-color: rgba(59,130,246,0.12); }
-.status-badge[data-status="PENDING"]{ background: rgba(245,158,11,0.06); color: #B45309; border-color: rgba(245,158,11,0.12); }
-.status-badge[data-status="APPROVED"]{ background: rgba(99,102,241,0.06); color: #4F46E5; border-color: rgba(99,102,241,0.12); }
+/* Text contrast helpers */
+.text-contrast {
+  color: var(--foreground);
+}
 
-/* Button refinements */
-.btn-primary{ background: var(--brand-orange); color: #fff; border-radius: 10px; padding: 10px 14px; font-weight:700; box-shadow: 0 6px 18px rgba(249,115,22,0.12);} 
-.btn-outline{ border:1px solid rgba(2,6,23,0.06); color:var(--muted); background:transparent; }
+/* Status badge system */
+.status-badge {
+  padding: 0.2rem 0.45rem;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: inline-block;
+}
 
-/* Card header */
-.professional-card > div.px-6.py-4 { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)); }
-.dark .professional-card > div.px-6.py-4 { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)); }
+.status-badge[data-status="ACTIVE"] {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.12);
+}
 
-/* removed duplicate body override - handled above */
+.status-badge[data-status="DELAYED"] {
+  background: rgba(239, 68, 68, 0.06);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.12);
+}
+
+.status-badge[data-status="COMPLETE"] {
+  background: rgba(59, 130, 246, 0.06);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.12);
+}
+
+.status-badge[data-status="PENDING"] {
+  background: rgba(245, 158, 11, 0.06);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.12);
+}
+
+.status-badge[data-status="APPROVED"] {
+  background: rgba(99, 102, 241, 0.06);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.12);
+}
+
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* =============================================================================
+   BLUEPRINT TOWER COMPONENT STYLES
+   ============================================================================= */
+
+.tower-panel {
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 90%, var(--foreground)));
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 30px color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+.dark .tower-panel {
+  background: linear-gradient(180deg, rgba(20, 24, 32, 0.85), rgba(12, 14, 20, 0.95));
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 30px rgba(2, 6, 23, 0.6);
+}
+
+/* Glass reflection overlay - theme aware */
+.glass-reflection {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent);
+}
+
+.dark .glass-reflection {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 15%, transparent), transparent);
+}
+
+.tower-window {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 15%, transparent), color-mix(in srgb, var(--primary) 5%, transparent));
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  box-shadow: inset 0 -2px 6px color-mix(in srgb, var(--foreground) 8%, transparent);
+  height: 10px;
+}
+
+.dark .tower-window {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 -2px 6px rgba(2, 6, 23, 0.4);
+}
+
+.tower-shadow {
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--foreground) 25%, transparent), color-mix(in srgb, var(--foreground) 8%, transparent) 40%, transparent 70%);
+  filter: blur(8px);
+  border-radius: 999px;
+}
+
+.dark .tower-shadow {
+  background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.6), rgba(2, 6, 23, 0.2) 40%, transparent 70%);
+  filter: blur(10px);
+}
+
+.neon-stripe {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.16), rgba(249, 115, 22, 0.04));
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .neon-stripe {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.06));
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.12);
+}
+
+.neon-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.neon-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.75);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.75);
+  opacity: 0.04;
+  transform: translateY(0);
+  animation: neonPulse 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .neon-dot {
+  background: rgba(249, 115, 22, 0.85);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.85);
+}
+
+.neon-dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.neon-dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+.neon-dot:nth-child(4) {
+  animation-delay: 0.54s;
+}
+
+.neon-dot:nth-child(5) {
+  animation-delay: 0.72s;
+}
+
+.neon-dot:nth-child(6) {
+  animation-delay: 0.9s;
+}
+
+@keyframes neonPulse {
+  0% {
+    opacity: 0.04;
+    transform: translateY(-1px) scale(0.95);
+    filter: blur(0px);
+  }
+
+  50% {
+    opacity: 0.65;
+    transform: translateY(0) scale(1);
+    filter: blur(3px);
+  }
+
+  100% {
+    opacity: 0.04;
+    transform: translateY(1px) scale(0.95);
+    filter: blur(0px);
+  }
+}
+
+.floor-top {
+  background: linear-gradient(180deg, #111318, #0b0f14);
+  border-top: 1px solid rgba(255, 255, 255, 0.02);
+  box-shadow: inset 0 -6px 18px rgba(2, 6, 23, 0.6);
+}
+
+.panel-expand {
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center bottom;
+}
+
+.tower-zoom {
+  transition: transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =============================================================================
+   BRAND BADGE COMPONENT
+   ============================================================================= */
+
+.brand-badge {
+  background: var(--card);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-text {
+  color: var(--foreground);
+}
