@@ -209,11 +209,20 @@ body {
    UTILITY CLASSES
    ============================================================================= */
 
-/* Dot grid background */
+/* Dot grid background - uses pseudo-element to avoid affecting child content opacity */
 .dot-grid {
+  position: relative;
+}
+
+.dot-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image: radial-gradient(var(--foreground) 1px, transparent 1px);
   background-size: 20px 20px;
   opacity: 0.03;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Text utilities */
@@ -299,30 +308,39 @@ body {
    ============================================================================= */
 
 .tower-panel {
-  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 90%, var(--foreground)));
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 30px color-mix(in srgb, var(--foreground) 15%, transparent);
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--foreground) 12%, var(--card)),
+      color-mix(in srgb, var(--foreground) 25%, var(--card)));
+  border: 2px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 8px 30px color-mix(in srgb, var(--foreground) 20%, transparent);
 }
 
 .dark .tower-panel {
   background: linear-gradient(180deg, rgba(20, 24, 32, 0.85), rgba(12, 14, 20, 0.95));
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 30px rgba(2, 6, 23, 0.6);
 }
 
 /* Glass reflection overlay - theme aware */
+/* Note: mix-blend-mode: screen is applied in the component, we override it here for light mode */
 .glass-reflection {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, transparent), transparent);
+  mix-blend-mode: multiply !important;
+  /* Override screen blend on light backgrounds */
 }
 
 .dark .glass-reflection {
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 15%, transparent), transparent);
+  mix-blend-mode: screen !important;
 }
 
 .tower-window {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 15%, transparent), color-mix(in srgb, var(--primary) 5%, transparent));
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
-  box-shadow: inset 0 -2px 6px color-mix(in srgb, var(--foreground) 8%, transparent);
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--primary) 35%, transparent),
+      color-mix(in srgb, var(--primary) 15%, transparent));
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  box-shadow: inset 0 -2px 6px color-mix(in srgb, var(--foreground) 15%, transparent);
   height: 10px;
 }
 
@@ -367,9 +385,9 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(249, 115, 22, 0.75);
-  box-shadow: 0 0 8px rgba(249, 115, 22, 0.75);
-  opacity: 0.04;
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+  opacity: 0.3;
   transform: translateY(0);
   animation: neonPulse 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -401,25 +419,31 @@ body {
 
 @keyframes neonPulse {
   0% {
-    opacity: 0.04;
+    opacity: 0.3;
     transform: translateY(-1px) scale(0.95);
     filter: blur(0px);
   }
 
   50% {
-    opacity: 0.65;
+    opacity: 0.9;
     transform: translateY(0) scale(1);
-    filter: blur(3px);
+    filter: blur(2px);
   }
 
   100% {
-    opacity: 0.04;
+    opacity: 0.3;
     transform: translateY(1px) scale(0.95);
     filter: blur(0px);
   }
 }
 
 .floor-top {
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 85%, var(--foreground)));
+  border-top: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+  box-shadow: inset 0 -6px 18px color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+.dark .floor-top {
   background: linear-gradient(180deg, #111318, #0b0f14);
   border-top: 1px solid rgba(255, 255, 255, 0.02);
   box-shadow: inset 0 -6px 18px rgba(2, 6, 23, 0.6);
