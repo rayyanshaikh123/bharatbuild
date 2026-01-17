@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../widgets/app_ui.dart';
 import '../widgets/offline_banner.dart';
 import '../providers/app_state.dart';
+import '../layouts/app_layout.dart';
 
 class EngineerFlowScreen extends StatelessWidget {
   static const routeName = '/engineer-flow';
@@ -21,9 +22,9 @@ class EngineerFlowScreen extends StatelessWidget {
     ];
     final appState = Provider.of<AppState>(context);
 
-    return Scaffold(
-      appBar: AppHeader(title: 'Engineer Flow'),
-      body: Padding(
+    return AppLayout(
+      title: 'Engineer Flow',
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,12 +52,16 @@ class EngineerFlowScreen extends StatelessWidget {
                 itemCount: items.length,
               ),
             ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PrimaryButton(
+                label: 'Open Labour Flow',
+                onPressed: () => Navigator.pushNamed(context, '/labour-flow'),
+              ),
+            ),
           ],
         ),
-      ),
-      floatingActionButton: PrimaryButton(
-        label: 'Open Labour Flow',
-        onPressed: () => Navigator.pushNamed(context, '/labour-flow'),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../widgets/app_ui.dart';
 import '../widgets/offline_banner.dart';
 import '../providers/app_state.dart';
+import '../layouts/app_layout.dart';
 
 class LabourFlowScreen extends StatelessWidget {
   static const routeName = '/labour-flow';
@@ -23,9 +24,9 @@ class LabourFlowScreen extends StatelessWidget {
     ];
     final appState = Provider.of<AppState>(context);
 
-    return Scaffold(
-      appBar: AppHeader(title: 'Labour Flow'),
-      body: Padding(
+    return AppLayout(
+      title: 'Labour Flow',
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
