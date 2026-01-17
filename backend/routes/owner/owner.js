@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
-const { ownerCheck } = require("../middleware/ownerCheck");
+const ownerCheck = require("../../middleware/ownerCheck");
 
 /* ---------------- GET OWNER PROFILE ---------------- */
 router.get("/profile", ownerCheck, async (req, res) => {

@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
-const { managerCheck } = require("../../middleware/managerCheck");
+const  managerCheck  = require("../../middleware/managerCheck");
 router.get("/profile", managerCheck, async (req, res) => { 
     try {
         const managerId = req.user.id;

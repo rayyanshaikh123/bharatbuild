@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
-const { engineerCheck } = require("../../middleware/engineerCheck");
+const  engineerCheck  = require("../../middleware/engineerCheck");
 router.get("/profile", engineerCheck, async (req, res) => { 
     try {
         const engineerId = req.user.id;
