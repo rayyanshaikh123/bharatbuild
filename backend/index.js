@@ -49,6 +49,20 @@ app.use("/auth/engineer", require("./routes/auth/engineerAuth"));
 app.use("/auth/labour", require("./routes/auth/labourAuth"));
 app.use("/auth/labour", require("./routes/auth/labourAuth"));
 
+/* ---------------- OWNER ROUTES ---------------- */
+app.use("/owner", require("./routes/owner/owner"));
+app.use("/owner/organization", require("./routes/owner/organization"));
+app.use("/owner/requests", require("./routes/owner/organizationReq"));
+
+/* ---------------- MANAGER ROUTES ---------------- */
+app.use("/manager", require("./routes/manager/manager"));
+
+
+/* ---------------- ENGINEER ROUTES ---------------- */
+app.use("/engineer", require("./routes/engineer/engineer"));
+
+/* ---------------- LABOUR ROUTES ---------------- */
+app.use("/labour", require("./routes/labour/labour"));
 /* ---------------- HEALTH ---------------- */
 
 app.get("/health", async (req, res) => {
