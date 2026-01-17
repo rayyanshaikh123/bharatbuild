@@ -1,24 +1,29 @@
-import type { Config } from "tailwindcss";
+import type { Config } from 'tailwindcss';
 
 const config: Config = {
-    darkMode: "class",
+    darkMode: 'class',
     content: [
-        "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-        "./components/**/*.{js,ts,jsx,tsx,mdx}",
-        "./app/**/*.{js,ts,jsx,tsx,mdx}",
+        './pages/**/*.{js,ts,jsx,tsx,mdx}',
+        './components/**/*.{js,ts,jsx,tsx,mdx}',
+        './app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     theme: {
         extend: {
             colors: {
-                'brand-orange': '#F97316',
+                brand: {
+                    orange: '#F97316',
+                    navy: '#0F172A',
+                    slate: '#F1F5F9',
+                    border: '#E2E8F0',
+                },
             },
             fontFamily: {
-                sans: ['var(--font-plus-jakarta-sans)', 'Inter', 'system-ui', 'sans-serif'],
-                mono: ['var(--font-geist-mono)', 'monospace'],
+                sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+                mono: ['"IBM Plex Mono"', 'monospace'],
             },
         },
     },
-    plugins: [require("tailwindcss-animate")],
+    plugins: [require('tailwindcss-animate')],
 };
 
 export default config;

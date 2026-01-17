@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react';  
 
 const TowerFloor = ({
     index,
@@ -126,13 +126,13 @@ const Antenna = ({ visible }: { visible: boolean }) => (
     </div>
 );
 
-const BlueprintTower = ({ progress }: { progress: number }) => {
+const BlueprintTower = ({ progress  }: { progress: number }) => {
     const floors = 11;
-    const rotation = progress * 170;
+    const rotation = progress * 160;
 
     // Slightly larger tower, base moved down more
     const pitch = -45;
-    const dynamicY = 0;   // Moved base further down
+    const dynamicY = -20;   // Moved base further down
     const dynamicScale = 0.88;  // Slightly larger
 
     const hw = 85;

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;600&display=swap');
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 @import "tw-animate-css";
@@ -10,41 +11,41 @@
    ============================================================================= */
 
 :root {
-  --background: rgb(253, 251, 247);
-  --foreground: rgb(74, 59, 51);
-  --card: rgb(248, 244, 238);
-  --card-foreground: rgb(74, 59, 51);
-  --popover: rgb(248, 244, 238);
-  --popover-foreground: rgb(74, 59, 51);
-  --primary: rgb(166, 91, 33);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: rgb(228, 192, 144);
-  --secondary-foreground: rgb(87, 83, 78);
-  --muted: rgb(241, 233, 218);
-  --muted-foreground: rgb(120, 113, 108);
-  --accent: rgb(242, 218, 186);
-  --accent-foreground: rgb(87, 83, 78);
-  --destructive: rgb(153, 27, 27);
-  --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(228, 217, 188);
-  --input: rgb(228, 217, 188);
-  --ring: rgb(180, 83, 9);
-  --chart-1: rgb(180, 83, 9);
-  --chart-2: rgb(120, 113, 108);
-  --chart-3: rgb(161, 98, 7);
-  --chart-4: rgb(120, 113, 108);
-  --chart-5: rgb(202, 138, 4);
-  --sidebar: rgb(241, 233, 218);
-  --sidebar-foreground: rgb(74, 59, 51);
-  --sidebar-primary: rgb(180, 83, 9);
-  --sidebar-primary-foreground: rgb(255, 255, 255);
-  --sidebar-accent: rgb(161, 98, 7);
-  --sidebar-accent-foreground: rgb(255, 255, 255);
-  --sidebar-border: rgb(228, 217, 188);
-  --sidebar-ring: rgb(180, 83, 9);
-  --font-sans: Oxanium, sans-serif;
+  --background: #ffffff;
+  --foreground: #0F172A; /* brand navy */
+  --card: #F1F5F9; /* brand slate */
+  --card-foreground: #0F172A;
+  --popover: #F1F5F9;
+  --popover-foreground: #0F172A;
+  --primary: #F97316; /* brand orange */
+  --primary-foreground: #ffffff;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #FCEAD6;
+  --accent-foreground: #0F172A;
+  --destructive: #991B1B;
+  --destructive-foreground: #ffffff;
+  --border: #E2E8F0; /* brand border */
+  --input: #E2E8F0;
+  --ring: #F97316;
+  --chart-1: #F97316;
+  --chart-2: #64748B;
+  --chart-3: #A16207;
+  --chart-4: #64748B;
+  --chart-5: #CAA206;
+  --sidebar: #F1F5F9;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #F97316;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #A16207;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #F97316;
+  --font-sans: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   --font-serif: Merriweather, serif;
-  --font-mono: Fira Code, monospace;
+  --font-mono: 'IBM Plex Mono', Fira Code, monospace;
   --radius: 0.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -64,46 +65,46 @@
   --spacing: 0.25rem;
 
   /* Custom variables for landing page effects */
-  --grid-accent: rgba(166, 91, 33, 0.08);
-  --grid-accent-weak: rgba(166, 91, 33, 0.04);
+  --grid-accent: rgba(249, 115, 22, 0.08);
+  --grid-accent-weak: rgba(249, 115, 22, 0.04);
 }
 
 .dark {
-  --background: rgb(28, 25, 23);
-  --foreground: rgb(245, 245, 244);
-  --card: rgb(41, 37, 36);
-  --card-foreground: rgb(245, 245, 244);
-  --popover: rgb(41, 37, 36);
-  --popover-foreground: rgb(245, 245, 244);
-  --primary: rgb(249, 115, 22);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: rgb(87, 83, 78);
-  --secondary-foreground: rgb(231, 229, 228);
-  --muted: rgb(32, 29, 26);
-  --muted-foreground: rgb(168, 162, 158);
-  --accent: rgb(30, 66, 82);
-  --accent-foreground: rgb(231, 229, 228);
-  --destructive: rgb(220, 38, 38);
-  --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(68, 64, 60);
-  --input: rgb(68, 64, 60);
-  --ring: rgb(249, 115, 22);
-  --chart-1: rgb(249, 115, 22);
-  --chart-2: rgb(14, 165, 233);
-  --chart-3: rgb(234, 179, 8);
-  --chart-4: rgb(168, 162, 158);
-  --chart-5: rgb(120, 113, 108);
-  --sidebar: rgb(41, 37, 36);
-  --sidebar-foreground: rgb(245, 245, 244);
-  --sidebar-primary: rgb(249, 115, 22);
-  --sidebar-primary-foreground: rgb(255, 255, 255);
-  --sidebar-accent: rgb(14, 165, 233);
-  --sidebar-accent-foreground: rgb(12, 42, 77);
-  --sidebar-border: rgb(68, 64, 60);
-  --sidebar-ring: rgb(249, 115, 22);
-  --font-sans: Oxanium, sans-serif;
+  --background: #0F172A; /* navy background - opposite of white */
+  --foreground: #ffffff; /* white text - opposite of navy */
+  --card: #0F172A; /* navy card */
+  --card-foreground: #F1F5F9; /* light text on cards */
+  --popover: #0F172A; /* navy popover */
+  --popover-foreground: #F1F5F9; /* light text */
+  --primary: #F97316; /* keep orange primary */
+  --primary-foreground: #ffffff; /* white text on primary */
+  --secondary: #0F172A; /* navy secondary */
+  --secondary-foreground: #F1F5F9; /* light text */
+  --muted: #64748B; /* muted color */
+  --muted-foreground: #F1F5F9; /* light muted text */
+  --accent: #0F172A; /* navy accent */
+  --accent-foreground: #FCEAD6; /* light accent text */
+  --destructive: #ffffff; /* white destructive */
+  --destructive-foreground: #991B1B; /* red text */
+  --border: #8a7869bb; /* keep border */
+  --input: #E2E8F0; /* keep input */
+  --ring: #F97316; /* orange ring */
+  --chart-1: #F97316; /* orange chart */
+  --chart-2: #64748B; /* slate chart */
+  --chart-3: #A16207; /* brown chart */
+  --chart-4: #64748B; /* slate chart */
+  --chart-5: #CAA206; /* yellow chart */
+  --sidebar: #0F172A; /* navy sidebar */
+  --sidebar-foreground: #F1F5F9; /* light sidebar text */
+  --sidebar-primary: #F97316; /* orange sidebar primary */
+  --sidebar-primary-foreground: #ffffff; /* white text */
+  --sidebar-accent: #ffffff; /* white sidebar accent */
+  --sidebar-accent-foreground: #A16207; /* brown text */
+  --sidebar-border: #000000; /* border */
+  --sidebar-ring: #F97316; /* orange ring */
+  --font-sans: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   --font-serif: Merriweather, serif;
-  --font-mono: Fira Code, monospace;
+  --font-mono: 'IBM Plex Mono', Fira Code, monospace;
   --radius: 0.3rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -119,6 +120,8 @@
   --shadow-lg: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 4px 6px -1px hsl(0 0% 5% / 0.18);
   --shadow-xl: 0px 2px 3px 0px hsl(0 0% 5% / 0.18), 0px 8px 10px -1px hsl(0 0% 5% / 0.18);
   --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 5% / 0.45);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
 
   /* Custom variables for landing page effects - dark mode */
   --grid-accent: rgba(249, 115, 22, 0.16);
@@ -307,7 +310,7 @@ body {
    BLUEPRINT TOWER COMPONENT STYLES
    ============================================================================= */
 
-.tower-panel {
+.dark .tower-panel {
   background: linear-gradient(180deg,
       color-mix(in srgb, var(--foreground) 12%, var(--card)),
       color-mix(in srgb, var(--foreground) 25%, var(--card)));
@@ -316,7 +319,7 @@ body {
     0 8px 30px color-mix(in srgb, var(--foreground) 20%, transparent);
 }
 
-.dark .tower-panel {
+.tower-panel {
   background: linear-gradient(180deg, rgba(20, 24, 32, 0.85), rgba(12, 14, 20, 0.95));
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 30px rgba(2, 6, 23, 0.6);
@@ -324,13 +327,13 @@ body {
 
 /* Glass reflection overlay - theme aware */
 /* Note: mix-blend-mode: screen is applied in the component, we override it here for light mode */
-.glass-reflection {
+.dark .glass-reflection {
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, transparent), transparent);
   mix-blend-mode: multiply !important;
   /* Override screen blend on light backgrounds */
 }
 
-.dark .glass-reflection {
+ .glass-reflection {
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 15%, transparent), transparent);
   mix-blend-mode: screen !important;
 }
@@ -361,7 +364,7 @@ body {
   filter: blur(10px);
 }
 
-.neon-stripe {
+.dark .neon-stripe {
   background: linear-gradient(180deg, rgba(249, 115, 22, 0.16), rgba(249, 115, 22, 0.04));
   box-shadow: 0 0 10px rgba(249, 115, 22, 0.08);
   display: flex;
@@ -369,7 +372,7 @@ body {
   justify-content: center;
 }
 
-.dark .neon-stripe {
+ .neon-stripe {
   background: linear-gradient(180deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.06));
   box-shadow: 0 0 12px rgba(249, 115, 22, 0.12);
 }
@@ -437,13 +440,13 @@ body {
   }
 }
 
-.floor-top {
+.dark .floor-top {
   background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 85%, var(--foreground)));
   border-top: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
   box-shadow: inset 0 -6px 18px color-mix(in srgb, var(--foreground) 15%, transparent);
 }
 
-.dark .floor-top {
+ .floor-top {
   background: linear-gradient(180deg, #111318, #0b0f14);
   border-top: 1px solid rgba(255, 255, 255, 0.02);
   box-shadow: inset 0 -6px 18px rgba(2, 6, 23, 0.6);
