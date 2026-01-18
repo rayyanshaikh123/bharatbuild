@@ -7,13 +7,6 @@ router.post("/create-organization", ownerCheck, async (req, res) => {
   const { name, address, office_phone, org_type } = req.body;
   const ownerId = req.user.id;
   try {
-    const count=await pool.query(
-      "SELECT COUNT(*) FROM organizations WHERE owner_id=$1",
-      [ownerId],
-    );
-    if(parseInt(count.rows[0].count)>=1){
-      return  res.status(400).json({ error: "Organization limit reached. You can create up to 1 organizations." });
-    }
     const result = await pool.query(
       "INSERT INTO organizations (name, address, office_phone, org_type, owner_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [name, address, office_phone, org_type, ownerId],

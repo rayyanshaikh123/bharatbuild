@@ -15,7 +15,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-  }),
+  })
 );
 
 /* ---------------- MIDDLEWARE ---------------- */
@@ -36,7 +36,7 @@ app.use(
       secure: false, // 1 day
       sameSite: "lax",
     },
-  }),
+  })
 );
 
 app.use(passport.initialize());
@@ -53,30 +53,13 @@ app.use("/auth/labour", require("./routes/auth/labourAuth"));
 app.use("/owner", require("./routes/owner/owner"));
 app.use("/owner/organization", require("./routes/owner/organization"));
 app.use("/owner/requests", require("./routes/owner/organizationReq"));
-app.use("/owner/project", require("./routes/owner/project"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
-app.use("/manager/organization", require("./routes/manager/manOrganization"));
-app.use(
-  "/manager/organization-requests",
-  require("./routes/manager/enOrganiztionReq"),
-);
-app.use("/manager/project", require("./routes/manager/project"));
-app.use("/manager/projects", require("./routes/manager/managerProject"));
-app.use(
-  "/manager/project-requests",
-  require("./routes/manager/managerProjectReq"),
-);
-app.use(
-  "/manager/project-engineer-requests",
-  require("./routes/manager/projectEngineerReq"),
-);
+
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
-app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
-app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

@@ -8,50 +8,16 @@ const { generateOtp, sendOtpSms } = require("../../util/otp");
 // Initialize passport strategies for auth (kept inside auth folder by design)
 require("./labourPassport");
 router.post("/register", async (req, res) => {
-  const {
-    name,
-    phone,
-    skill_type,
-    categories,
-    primary_latitude,
-    primary_longitude,
-    travel_radius_meters,
-  } = req.body;
+  const { name, phone } = req.body;
 
   try {
     if (!name || !phone)
       return res.status(400).json({ error: "missing_fields" });
 
-    // Validate skill_type if provided
-    if (
-      skill_type &&
-      !["SKILLED", "SEMI_SKILLED", "UNSKILLED"].includes(skill_type)
-    ) {
-      return res.status(400).json({ error: "invalid_skill_type" });
-    }
-
-    // Check for duplicate phone
-    const existingLabour = await pool.query(
-      "SELECT id FROM labours WHERE phone = $1",
-      [phone],
-    );
-    if (existingLabour.rows.length > 0) {
-      return res.status(409).json({ error: "Phone number already registered" });
-    }
-
-    await pool.query(
-      `INSERT INTO labours (name, phone, skill_type, categories, primary_latitude, primary_longitude, travel_radius_meters) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        name,
-        phone,
-        skill_type || null,
-        categories || [],
-        primary_latitude || null,
-        primary_longitude || null,
-        travel_radius_meters || null,
-      ],
-    );
+    await pool.query("INSERT INTO labours (name, phone) VALUES ($1, $2)", [
+      name,
+      phone,
+    ]);
 
     res.status(201).json({ message: "Labour registered successfully" });
   } catch (err) {
@@ -65,7 +31,7 @@ router.post("/otp/request", async (req, res) => {
 
     const labourRes = await pool.query(
       "SELECT id FROM labours WHERE phone = $1",
-      [phone],
+      [phone]
     );
 
     if (!labourRes.rows.length) {
@@ -81,7 +47,7 @@ router.post("/otp/request", async (req, res) => {
       INSERT INTO otp_logs (phone, otp_hash, expires_at)
       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')
       `,
-      [phone, otpHash],
+      [phone, otpHash]
     );
 
     // await sendOtpSms(phone, otp);

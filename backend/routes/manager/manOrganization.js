@@ -62,13 +62,7 @@ router.get("/my-requests", managerCheck, async (req, res) => {
   try {
     const managerId = req.user.id;
     const result = await pool.query(
-      `SELECT om.*,
-              o.name AS org_name,
-              o.address AS org_address,
-              o.office_phone AS org_office_phone
-       FROM organization_managers om
-       JOIN organizations o ON om.org_id = o.id
-       WHERE om.manager_id = $1`,
+      "select * from organization_managers where manager_id=$1",
       [managerId],
     );
     res.json({ requests: result.rows });
