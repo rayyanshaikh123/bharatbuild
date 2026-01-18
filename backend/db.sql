@@ -1,5 +1,5 @@
 -- =========================================================
--- EXTENSIONS
+-- EXTENSION
 -- =========================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -45,14 +45,11 @@ CREATE TABLE labours (
     name TEXT NOT NULL,
     phone TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL DEFAULT 'LABOUR',
-
     skill_type TEXT CHECK (skill_type IN ('SKILLED','SEMI_SKILLED','UNSKILLED')),
     categories TEXT[] NOT NULL DEFAULT '{}',
-
     primary_latitude NUMERIC,
     primary_longitude NUMERIC,
     travel_radius_meters INTEGER,
-
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -63,17 +60,15 @@ CREATE TABLE labours (
 CREATE TABLE labour_addresses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     labour_id UUID REFERENCES labours(id) ON DELETE CASCADE,
-
     latitude NUMERIC NOT NULL,
     longitude NUMERIC NOT NULL,
     address_text TEXT,
-
     is_primary BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT now()
 );
 
 -- =========================================================
--- ORGANIZATIONS
+-- ORGANIZATION
 -- =========================================================
 
 CREATE TABLE organizations (
@@ -85,10 +80,6 @@ CREATE TABLE organizations (
     owner_id UUID NOT NULL REFERENCES owners(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT now()
 );
-
--- =========================================================
--- ORGANIZATION MEMBERSHIP
--- =========================================================
 
 CREATE TABLE organization_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -119,30 +110,23 @@ CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-
     location_text TEXT,
     latitude NUMERIC,
     longitude NUMERIC,
     geofence_radius INTEGER,
-
     start_date DATE,
     end_date DATE,
     budget NUMERIC,
-
     status TEXT CHECK (status IN ('PLANNED','ACTIVE','COMPLETED','ON_HOLD')),
     created_by UUID REFERENCES managers(id),
-
     created_at TIMESTAMP DEFAULT now()
 );
-
--- =========================================================
--- PROJECT ASSIGNMENTS
--- =========================================================
 
 CREATE TABLE project_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     manager_id UUID REFERENCES managers(id),
+    status TEXT CHECK (status IN ('PENDING','ACTIVE','REJECTED')) NOT NULL,
     assigned_at TIMESTAMP DEFAULT now(),
     UNIQUE (project_id, manager_id)
 );
@@ -151,32 +135,26 @@ CREATE TABLE project_site_engineers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     site_engineer_id UUID REFERENCES site_engineers(id),
-    status TEXT CHECK (status IN ('ACTIVE','REMOVED')) DEFAULT 'ACTIVE',
+    status TEXT CHECK (status IN ('PENDING','ACTIVE','REMOVED','REJECTED')) DEFAULT 'PENDING',
     assigned_at TIMESTAMP DEFAULT now(),
     UNIQUE (project_id, site_engineer_id)
 );
 
 -- =========================================================
--- LABOUR REQUESTS (DEMAND)
+-- LABOUR REQUESTS
 -- =========================================================
 
 CREATE TABLE labour_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     site_engineer_id UUID REFERENCES site_engineers(id),
-
     category TEXT NOT NULL,
     required_count INTEGER NOT NULL,
-
     search_radius_meters INTEGER NOT NULL,
     request_date DATE NOT NULL,
-
     status TEXT CHECK (status IN ('OPEN','LOCKED','CLOSED')) DEFAULT 'OPEN',
     copied_from UUID REFERENCES labour_requests(id),
-
     created_at TIMESTAMP DEFAULT now(),
-
     UNIQUE (project_id, category, request_date)
 );
 
@@ -197,16 +175,13 @@ CREATE TABLE attendance (
     project_id UUID REFERENCES projects(id),
     labour_id UUID REFERENCES labours(id),
     site_engineer_id UUID REFERENCES site_engineers(id),
-
     attendance_date DATE NOT NULL,
     check_in_time TIMESTAMP,
     check_out_time TIMESTAMP,
     work_hours NUMERIC,
-
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
     approved_by UUID REFERENCES site_engineers(id),
     approved_at TIMESTAMP,
-
     UNIQUE (project_id, labour_id, attendance_date)
 );
 
@@ -219,21 +194,18 @@ CREATE TABLE wages (
     attendance_id UUID REFERENCES attendance(id) ON DELETE CASCADE,
     labour_id UUID REFERENCES labours(id),
     project_id UUID REFERENCES projects(id),
-
     wage_type TEXT CHECK (wage_type IN ('DAILY','HOURLY')) DEFAULT 'DAILY',
     rate NUMERIC NOT NULL,
     total_amount NUMERIC NOT NULL,
-
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
     approved_by UUID REFERENCES managers(id),
     approved_at TIMESTAMP,
-
     created_at TIMESTAMP DEFAULT now(),
     UNIQUE (attendance_id)
 );
 
 -- =========================================================
--- OTP LOGS
+-- OTP + AUDIT + SESSION
 -- =========================================================
 
 CREATE TABLE otp_logs (
@@ -245,10 +217,6 @@ CREATE TABLE otp_logs (
     created_at TIMESTAMP DEFAULT now()
 );
 
--- =========================================================
--- AUDIT LOGS
--- =========================================================
-
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     entity_type TEXT NOT NULL,
@@ -259,10 +227,6 @@ CREATE TABLE audit_logs (
     acted_by_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT now()
 );
-
--- =========================================================
--- PASSPORT SESSION TABLE
--- =========================================================
 
 CREATE TABLE session (
     sid VARCHAR PRIMARY KEY,
