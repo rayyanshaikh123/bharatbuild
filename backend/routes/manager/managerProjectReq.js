@@ -32,9 +32,20 @@ router.post("/join-project", managerCheck, async (req, res) => {
       organizationId,
     );
     if (!isOrgApproved) {
+      return res.status(403).json({
+        error: "Access denied. Not an approved manager in the organization.",
+      });
+    }
+
+    // Validate project belongs to organization
+    const projectCheck = await pool.query(
+      "SELECT id FROM projects WHERE id = $1 AND org_id = $2",
+      [projectId, organizationId],
+    );
+    if (projectCheck.rows.length === 0) {
       return res
         .status(403)
-        .json({ error: "Access denied. Not an approved manager in the organization." });
+        .json({ error: "Project not found in this organization." });
     }
 
     const isProjApproved = await managerProjectStatusCheck(
@@ -60,16 +71,25 @@ router.post("/join-project", managerCheck, async (req, res) => {
 });
 router.get("/my-project-requests", managerCheck, async (req, res) => {
   try {
-      const managerId = req.user.id;
-      
+    const managerId = req.user.id;
 
-
-    const result = await pool.query(`select * from project_managers where manager_id=$1 and status='PENDING'`, [managerId]);
+    const result = await pool.query(
+      `SELECT pm.*,
+              p.name AS project_name,
+              p.description AS project_description,
+              p.org_id,
+              p.start_date,
+              p.end_date
+       FROM project_managers pm
+       JOIN projects p ON pm.project_id = p.id
+       WHERE pm.manager_id = $1 AND pm.status = 'PENDING'`,
+      [managerId],
+    );
     res.json({ requests: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
-}); 
+});
 
 module.exports = router;

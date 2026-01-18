@@ -30,6 +30,15 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "invalid_skill_type" });
     }
 
+    // Check for duplicate phone
+    const existingLabour = await pool.query(
+      "SELECT id FROM labours WHERE phone = $1",
+      [phone],
+    );
+    if (existingLabour.rows.length > 0) {
+      return res.status(409).json({ error: "Phone number already registered" });
+    }
+
     await pool.query(
       `INSERT INTO labours (name, phone, skill_type, categories, primary_latitude, primary_longitude, travel_radius_meters) 
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,

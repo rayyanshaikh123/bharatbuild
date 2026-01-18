@@ -26,9 +26,7 @@ router.get("/projects", engineerCheck, async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT p.* FROM projects p
-           JOIN organizations o ON p.org_id = o.id
-           WHERE p.org_id = $1`,
+      `SELECT * FROM projects WHERE org_id = $1`,
       [organizationId],
     );
     res.json({ projects: result.rows });
@@ -63,15 +61,18 @@ router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
 router.get("/my-requests", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
-    // const { organizationId } = req.query;
-    // const status = await siteEngineerStatuusCheck(engineerId, organizationId);
-    // if (status !== "APPROVED") {
-    //   return res
-    //     .status(403)
-    //     .json({ error: "Access denied. Not an approved site engineer." });
-    // }
+    // Authorization note: Engineers must ALWAYS see their own project join requests
+    // No org-level check required here (per system context)
     const result = await pool.query(
-      `SELECT * from project_site_engineers where site_engineer_id=$1 and status='PENDING'`,
+      `SELECT pse.*, 
+              p.name AS project_name, 
+              p.description AS project_description,
+              p.org_id,
+              p.start_date,
+              p.end_date
+       FROM project_site_engineers pse
+       JOIN projects p ON pse.project_id = p.id
+       WHERE pse.site_engineer_id = $1 AND pse.status = 'PENDING'`,
       [engineerId],
     );
     res.json({ requests: result.rows });
