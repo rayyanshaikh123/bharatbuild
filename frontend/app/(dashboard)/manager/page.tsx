@@ -1,56 +1,11 @@
 "use client";
 
 import { useAuth } from "@/components/providers/AuthContext";
-import {
-  Building2,
-  Users,
-  FileText,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowUpRight,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Building2, Users, ArrowUpRight, Loader2, Clock, CheckCircle2, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-
-interface StatCardProps {
-  title: string;
-  value: string;
-  change?: string;
-  changeType?: "positive" | "negative" | "neutral";
-  icon: React.ElementType;
-}
-
-function StatCard({ title, value, change, changeType = "neutral", icon: Icon }: StatCardProps) {
-  return (
-    <div className="relative group">
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-primary/5 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-      
-      <div className="relative bg-card border border-border rounded-2xl p-6 transition-all duration-300 hover:border-primary/30">
-        <div className="flex items-start justify-between mb-4">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-            <Icon size={24} />
-          </div>
-          {change && (
-            <span
-              className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                changeType === "positive"
-                  ? "bg-green-500/10 text-green-600"
-                  : changeType === "negative"
-                  ? "bg-red-500/10 text-red-600"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {change}
-            </span>
-          )}
-        </div>
-        <p className="text-3xl font-black text-foreground tracking-tight">{value}</p>
-        <p className="text-sm text-muted-foreground mt-1">{title}</p>
-      </div>
-    </div>
-  );
-}
+import { managerOrganization, OrganizationListItem, ManagerOrgRequest } from "@/lib/api/manager";
 
 interface QuickActionProps {
   title: string;
@@ -76,20 +31,174 @@ function QuickAction({ title, description, href, icon: Icon }: QuickActionProps)
   );
 }
 
+function OrganizationStatus() {
+  const [allOrganizations, setAllOrganizations] = useState<OrganizationListItem[]>([]);
+  const [myRequests, setMyRequests] = useState<ManagerOrgRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [orgsRes, reqsRes] = await Promise.all([
+        managerOrganization.getAll(),
+        managerOrganization.getMyRequests(),
+      ]);
+      setAllOrganizations(orgsRes.organizations || []);
+      setMyRequests(reqsRes.requests || []);
+    } catch (err) {
+      console.error("Failed to load data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleJoinRequest = async (orgId: string) => {
+    setJoiningId(orgId);
+    try {
+      await managerOrganization.requestJoin(orgId);
+      fetchData();
+    } catch (err) {
+      console.error("Join request failed:", err);
+    } finally {
+      setJoiningId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-8 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Check status
+  const approvedRequest = myRequests.find(r => r.status === "APPROVED");
+  const pendingRequest = myRequests.find(r => r.status === "PENDING");
+  const requestedOrgIds = myRequests.map(r => r.org_id);
+
+  // Approved - show organization info
+  if (approvedRequest) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500">
+            <CheckCircle2 size={24} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">{approvedRequest.org_name}</h3>
+            <p className="text-sm text-muted-foreground">Organization Approved</p>
+          </div>
+        </div>
+        <div className="flex gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <MapPin size={14} />
+            {approvedRequest.org_address}
+          </span>
+          <span className="flex items-center gap-1">
+            <Phone size={14} />
+            {approvedRequest.org_office_phone}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending - show waiting state
+  if (pendingRequest) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-600">
+              <Clock size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Pending Approval</h3>
+              <p className="text-sm text-muted-foreground">
+                Your request to join <span className="font-semibold">{pendingRequest.org_name}</span> is pending owner approval.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No request yet - show organization list to join
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6">
+      <h3 className="text-lg font-bold text-foreground mb-2 uppercase tracking-wide">
+        Join an Organization
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        Select an organization to send a join request to the owner.
+      </p>
+
+      {allOrganizations.length === 0 ? (
+        <div className="text-center py-8">
+          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No organizations available yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {allOrganizations.map((org) => {
+            const alreadyRequested = requestedOrgIds.includes(org.id);
+            return (
+              <div
+                key={org.id}
+                className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl"
+              >
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                  <Building2 size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-foreground">{org.name}</h4>
+                  <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1">
+                      <MapPin size={12} />
+                      {org.address}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Phone size={12} />
+                      {org.office_phone}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={alreadyRequested || joiningId === org.id}
+                  onClick={() => handleJoinRequest(org.id)}
+                  className="text-xs"
+                >
+                  {joiningId === org.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : alreadyRequested ? (
+                    "Requested"
+                  ) : (
+                    "Request Join"
+                  )}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ManagerDashboardPage() {
   const { user } = useAuth();
 
-  const stats = [
-    { title: "Active Projects", value: "5", icon: Building2 },
-    { title: "Site Engineers", value: "12", change: "2 pending approval", changeType: "neutral" as const, icon: Users },
-    { title: "Pending DPRs", value: "8", change: "Needs review", changeType: "negative" as const, icon: Clock },
-    { title: "Approved Today", value: "23", change: "+5", changeType: "positive" as const, icon: CheckCircle2 },
-  ];
-
   const actions = [
-    { title: "Review Pending DPRs", description: "8 reports awaiting your approval", href: "/manager/dprs", icon: FileText },
+    { title: "My Projects", description: "View and manage your projects", href: "/manager/projects", icon: Building2 },
     { title: "Manage Engineers", description: "Assign engineers to projects", href: "/manager/engineers", icon: Users },
-    { title: "Create Project", description: "Set up a new project with geo-fence", href: "/manager/projects/new", icon: Building2 },
   ];
 
   return (
@@ -101,74 +210,22 @@ export default function ManagerDashboardPage() {
             Welcome, <span className="text-primary">{user?.name?.split(" ")[0] || "Manager"}</span>
           </h1>
           <p className="text-muted-foreground mt-1">
-            Here&apos;s what&apos;s happening across your projects
+            Manage your projects and team
           </p>
         </div>
-        <Button className="w-fit text-xs uppercase tracking-widest">
-          Create DPR
-        </Button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
-          <StatCard key={idx} {...stat} />
-        ))}
-      </div>
+      {/* Organization Status */}
+      <OrganizationStatus />
 
-      {/* Quick Actions & Activity */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">Quick Actions</h3>
-          <div className="space-y-3">
-            {actions.map((action, idx) => (
-              <QuickAction key={idx} {...action} />
-            ))}
-          </div>
+      {/* Quick Actions */}
+      <div>
+        <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">Quick Actions</h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          {actions.map((action, idx) => (
+            <QuickAction key={idx} {...action} />
+          ))}
         </div>
-
-        <div>
-          <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">Recent Activity</h3>
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-            {[
-              { text: "DPR submitted by Engineer A", time: "1 hour ago", type: "info" },
-              { text: "Material request approved", time: "3 hours ago", type: "success" },
-              { text: "New engineer joined Site B", time: "1 day ago", type: "info" },
-            ].map((activity, idx) => (
-              <div key={idx} className="flex items-start gap-3">
-                <div
-                  className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === "success"
-                      ? "bg-green-500"
-                      : activity.type === "warning"
-                      ? "bg-yellow-500"
-                      : "bg-blue-500"
-                  }`}
-                />
-                <div>
-                  <p className="text-sm text-foreground">{activity.text}</p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Pending Approvals Banner */}
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 flex items-center gap-4">
-        <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-600">
-          <AlertTriangle size={24} />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-lg font-bold text-foreground">Pending Approvals</h4>
-          <p className="text-sm text-muted-foreground">You have 8 DPRs and 3 material requests awaiting review</p>
-        </div>
-        <Link href="/manager/dprs">
-          <Button variant="outline" className="border-yellow-500/30 hover:bg-yellow-500/10">
-            Review Now
-          </Button>
-        </Link>
       </div>
     </div>
   );
