@@ -37,9 +37,11 @@ dependencies:
   provider: ^6.1.5+1
   http: ^1.6.0
   google_fonts: ^4.0.3
-  gluestack_ui_flutter:
+  gluestack_ui:
     git:
       url: https://github.com/gluestack/gluestack-ui-flutter.git
+  flutter_riverpod: ^2.3.2
+  shared_preferences: ^2.1.1
 
 dev_dependencies:
   flutter_test:
