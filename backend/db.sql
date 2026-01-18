@@ -1,5 +1,5 @@
 -- =========================================================
--- EXTENSION
+-- EXTENSIONS
 -- =========================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -45,12 +45,35 @@ CREATE TABLE labours (
     name TEXT NOT NULL,
     phone TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL DEFAULT 'LABOUR',
+
     skill_type TEXT CHECK (skill_type IN ('SKILLED','SEMI_SKILLED','UNSKILLED')),
+    categories TEXT[] NOT NULL DEFAULT '{}',
+
+    primary_latitude NUMERIC,
+    primary_longitude NUMERIC,
+    travel_radius_meters INTEGER,
+
     created_at TIMESTAMP DEFAULT now()
 );
 
 -- =========================================================
--- ORGANIZATION
+-- LABOUR ADDRESSES
+-- =========================================================
+
+CREATE TABLE labour_addresses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    labour_id UUID REFERENCES labours(id) ON DELETE CASCADE,
+
+    latitude NUMERIC NOT NULL,
+    longitude NUMERIC NOT NULL,
+    address_text TEXT,
+
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- =========================================================
+-- ORGANIZATIONS
 -- =========================================================
 
 CREATE TABLE organizations (
@@ -96,17 +119,25 @@ CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+
     location_text TEXT,
     latitude NUMERIC,
     longitude NUMERIC,
     geofence_radius INTEGER,
+
     start_date DATE,
     end_date DATE,
     budget NUMERIC,
+
     status TEXT CHECK (status IN ('PLANNED','ACTIVE','COMPLETED','ON_HOLD')),
     created_by UUID REFERENCES managers(id),
+
     created_at TIMESTAMP DEFAULT now()
 );
+
+-- =========================================================
+-- PROJECT ASSIGNMENTS
+-- =========================================================
 
 CREATE TABLE project_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -126,108 +157,39 @@ CREATE TABLE project_site_engineers (
 );
 
 -- =========================================================
--- PLAN (BASELINE)
+-- LABOUR REQUESTS (DEMAND)
 -- =========================================================
 
-CREATE TABLE plans (
+CREATE TABLE labour_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    created_by UUID REFERENCES managers(id),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
+    site_engineer_id UUID REFERENCES site_engineers(id),
+
+    category TEXT NOT NULL,
+    required_count INTEGER NOT NULL,
+
+    search_radius_meters INTEGER NOT NULL,
+    request_date DATE NOT NULL,
+
+    status TEXT CHECK (status IN ('OPEN','LOCKED','CLOSED')) DEFAULT 'OPEN',
+    copied_from UUID REFERENCES labour_requests(id),
+
     created_at TIMESTAMP DEFAULT now(),
-    UNIQUE (project_id)
+
+    UNIQUE (project_id, category, request_date)
 );
 
-CREATE TABLE plan_items (
+CREATE TABLE labour_request_participants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    plan_id UUID REFERENCES plans(id) ON DELETE CASCADE,
-    period_type TEXT CHECK (period_type IN ('WEEK','MONTH')),
-    period_start DATE,
-    period_end DATE,
-    task_name TEXT NOT NULL,
-    description TEXT,
-    planned_quantity NUMERIC,
-    planned_manpower INTEGER,
-    planned_cost NUMERIC,
-    created_at TIMESTAMP DEFAULT now()
+    labour_request_id UUID REFERENCES labour_requests(id) ON DELETE CASCADE,
+    labour_id UUID REFERENCES labours(id),
+    joined_at TIMESTAMP DEFAULT now(),
+    UNIQUE (labour_request_id, labour_id)
 );
 
 -- =========================================================
--- DPR
--- =========================================================
-
-CREATE TABLE dprs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    site_engineer_id UUID REFERENCES site_engineers(id),
-    report_date DATE NOT NULL,
-    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
-    submitted_at TIMESTAMP DEFAULT now(),
-    reviewed_by UUID REFERENCES managers(id),
-    reviewed_at TIMESTAMP,
-    remarks TEXT,
-    UNIQUE (project_id, site_engineer_id, report_date)
-);
-
--- =========================================================
--- MATERIAL REQUESTS
--- =========================================================
-
-CREATE TABLE material_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(id),
-    site_engineer_id UUID REFERENCES site_engineers(id),
-    dpr_id UUID REFERENCES dprs(id),
-
-    title TEXT NOT NULL,
-    category TEXT NOT NULL,
-    quantity NUMERIC NOT NULL,
-    description TEXT,
-
-    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
-    manager_feedback TEXT,
-
-    reviewed_by UUID REFERENCES managers(id),
-    reviewed_at TIMESTAMP,
-
-    created_at TIMESTAMP DEFAULT now()
-);
-
--- =========================================================
--- MATERIAL BILLS / INVOICES
--- =========================================================
-
-CREATE TABLE material_bills (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    material_request_id UUID REFERENCES material_requests(id) ON DELETE CASCADE,
-    project_id UUID REFERENCES projects(id),
-
-    vendor_name TEXT NOT NULL,
-    vendor_contact TEXT,
-
-    bill_number TEXT NOT NULL,
-    bill_amount NUMERIC NOT NULL,
-
-    gst_percentage NUMERIC NOT NULL,
-    gst_amount NUMERIC NOT NULL,
-    total_amount NUMERIC NOT NULL,
-
-    bill_photo_url TEXT NOT NULL,
-    category TEXT NOT NULL,
-
-    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
-    manager_feedback TEXT,
-
-    uploaded_by UUID REFERENCES site_engineers(id),
-    reviewed_by UUID REFERENCES managers(id),
-    reviewed_at TIMESTAMP,
-
-    created_at TIMESTAMP DEFAULT now()
-);
-
--- =========================================================
--- ATTENDANCE (APPROVED BY SITE ENGINEER)
+-- ATTENDANCE
 -- =========================================================
 
 CREATE TABLE attendance (
@@ -271,7 +233,7 @@ CREATE TABLE wages (
 );
 
 -- =========================================================
--- OTP LOGS (FOR LABOUR LOGIN)
+-- OTP LOGS
 -- =========================================================
 
 CREATE TABLE otp_logs (
@@ -297,38 +259,33 @@ CREATE TABLE audit_logs (
     acted_by_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT now()
 );
+
+-- =========================================================
+-- PASSPORT SESSION TABLE
+-- =========================================================
+
 CREATE TABLE session (
     sid VARCHAR PRIMARY KEY,
     sess JSON NOT NULL,
     expire TIMESTAMP NOT NULL
 );
 
-
 -- =========================================================
 -- INDEXES
 -- =========================================================
 
--- Login
-CREATE INDEX idx_owner_email ON owners(email);
-CREATE INDEX idx_manager_email ON managers(email);
-CREATE INDEX idx_site_engineer_email ON site_engineers(email);
-CREATE INDEX idx_labour_phone ON labours(phone);
+CREATE INDEX idx_labours_phone ON labours(phone);
+CREATE INDEX idx_labours_categories ON labours USING GIN (categories);
 
--- OTP
 CREATE INDEX idx_otp_phone ON otp_logs(phone);
 CREATE INDEX idx_otp_expiry ON otp_logs(expires_at);
 
--- Projects & dashboards
-CREATE INDEX idx_projects_org ON projects(org_id);
-CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_labour_requests_status ON labour_requests(status);
+CREATE INDEX idx_labour_requests_date ON labour_requests(request_date);
 
--- Approval queues
-CREATE INDEX idx_material_req_status ON material_requests(status);
-CREATE INDEX idx_material_bill_status ON material_bills(status);
 CREATE INDEX idx_attendance_status ON attendance(status);
 CREATE INDEX idx_wages_status ON wages(status);
 
--- Audit
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor ON audit_logs(acted_by_role, acted_by_id);
 CREATE INDEX idx_audit_time ON audit_logs(created_at);

@@ -15,7 +15,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-  })
+  }),
 );
 
 /* ---------------- MIDDLEWARE ---------------- */
@@ -36,7 +36,7 @@ app.use(
       secure: false, // 1 day
       sameSite: "lax",
     },
-  })
+  }),
 );
 
 app.use(passport.initialize());
@@ -56,10 +56,15 @@ app.use("/owner/requests", require("./routes/owner/organizationReq"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
-
+app.use("/manager/organization", require("./routes/manager/manOrganization"));
+app.use(
+  "/manager/organization-requests",
+  require("./routes/manager/enOrganiztionReq"),
+);
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
+app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

@@ -8,16 +8,41 @@ const { generateOtp, sendOtpSms } = require("../../util/otp");
 // Initialize passport strategies for auth (kept inside auth folder by design)
 require("./labourPassport");
 router.post("/register", async (req, res) => {
-  const { name, phone } = req.body;
+  const {
+    name,
+    phone,
+    skill_type,
+    categories,
+    primary_latitude,
+    primary_longitude,
+    travel_radius_meters,
+  } = req.body;
 
   try {
     if (!name || !phone)
       return res.status(400).json({ error: "missing_fields" });
 
-    await pool.query("INSERT INTO labours (name, phone) VALUES ($1, $2)", [
-      name,
-      phone,
-    ]);
+    // Validate skill_type if provided
+    if (
+      skill_type &&
+      !["SKILLED", "SEMI_SKILLED", "UNSKILLED"].includes(skill_type)
+    ) {
+      return res.status(400).json({ error: "invalid_skill_type" });
+    }
+
+    await pool.query(
+      `INSERT INTO labours (name, phone, skill_type, categories, primary_latitude, primary_longitude, travel_radius_meters) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        name,
+        phone,
+        skill_type || null,
+        categories || [],
+        primary_latitude || null,
+        primary_longitude || null,
+        travel_radius_meters || null,
+      ],
+    );
 
     res.status(201).json({ message: "Labour registered successfully" });
   } catch (err) {
@@ -31,7 +56,7 @@ router.post("/otp/request", async (req, res) => {
 
     const labourRes = await pool.query(
       "SELECT id FROM labours WHERE phone = $1",
-      [phone]
+      [phone],
     );
 
     if (!labourRes.rows.length) {
@@ -47,7 +72,7 @@ router.post("/otp/request", async (req, res) => {
       INSERT INTO otp_logs (phone, otp_hash, expires_at)
       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')
       `,
-      [phone, otpHash]
+      [phone, otpHash],
     );
 
     // await sendOtpSms(phone, otp);
