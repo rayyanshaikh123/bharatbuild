@@ -233,6 +233,23 @@ CREATE TABLE session (
     sess JSON NOT NULL,
     expire TIMESTAMP NOT NULL
 );
+CREATE TABLE password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    user_id UUID NOT NULL,
+    user_role TEXT NOT NULL CHECK (
+        user_role IN ('OWNER', 'MANAGER', 'SITE_ENGINEER', 'LABOUR')
+    ),
+
+    token_hash TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE INDEX idx_prt_user ON password_reset_tokens(user_id, user_role);
+CREATE INDEX idx_prt_expires ON password_reset_tokens(expires_at);
 
 -- =========================================================
 -- INDEXES

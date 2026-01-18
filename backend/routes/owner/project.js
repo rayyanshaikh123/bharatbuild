@@ -3,7 +3,6 @@ const pool = require("../../db");
 const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
 
-
 async function ownerOfProjectOrganization(ownerId, projectId) {
   const result = await pool.query(
     `SELECT COUNT(*) FROM projects p

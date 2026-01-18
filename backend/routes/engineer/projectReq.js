@@ -40,8 +40,8 @@ router.get("/projects", engineerCheck, async (req, res) => {
 router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
-      const { projectId } = req.params;
-      const { organizationId } = req.body;    
+    const { projectId } = req.params;
+    const { organizationId } = req.body;
     const status = await siteEngineerStatuusCheck(engineerId, organizationId);
     if (status !== "APPROVED") {
       return res
@@ -62,17 +62,17 @@ router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
 });
 router.get("/my-requests", engineerCheck, async (req, res) => {
   try {
-      const engineerId = req.user.id;
-      const { organizationId } = req.query;
-      const status = await siteEngineerStatuusCheck(engineerId, organizationId);
-      if (status !== "APPROVED") {
-        return res
-          .status(403)
-          .json({ error: "Access denied. Not an approved site engineer." });
-      } 
+    const engineerId = req.user.id;
+    // const { organizationId } = req.query;
+    // const status = await siteEngineerStatuusCheck(engineerId, organizationId);
+    // if (status !== "APPROVED") {
+    //   return res
+    //     .status(403)
+    //     .json({ error: "Access denied. Not an approved site engineer." });
+    // }
     const result = await pool.query(
-        `SELECT * from project_site_engineers where site_engineer_id=$1 and status='PENDING'`,
-        [engineerId],
+      `SELECT * from project_site_engineers where site_engineer_id=$1 and status='PENDING'`,
+      [engineerId],
     );
     res.json({ requests: result.rows });
   } catch (err) {
