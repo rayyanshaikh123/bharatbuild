@@ -36,7 +36,16 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  patch: <T>(endpoint: string, data: unknown) =>
+    fetcher<T>(endpoint, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
     
-  delete: <T>(endpoint: string) =>
-    fetcher<T>(endpoint, { method: "DELETE" }),
+  delete: <T>(endpoint: string, data?: Record<string, unknown>) =>
+    fetcher<T>(endpoint, { 
+      method: "DELETE",
+      ...(data ? { body: JSON.stringify(data) } : {}),
+    }),
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { User, UserRole, auth } from "@/lib/auth";
+import { User, UserRole, auth } from "@/lib/api/auth";
 
 const STORAGE_KEY = "bharatbuild_user";
 
@@ -14,6 +14,7 @@ interface AuthContextType {
     data: { name: string; email: string; phone: string; password: string }
   ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,19 +23,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on mount
-  useEffect(() => {
+  // Validate session with backend
+  const validateSession = useCallback(async (storedUser: User): Promise<User | null> => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setUser(JSON.parse(stored));
+      const validatedUser = await auth.checkAuth(storedUser.role);
+      if (validatedUser) {
+        return validatedUser;
       }
+      return null;
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
+      return null;
     }
   }, []);
+
+  // Load user from localStorage and validate with backend on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const storedUser = JSON.parse(stored) as User;
+          const validatedUser = await validateSession(storedUser);
+
+          if (validatedUser) {
+            setUser(validatedUser);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(validatedUser));
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+            setUser(null);
+          }
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
+  }, [validateSession]);
 
   // Persist user to localStorage when it changes
   useEffect(() => {
@@ -72,8 +100,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, [user]);
 
+  const refreshSession = useCallback(async () => {
+    if (user) {
+      const validatedUser = await validateSession(user);
+      if (validatedUser) {
+        setUser(validatedUser);
+      } else {
+        setUser(null);
+      }
+    }
+  }, [user, validateSession]);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );
@@ -87,8 +126,10 @@ export function useAuth() {
   return context;
 }
 
-// Helper to clear auth on 401 responses (call this from api.ts if needed)
 export function clearAuthOnUnauthorized() {
   localStorage.removeItem(STORAGE_KEY);
   window.location.href = "/login";
 }
+
+// Re-export types for convenience
+export type { User, UserRole } from "@/lib/api/auth";

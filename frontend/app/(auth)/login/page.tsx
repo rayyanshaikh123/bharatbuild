@@ -7,7 +7,7 @@ import { Mail, Lock, Loader2, ArrowRight, Shield, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/providers/AuthContext";
-import { UserRole } from "@/lib/auth";
+import { UserRole } from "@/lib/api/auth";
 
 export default function LoginPage() {
   const router = useRouter();
