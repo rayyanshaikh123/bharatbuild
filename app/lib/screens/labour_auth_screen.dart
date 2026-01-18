@@ -149,11 +149,7 @@ class _LabourAuthScreenState extends ConsumerState<LabourAuthScreen> {
               const Text("Don't have an account? "),
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/signup',
-                    arguments: {'role': 'labour'},
-                  );
+                  Navigator.pushNamed(context, '/signup');
                 },
                 child: const Text('Sign up'),
               ),

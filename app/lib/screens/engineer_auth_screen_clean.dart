@@ -133,11 +133,7 @@ class _EngineerAuthScreenCleanState
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pushNamed(
-                context,
-                '/signup',
-                arguments: {'role': 'engineer'},
-              ),
+              onPressed: () => Navigator.pushNamed(context, '/signup'),
               child: Text.rich(
                 const TextSpan(
                   text: "Don’t have an account? ",

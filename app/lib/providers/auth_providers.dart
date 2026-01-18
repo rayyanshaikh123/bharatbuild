@@ -33,29 +33,3 @@ final engineerLoginProvider =
       final svc = ref.read(authServiceProvider);
       return await svc.engineerLogin(args['email']!, args['password']!);
     });
-
-/// Engineer register
-final engineerRegisterProvider =
-    FutureProvider.family<Map<String, dynamic>, Map<String, String>>((
-      ref,
-      args,
-    ) async {
-      final svc = ref.read(authServiceProvider);
-      return await svc.engineerRegister(
-        args['name']!,
-        args['email']!,
-        args['phone']!,
-        args['password']!,
-      );
-    });
-
-/// Labour register
-final labourRegisterProvider =
-    FutureProvider.family<Map<String, dynamic>, Map<String, String>>((
-      ref,
-      args,
-    ) async {
-      final svc = ref.read(authServiceProvider);
-      return await svc.labourRegister(args['name']!, args['phone']!);
-    });
-// Note: manager role removed — keep labour and engineer providers only.

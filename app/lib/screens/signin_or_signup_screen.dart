@@ -25,7 +25,22 @@ class SigninOrSignupScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 16.0),
-              // Manager role removed
+              ElevatedButton(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/login',
+                  arguments: {'role': 'manager'},
+                ),
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: const Color(0xFFFE9901),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: const StadiumBorder(),
+                ),
+                child: const Text('Manager'),
+              ),
+              const SizedBox(height: 12.0),
               ElevatedButton(
                 onPressed: () => Navigator.pushNamed(context, '/engineer-auth'),
                 style: ElevatedButton.styleFrom(
