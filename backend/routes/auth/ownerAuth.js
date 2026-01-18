@@ -16,10 +16,30 @@ router.post("/register", async (req, res, next) => {
     if (!name || !email || !phone || !password)
       return res.status(400).json({ error: "missing_fields" });
 
+    // Input validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Check for duplicate email
+    const existingUser = await pool.query(
+      "SELECT id FROM owners WHERE email = $1",
+      [email],
+    );
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: "Email already registered" });
+    }
+
     const hash = await bcrypt.hash(password, 10);
     const insert = await pool.query(
       "INSERT INTO owners (name, email, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, role",
-      [name, email, phone, hash]
+      [name, email, phone, hash],
     );
     const owner = insert.rows[0];
 
