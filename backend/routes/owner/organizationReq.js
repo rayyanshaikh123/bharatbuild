@@ -5,10 +5,15 @@ const ownerCheck = require("../../middleware/ownerCheck");
 
 router.get("/", ownerCheck, async (req, res) => {
   const { orgId } = req.body;
+  const userId = req.user.id;
   try {
     const result = await pool.query(
-      "select * from organization_managers where organization_id=$1",
-      [orgId],
+      `SELECT om.*, m.name AS manager_name, m.email AS manager_email, m.phone AS manager_phone
+       FROM organization_managers om
+       JOIN managers m ON om.manager_id = m.id
+       JOIN organizations o ON om.org_id = o.id
+       WHERE om.org_id = $1 AND o.owner_id = $2`,
+      [orgId, userId],
     );
     res.json({ managers: result.rows });
   } catch (err) {
@@ -17,11 +22,16 @@ router.get("/", ownerCheck, async (req, res) => {
   }
 });
 router.get("/accepted", ownerCheck, async (req, res) => {
-  const { orgId } = req.body;
+  const { orgId } = req.query;
+  const userId = req.user.id;
   try {
     const result = await pool.query(
-      "select * from organization_managers where organization_id=$1 and status='APPROVED'",
-      [orgId],
+      `SELECT om.*, m.name AS manager_name, m.email AS manager_email, m.phone AS manager_phone
+       FROM organization_managers om
+       JOIN managers m ON om.manager_id = m.id
+       JOIN organizations o ON om.org_id = o.id
+       WHERE om.org_id = $1 AND o.owner_id = $2 AND om.status = 'APPROVED'`,
+      [orgId, userId],
     );
     res.json({ managers: result.rows });
   } catch (err) {
@@ -30,11 +40,16 @@ router.get("/accepted", ownerCheck, async (req, res) => {
   }
 });
 router.get("/pending", ownerCheck, async (req, res) => {
-  const { orgId } = req.body;
+  const { orgId } = req.query;
+  const userId = req.user.id;
   try {
     const result = await pool.query(
-      "select * from organization_managers where organization_id=$1 and status='PENDING'",
-      [orgId],
+      `SELECT om.*, m.name AS manager_name, m.email AS manager_email, m.phone AS manager_phone
+       FROM organization_managers om
+       JOIN managers m ON om.manager_id = m.id
+       JOIN organizations o ON om.org_id = o.id
+       WHERE om.org_id = $1 AND o.owner_id = $2 AND om.status = 'PENDING'`,
+      [orgId, userId],
     );
     res.json({ managers: result.rows });
   } catch (err) {
@@ -43,11 +58,16 @@ router.get("/pending", ownerCheck, async (req, res) => {
   }
 });
 router.get("/rejected", ownerCheck, async (req, res) => {
-  const { orgId } = req.body;
+  const { orgId } = req.query;
+  const userId = req.user.id;
   try {
     const result = await pool.query(
-      "select * from organization_managers where organization_id=$1 and status='REJECTED'",
-      [orgId],
+      `SELECT om.*, m.name AS manager_name, m.email AS manager_email, m.phone AS manager_phone
+       FROM organization_managers om
+       JOIN managers m ON om.manager_id = m.id
+       JOIN organizations o ON om.org_id = o.id
+       WHERE om.org_id = $1 AND o.owner_id = $2 AND om.status = 'REJECTED'`,
+      [orgId, userId],
     );
     res.json({ managers: result.rows });
   } catch (err) {
@@ -57,11 +77,16 @@ router.get("/rejected", ownerCheck, async (req, res) => {
 });
 router.patch("/:id", ownerCheck, async (req, res) => {
   const reqId = req.params.id;
+  const userId = req.user.id;
   const { status } = req.body;
   try {
     const result = await pool.query(
-      "update organization_managers set status=$1 where id=$2 returning *",
-      [status, reqId],
+      `UPDATE organization_managers om
+       SET status = $1, approved_at = CASE WHEN $1 = 'APPROVED' THEN NOW() ELSE approved_at END
+       FROM organizations o
+       WHERE om.id = $2 AND om.org_id = o.id AND o.owner_id = $3
+       RETURNING om.*`,
+      [status, reqId, userId],
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Request not found" });
