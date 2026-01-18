@@ -13,6 +13,14 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       foregroundColor: AppTheme.brandNavy,
       centerTitle: false,
+      automaticallyImplyLeading: false,
+      actions: [
+        IconButton(
+          tooltip: 'Profile',
+          onPressed: () => Navigator.pushNamed(context, '/profile'),
+          icon: const Icon(Icons.person_outline),
+        ),
+      ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

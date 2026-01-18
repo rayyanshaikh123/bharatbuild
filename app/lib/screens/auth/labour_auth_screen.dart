@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_providers.dart';
-import 'signin_template.dart';
+import '../../providers/auth_providers.dart';
+import '../../providers/user_provider.dart';
+import '../common/signin_template.dart';
 
 class LabourAuthScreen extends ConsumerStatefulWidget {
   const LabourAuthScreen({super.key});
@@ -66,7 +67,9 @@ class _LabourAuthScreenState extends ConsumerState<LabourAuthScreen> {
       final res = await ref.read(
         labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future,
       );
-      // On success navigate to labour flow
+      // populate current user in Riverpod (if backend returns user key)
+      final user = (res is Map && res.containsKey('user')) ? res['user'] : res;
+      ref.read(currentUserProvider).state = user as Map<String, dynamic>?;
       Navigator.pushReplacementNamed(context, '/labour-flow');
     } catch (e) {
       ScaffoldMessenger.of(

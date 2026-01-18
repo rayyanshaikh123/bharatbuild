@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import 'signin_template.dart';
+import '../../providers/auth_provider.dart';
+import '../common/signin_template.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;

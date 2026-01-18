@@ -74,6 +74,58 @@ class AuthService {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> labourRegister(String name, String phone) async {
+    final uri = Uri.parse('$_base/auth/labour/register');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name, 'phone': phone}),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('Register failed: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> managerRegister(
+    String name,
+    String email,
+    String phone,
+    String password,
+  ) async {
+    final uri = Uri.parse('$_base/auth/manager/register');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+      }),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('Register failed: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> managerLogin(
+    String email,
+    String password,
+  ) async {
+    final uri = Uri.parse('$_base/auth/manager/login');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Login failed: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   /// Logout (clears server session and local cookies)
   Future<void> logoutLabour() async {
     final uri = Uri.parse('$_base/auth/labour/logout');

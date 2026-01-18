@@ -107,7 +107,7 @@ class _EngineerAuthScreenState extends State<EngineerAuthScreen> {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/signup'),
+                            onPressed: () => Navigator.pushNamed(context, '/signup', arguments: {'role': 'engineer'}),
               child: Text.rich(
                 const TextSpan(
                   text: "Don’t have an account? ",
@@ -238,7 +238,7 @@ class _EngineerAuthScreenState extends State<EngineerAuthScreen> {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/signup'),
+              onPressed: () => Navigator.pushNamed(context, '/signup', arguments: {'role': 'engineer'}),
               child: Text.rich(
                 const TextSpan(
                   text: "Don’t have an account? ",
@@ -371,7 +371,7 @@ class _EngineerAuthScreenState extends State<EngineerAuthScreen> {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/signup'),
+              onPressed: () => Navigator.pushNamed(context, '/signup', arguments: {'role': 'engineer'}),
               child: Text.rich(
                 const TextSpan(
                   text: "Don’t have an account? ",

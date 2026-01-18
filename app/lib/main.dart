@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import 'providers/auth_provider.dart';
 import 'providers/app_state.dart';
 import 'screens/login_screen.dart';
-import 'screens/signin_or_signup_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/engineer_auth_screen_clean.dart';
 import 'screens/labour_auth_screen.dart';
 import 'screens/verification_screen.dart';
@@ -15,7 +15,11 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/engineer_flow.dart';
 import 'screens/labour_flow.dart';
-import 'screens/labour_dashboard_screen.dart';
+import 'screens/labour/labour_dashboard_screen.dart';
+import 'screens/labour_profile.dart';
+import 'screens/labour_tasks.dart';
+import 'screens/labour_attendance.dart';
+import 'screens/profile_screen.dart';
 import 'theme.dart';
 
 void main() {
@@ -36,9 +40,10 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Flutter Auth',
         theme: AppTheme.light(),
-        home: const SigninOrSignupScreen(),
+        home: const OnboardingScreen(),
         routes: {
           '/login': (_) => LoginScreen(),
+          '/home': (_) => HomeScreen(),
           '/signup': (_) => SignupScreen(),
           '/engineer-auth': (_) => const EngineerAuthScreenClean(),
           '/labour-auth': (_) => const LabourAuthScreen(),
@@ -47,6 +52,10 @@ class MyApp extends StatelessWidget {
           '/engineer-flow': (_) => EngineerFlowScreen(),
           '/labour-flow': (_) => LabourFlowScreen(),
           '/labour-dashboard': (_) => const LabourDashboardScreen(),
+          '/labour-profile': (_) => const LabourProfileScreen(),
+          '/profile': (_) => const ProfileScreen(),
+          '/labour-tasks': (_) => const LabourTasksScreen(),
+          '/labour-attendance': (_) => const LabourAttendanceScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {
