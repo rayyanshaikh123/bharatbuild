@@ -88,6 +88,32 @@ router.post("/create-project", managerCheck, async (req, res) => {
       );
 
       await client.query("COMMIT");
+
+      // Send email notification to organization owner
+      try {
+        const ownerData = await pool.query(
+          `SELECT o.name as org_name, ow.email as owner_email, ow.name as owner_name
+           FROM organizations o
+           JOIN owners ow ON o.owner_id = ow.id
+           WHERE o.id = $1`,
+          [organizationId],
+        );
+
+        if (ownerData.rows.length > 0) {
+          const { sendNotificationEmail } = require("../../util/mailer");
+          const createdAt = new Date().toLocaleString("en-US", {
+            timeZone: "Asia/Kolkata",
+          });
+          await sendNotificationEmail({
+            to: ownerData.rows[0].owner_email,
+            subject: "New Project Created",
+            message: `Hello ${ownerData.rows[0].owner_name},\n\nA new project "${name}" has been created in your organization "${ownerData.rows[0].org_name}" by ${req.user.name}.\n\nCreated on: ${createdAt}\n\nBest regards,\nBharat Build Team`,
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send project creation email:", emailErr);
+      }
+
       res.status(201).json({ project: projectResult.rows[0] });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -130,8 +156,8 @@ router.get("/my-projects", managerCheck, async (req, res) => {
 router.get("/all-projects", managerCheck, async (req, res) => {
   try {
     const managerId = req.user.id;
-      const { organizationId } = req.query;
-      //THE BELOW CAN BE UNCMMENTED IF WE WANT TO RESTRICT MANAGERS TO ONLY VIEW PROJECTS IN ORGS THEY ARE APPROVED IN AND MORE CHANGES SHOULD BE MADE SO THAT IF CRETOR IS REJECTED NE CREATOR SHOULD BE THERE 
+    const { organizationId } = req.query;
+    //THE BELOW CAN BE UNCMMENTED IF WE WANT TO RESTRICT MANAGERS TO ONLY VIEW PROJECTS IN ORGS THEY ARE APPROVED IN AND MORE CHANGES SHOULD BE MADE SO THAT IF CRETOR IS REJECTED NE CREATOR SHOULD BE THERE
 
     // const isApproved = await managerOrgStatusCheck(managerId, organizationId);
     // if (!isApproved) {
@@ -303,6 +329,5 @@ router.put("/project/:projectId/status", managerCheck, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 
 module.exports = router;

@@ -99,6 +99,31 @@ router.patch("/:id", ownerCheck, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Request not found" });
     }
+
+    // Send email notification to manager
+    try {
+      const notificationData = await pool.query(
+        `SELECT m.email, m.name, o.name as org_name
+         FROM organization_managers om
+         JOIN managers m ON om.manager_id = m.id
+         JOIN organizations o ON om.org_id = o.id
+         WHERE om.id = $1`,
+        [reqId],
+      );
+
+      if (notificationData.rows.length > 0) {
+        const { sendNotificationEmail } = require("../../util/mailer");
+        const statusText = status === "APPROVED" ? "approved" : "rejected";
+        await sendNotificationEmail({
+          to: notificationData.rows[0].email,
+          subject: `Organization Request ${status}`,
+          message: `Hello ${notificationData.rows[0].name},\n\nYour request to join "${notificationData.rows[0].org_name}" has been ${statusText}.\n\nBest regards,\nBharat Build Team`,
+        });
+      }
+    } catch (emailErr) {
+      console.error("Failed to send manager org status email:", emailErr);
+    }
+
     res.json({ request: result.rows[0] });
   } catch (err) {
     console.error(err);
