@@ -28,6 +28,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Allow providing the Maps API key via a Gradle property named MAPS_API_KEY
+        // e.g. add MAPS_API_KEY=AIza... to android/local.properties
+        manifestPlaceholders["MAPS_API_KEY"] = (project.findProperty("MAPS_API_KEY") ?: "") as String
     }
 
     buildTypes {

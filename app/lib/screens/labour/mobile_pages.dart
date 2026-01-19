@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../map/live_map_screen.dart';
+import '../../theme/app_colors.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/navigation_provider.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends StatelessWidget {
@@ -21,18 +25,18 @@ class LabourDashboardContent extends StatelessWidget {
               horizontal: 12.0,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF4E5),
+              color: AppColors.accent,
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: const Color(0xFFF2D9B8)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.wifi_off, size: 18, color: Color(0xFFB06A00)),
-                SizedBox(width: 8),
+              children: [
+                Icon(Icons.wifi_off, size: 18, color: AppColors.pending),
+                const SizedBox(width: 8),
                 Text(
                   'Offline Mode - Data will sync later',
-                  style: TextStyle(color: Color(0xFFB06A00)),
+                  style: TextStyle(color: AppColors.pending),
                 ),
               ],
             ),
@@ -63,11 +67,11 @@ class LabourDashboardContent extends StatelessWidget {
               ),
               const CircleAvatar(
                 radius: 20,
-                backgroundColor: Color(0xFFFFE6CC),
+                backgroundColor: AppColors.accent,
                 child: Text(
                   'RK',
                   style: TextStyle(
-                    color: Color(0xFF7A4A00),
+                    color: AppColors.pending,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -94,8 +98,8 @@ class LabourDashboardContent extends StatelessWidget {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEAF6FF),
+                  decoration: BoxDecoration(
+                    color: AppColors.infoBackground,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(14),
                       topRight: Radius.circular(14),
@@ -121,8 +125,8 @@ class LabourDashboardContent extends StatelessWidget {
                           child: Container(
                             width: 44,
                             height: 44,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00BF6D),
+                            decoration: BoxDecoration(
+                              color: AppColors.success,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -134,10 +138,10 @@ class LabourDashboardContent extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
+                      Text(
                         'Inside Geo-fence Zone',
                         style: TextStyle(
-                          color: Color(0xFF2B6EAF),
+                          color: AppColors.info,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -160,24 +164,22 @@ class LabourDashboardContent extends StatelessWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0FFF4),
+                              color: AppColors.secondary,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFE6F6EA),
-                              ),
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: Row(
-                              children: const [
+                              children: [
                                 Icon(
                                   Icons.check_circle,
-                                  color: Color(0xFF00BF6D),
+                                  color: AppColors.success,
                                   size: 16,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
                                   'Location Verified',
                                   style: TextStyle(
-                                    color: Color(0xFF0B8D47),
+                                    color: AppColors.success,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -228,9 +230,9 @@ class LabourDashboardContent extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14.0),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E9),
+              color: AppColors.pendingBackground,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFF5E1B8)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,6 +305,15 @@ class LabourDashboardContent extends StatelessWidget {
   }
 }
 
+class LiveMapContent extends StatelessWidget {
+  const LiveMapContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(height: 500, child: LiveMapScreen());
+  }
+}
+
 class LabourTasksContent extends StatelessWidget {
   const LabourTasksContent({super.key});
 
@@ -314,47 +325,49 @@ class LabourTasksContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
-          ...tasks.map(
-            (t) => Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 8,
+          ...tasks
+              .map(
+                (t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_box_outline_blank,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            t,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00BF6D),
+                            shape: const StadiumBorder(),
+                          ),
+                          child: const Text('Start'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_box_outline_blank,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        t,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00BF6D),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Start'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+              )
+              .toList(),
         ],
       ),
     );

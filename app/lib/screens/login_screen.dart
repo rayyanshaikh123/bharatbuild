@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_providers.dart';
+import '../theme/app_colors.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  LoginScreen({super.key});
+  final String? initialRole;
+  LoginScreen({super.key, this.initialRole});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -14,8 +16,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _otpController = TextEditingController();
   String _role = 'engineer';
   bool _didInitArgs = false;
+  bool _otpSent = false;
 
   @override
   void dispose() {
@@ -29,10 +33,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_didInitArgs) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null && args['role'] != null) {
-        _role = args['role'] as String;
+      // Priority: explicit constructor `initialRole`, then route args.
+      if (widget.initialRole != null) {
+        _role = widget.initialRole!;
+      } else {
+        final args =
+            ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        if (args != null && args['role'] != null) {
+          _role = args['role'] as String;
+        }
       }
       _didInitArgs = true;
     }
@@ -40,8 +49,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (_role == 'labour') {
-      // for labour redirect to labour auth (OTP flow)
-      Navigator.pushNamed(context, '/labour-auth');
+      // Labour OTP flow handled inline here
+      if (!_otpSent) {
+        final phone = _phoneController.text.trim();
+        if (phone.isEmpty) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Phone is required')));
+          return;
+        }
+        try {
+          await ref.read(labourOtpRequestProvider(phone).future);
+          setState(() => _otpSent = true);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('OTP requested')));
+        } catch (e) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('OTP request failed: $e')));
+        }
+        return;
+      }
+
+      // Verify OTP
+      final phone = _phoneController.text.trim();
+      final otp = _otpController.text.trim();
+      if (otp.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('OTP is required')));
+        return;
+      }
+      try {
+        await ref.read(
+          labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future,
+        );
+        Navigator.pushReplacementNamed(context, '/labour-flow');
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('OTP verify failed: $e')));
+      }
       return;
     }
 
@@ -109,9 +158,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       }
                       _role = newRole;
                     }),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       filled: true,
-                      fillColor: Color(0xFFF5FCF9),
+                      fillColor: AppColors.accent,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 24.0,
                         vertical: 16.0,
@@ -121,7 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         borderRadius: BorderRadius.all(Radius.circular(50)),
                       ),
                     ),
-                    dropdownColor: Color(0xFFF5FCF9),
+                    dropdownColor: AppColors.accent,
                   ),
                   const SizedBox(height: 12.0),
                   Form(
@@ -131,10 +180,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         if (_role == 'labour') ...[
                           TextFormField(
                             controller: _phoneController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Phone',
                               filled: true,
-                              fillColor: Color(0xFFF5FCF9),
+                              fillColor: AppColors.accent,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 24.0,
                                 vertical: 16.0,
@@ -150,13 +199,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             validator: (v) =>
                                 (v ?? '').isEmpty ? 'Required' : null,
                           ),
+                          const SizedBox(height: 12.0),
+                          if (_otpSent) ...[
+                            TextFormField(
+                              controller: _otpController,
+                              decoration: InputDecoration(
+                                hintText: 'OTP',
+                                filled: true,
+                                fillColor: AppColors.accent,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 16.0,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide.none,
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(50),
+                                  ),
+                                ),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ],
                         ] else ...[
                           TextFormField(
                             controller: _emailController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Email',
                               filled: true,
-                              fillColor: Color(0xFFF5FCF9),
+                              fillColor: AppColors.accent,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 24.0,
                                 vertical: 16.0,
@@ -175,10 +246,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 12.0),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Password',
                               filled: true,
-                              fillColor: Color(0xFFF5FCF9),
+                              fillColor: AppColors.accent,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 24.0,
                                 vertical: 16.0,
@@ -200,7 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: _submit,
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
-                            backgroundColor: const Color(0xFF00BF6D),
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 48),
                             shape: const StadiumBorder(),
@@ -235,12 +306,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             arguments: {'role': _role},
                           ),
                           child: Text.rich(
-                            const TextSpan(
+                            TextSpan(
                               text: "Don’t have an account? ",
                               children: [
                                 TextSpan(
                                   text: "Sign Up",
-                                  style: TextStyle(color: Color(0xFF00BF6D)),
+                                  style: TextStyle(color: AppColors.primary),
                                 ),
                               ],
                             ),

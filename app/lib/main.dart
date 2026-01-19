@@ -6,9 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/engineer_auth_screen_clean.dart';
-import 'screens/labour_auth_screen.dart';
-import 'screens/verification_screen.dart';
+// unified login screen used for all roles
 import 'screens/signup_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -20,7 +18,7 @@ import 'screens/labour_profile.dart';
 import 'screens/labour_tasks.dart';
 import 'screens/labour_attendance.dart';
 import 'screens/profile_screen.dart';
-import 'theme.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -45,9 +43,6 @@ class MyApp extends StatelessWidget {
           '/login': (_) => LoginScreen(),
           '/home': (_) => HomeScreen(),
           '/signup': (_) => SignupScreen(),
-          '/engineer-auth': (_) => const EngineerAuthScreenClean(),
-          '/labour-auth': (_) => const LabourAuthScreen(),
-          '/verification': (_) => const VerificationScreen(),
           '/forgot-password': (_) => ForgotPasswordScreen(),
           '/engineer-flow': (_) => EngineerFlowScreen(),
           '/labour-flow': (_) => LabourFlowScreen(),

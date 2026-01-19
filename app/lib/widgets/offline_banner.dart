@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 /// A small banner that mirrors the React Native `OfflineBanner` behavior.
 class OfflineBanner extends StatelessWidget {
@@ -17,7 +18,7 @@ class OfflineBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isOffline && syncStatus == 'synced') return const SizedBox.shrink();
 
-    final bg = isOffline ? const Color(0xFFEA580C) : const Color(0xFF0EA5E9);
+    final bg = isOffline ? AppColors.primary : AppColors.info;
     final text = isOffline
         ? 'FIELD MODE: LOCAL STORAGE'
         : 'SYNCING FIELD DATA...';
@@ -46,8 +47,8 @@ class OfflineBanner extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   text,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
+                  style: TextStyle(
+                    color: AppColors.foreground,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
@@ -62,9 +63,9 @@ class OfflineBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: Colors.black.withOpacity(0.2)),
               ),
-              child: const Text(
+              child: Text(
                 'LTE',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 8,
                   fontWeight: FontWeight.w900,
                   color: Colors.black54,

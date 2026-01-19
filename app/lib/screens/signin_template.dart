@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class SignInTemplate extends StatelessWidget {
   final String title;
@@ -9,7 +10,7 @@ class SignInTemplate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -25,7 +26,7 @@ class SignInTemplate extends StatelessWidget {
                   SizedBox(height: constraints.maxHeight * 0.1),
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                    style: Theme.of(context).textTheme.headingLarge.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),

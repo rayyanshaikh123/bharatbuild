@@ -43,6 +43,16 @@ dependencies:
   flutter_riverpod: ^2.3.2
   shared_preferences: ^2.1.1
   flutter_svg: ^2.2.3
+  geolocator: ^9.0.2
+  # geodesy removed; using local point-in-polygon implementation + geolocator
+  sqflite: ^2.2.8
+  path_provider: ^2.0.15
+  flutter_secure_storage: ^9.0.0
+  device_info_plus: ^12.3.0
+  connectivity_plus: ^7.0.0
+  workmanager: ^0.9.0+3
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

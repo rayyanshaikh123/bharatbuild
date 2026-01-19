@@ -11,8 +11,14 @@ import '../screens/labour/mobile_pages.dart';
 class AppLayout extends ConsumerWidget {
   final String title;
   final Widget child;
+  final List<Widget>? mobilePages;
 
-  const AppLayout({super.key, required this.title, required this.child});
+  const AppLayout({
+    super.key,
+    required this.title,
+    required this.child,
+    this.mobilePages,
+  });
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
@@ -51,12 +57,15 @@ class AppLayout extends ConsumerWidget {
 
         if (isNarrow) {
           final idx = ref.watch(bottomNavIndexProvider);
-          final pages = [
-            const LabourDashboardContent(),
-            const LabourTasksContent(),
-            const LabourAttendanceContent(),
-            const ProfileContent(),
-          ];
+          final pages =
+              mobilePages ??
+              [
+                const LabourDashboardContent(),
+                const LabourTasksContent(),
+                const LiveMapContent(),
+                const LabourAttendanceContent(),
+                const ProfileContent(),
+              ];
 
           return Scaffold(
             appBar: AppHeader(title: title),

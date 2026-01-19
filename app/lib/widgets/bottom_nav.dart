@@ -3,8 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/user_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../theme/app_colors.dart';
 
-const Color inActiveIconColor = Color(0xFFB6B6B6);
+const Color inActiveIconColor = AppColors.inactiveIcon;
 
 class BottomNavBar extends ConsumerStatefulWidget {
   const BottomNavBar({super.key});
@@ -33,17 +34,11 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
         BottomNavigationBarItem(
           icon: SvgPicture.string(
             homeIcon,
-            colorFilter: const ColorFilter.mode(
-              inActiveIconColor,
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
           ),
           activeIcon: SvgPicture.string(
             homeIcon,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFF7643),
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
           ),
           label: 'Home',
         ),
@@ -57,12 +52,20 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
           activeIcon: SvgPicture.string(
             heartIcon,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFF7643),
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
           ),
           label: 'Tasks',
+        ),
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            mapIcon,
+            colorFilter: ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            mapIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'Map',
         ),
         BottomNavigationBarItem(
           icon: SvgPicture.string(
@@ -74,10 +77,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
           activeIcon: SvgPicture.string(
             chatIcon,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFF7643),
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
           ),
           label: 'Attendance',
         ),
@@ -112,10 +112,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
           activeIcon: SvgPicture.string(
             userIcon,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFF7643),
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
           ),
           label: user != null && user['name'] != null
               ? (user['name'] as String).split(' ').first
@@ -138,3 +135,6 @@ const chatIcon =
 
 const userIcon =
     '''<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>''';
+
+const mapIcon =
+    '''<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 11-9 11S3 16 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="2"/></svg>''';

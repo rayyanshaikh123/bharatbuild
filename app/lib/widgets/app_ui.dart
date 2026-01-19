@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_theme.dart';
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -8,10 +10,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(title),
+      title: Text(title, style: Theme.of(context).textTheme.headingMedium),
       elevation: 0,
       backgroundColor: Colors.transparent,
-      foregroundColor: AppTheme.brandNavy,
+      foregroundColor: AppColors.foreground,
       centerTitle: false,
       automaticallyImplyLeading: false,
       actions: [
@@ -25,13 +27,13 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppTheme.surface.withOpacity(0.95),
-              AppTheme.surface.withOpacity(0.85),
+              AppColors.background.withOpacity(0.95),
+              AppColors.background.withOpacity(0.85),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
-          border: Border(bottom: BorderSide(color: AppTheme.cardBorder)),
+          border: Border(bottom: BorderSide(color: AppColors.border)),
         ),
       ),
     );
@@ -58,9 +60,9 @@ class WebCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.cardBorder),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: const Color.fromRGBO(2, 6, 23, 0.06),
@@ -83,10 +85,10 @@ class WebCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppTheme.brandOrange.withOpacity(0.08),
+                    color: AppColors.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.work, color: AppTheme.brandNavy),
+                  child: Icon(Icons.work, color: AppColors.foreground),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -106,7 +108,7 @@ class WebCard extends StatelessWidget {
                         Text(
                           subtitle!,
                           style: const TextStyle(
-                            color: AppTheme.muted,
+                            color: AppColors.mutedForeground,
                             fontSize: 13,
                           ),
                         ),
@@ -136,15 +138,15 @@ class StatusBadge extends StatelessWidget {
   Color _bg(String s) {
     switch (s.toUpperCase()) {
       case 'ACTIVE':
-        return const Color.fromRGBO(16, 185, 129, 0.08);
+        return AppColors.success.withOpacity(0.08);
       case 'DELAYED':
-        return const Color.fromRGBO(239, 68, 68, 0.06);
+        return AppColors.danger.withOpacity(0.06);
       case 'COMPLETE':
-        return const Color.fromRGBO(59, 130, 246, 0.06);
+        return AppColors.info.withOpacity(0.06);
       case 'PENDING':
-        return const Color.fromRGBO(245, 158, 11, 0.06);
+        return AppColors.pending.withOpacity(0.06);
       case 'APPROVED':
-        return const Color.fromRGBO(99, 102, 241, 0.06);
+        return AppColors.primary.withOpacity(0.06);
       default:
         return Colors.grey.withOpacity(0.08);
     }
@@ -153,17 +155,17 @@ class StatusBadge extends StatelessWidget {
   Color _fg(String s) {
     switch (s.toUpperCase()) {
       case 'ACTIVE':
-        return const Color(0xFF059669);
+        return AppColors.success;
       case 'DELAYED':
-        return const Color(0xFFDC2626);
+        return AppColors.danger;
       case 'COMPLETE':
-        return const Color(0xFF2563EB);
+        return AppColors.info;
       case 'PENDING':
-        return const Color(0xFFB45309);
+        return AppColors.pending;
       case 'APPROVED':
-        return const Color(0xFF4F46E5);
+        return AppColors.primary;
       default:
-        return AppTheme.muted;
+        return AppColors.mutedForeground;
     }
   }
 
@@ -205,11 +207,11 @@ class PrimaryButton extends StatelessWidget {
       icon: const Icon(Icons.open_in_new),
       label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.brandOrange,
+        backgroundColor: AppColors.primary,
         elevation: 18,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        shadowColor: AppTheme.brandOrange.withOpacity(0.18),
+        shadowColor: AppColors.primary.withOpacity(0.18),
       ),
     );
   }

@@ -46,7 +46,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/labour-auth');
+                  Navigator.pushNamed(
+                    context,
+                    '/login',
+                    arguments: {'role': 'labour'},
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF22A45D),

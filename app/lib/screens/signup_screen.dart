@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_providers.dart';
 import 'signin_template.dart';
+import '../theme/app_colors.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -36,6 +37,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             'phone': _phoneController.text.trim(),
           }).future,
         );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/labour-flow');
         return;
       }
@@ -49,12 +51,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             'password': _passwordController.text,
           }).future,
         );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/engineer-flow');
         return;
       }
-
-      // manager role removed — no action required here
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Register failed: $e')));
@@ -71,100 +73,126 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       }
       _initialized = true;
     }
+
     return SignInTemplate(
       title: 'Sign Up',
       child: Column(
         children: [
           DropdownButtonFormField<String>(
             value: _role,
-            items: const [
-              DropdownMenuItem(value: 'engineer', child: Text('Engineer')),
-              DropdownMenuItem(value: 'labour', child: Text('Labour')),
+            items: [
+              const DropdownMenuItem(
+                value: 'engineer',
+                child: Text('Engineer'),
+              ),
+              const DropdownMenuItem(value: 'labour', child: Text('Labour')),
             ],
             onChanged: (v) => setState(() => _role = v ?? 'engineer'),
-            decoration: const InputDecoration(
-              filled: true,
-              fillColor: Color(0xFFF5FCF9),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 16.0,
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
               ),
+              filled: true,
+              fillColor: AppColors.accent,
               border: OutlineInputBorder(
                 borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(Radius.circular(50)),
+                borderRadius: BorderRadius.circular(50),
               ),
             ),
-            dropdownColor: Color(0xFFF5FCF9),
+            dropdownColor: Theme.of(context).colorScheme.surface,
           ),
           const SizedBox(height: 12.0),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Name',
               filled: true,
-              fillColor: Color(0xFFF5FCF9),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 16.0,
+              fillColor: AppColors.accent,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
               ),
               border: OutlineInputBorder(
                 borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(Radius.circular(50)),
+                borderRadius: BorderRadius.circular(50),
               ),
             ),
           ),
           const SizedBox(height: 12.0),
-          if (_role != 'labour')
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                hintText: 'Email',
-                filled: true,
-                fillColor: Color(0xFFF5FCF9),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.all(Radius.circular(50)),
-                ),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            )
-          else
+          if (_role == 'labour')
             TextField(
               controller: _phoneController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Phone',
                 filled: true,
-                fillColor: Color(0xFFF5FCF9),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
+                fillColor: AppColors.accent,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.all(Radius.circular(50)),
+                  borderRadius: BorderRadius.circular(50),
                 ),
               ),
               keyboardType: TextInputType.phone,
+            )
+          else
+            Column(
+              children: [
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: 'Email',
+                    filled: true,
+                    fillColor: AppColors.accent,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12.0),
+                TextField(
+                  controller: _phoneController,
+                  decoration: InputDecoration(
+                    hintText: 'Phone',
+                    filled: true,
+                    fillColor: AppColors.accent,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+              ],
             ),
           const SizedBox(height: 12.0),
           if (_role != 'labour')
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Password',
                 filled: true,
-                fillColor: Color(0xFFF5FCF9),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
+                fillColor: AppColors.accent,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.all(Radius.circular(50)),
+                  borderRadius: BorderRadius.circular(50),
                 ),
               ),
               obscureText: true,
@@ -174,10 +202,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             onPressed: _submit,
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: const Color(0xFF00BF6D),
-              foregroundColor: Colors.white,
               minimumSize: const Size(160, 48),
               shape: const StadiumBorder(),
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.primaryForeground,
             ),
             child: const Text('Sign Up'),
           ),

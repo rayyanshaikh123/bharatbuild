@@ -4,6 +4,7 @@ import '../../widgets/app_ui.dart';
 import '../../widgets/offline_banner.dart';
 import '../../providers/app_state.dart';
 import '../../layouts/app_layout.dart';
+import 'mobile_pages.dart';
 
 class EngineerFlowScreen extends StatelessWidget {
   static const routeName = '/engineer-flow';
@@ -24,6 +25,12 @@ class EngineerFlowScreen extends StatelessWidget {
 
     return AppLayout(
       title: 'Engineer Flow',
+      mobilePages: const [
+        EngineerDashboardContent(),
+        EngineerJobsContent(),
+        EngineerReportsContent(),
+        EngineerProfileContent(),
+      ],
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

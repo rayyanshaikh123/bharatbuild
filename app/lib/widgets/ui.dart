@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_theme.dart';
 
 enum ButtonVariant { primary, secondary, danger, outline }
 
@@ -20,19 +21,19 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = variant == ButtonVariant.primary
-        ? AppTheme.brandOrange
+        ? AppColors.primary
         : variant == ButtonVariant.secondary
-        ? AppTheme.brandNavy
+        ? AppColors.foreground
         : variant == ButtonVariant.danger
-        ? const Color(0xFFE11D48)
+        ? AppColors.danger
         : Colors.transparent;
 
     final txtColor = variant == ButtonVariant.outline
-        ? AppTheme.brandNavy
+        ? AppColors.foreground
         : Colors.white;
 
     final side = variant == ButtonVariant.outline
-        ? BorderSide(color: AppTheme.brandNavy, width: 2)
+        ? BorderSide(color: AppColors.foreground, width: 2)
         : BorderSide.none;
 
     return Opacity(
@@ -73,9 +74,9 @@ class CardWidget extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -116,7 +117,7 @@ class InputField extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8.0),
             child: Text(
               label!.toUpperCase(),
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.headingMedium.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2,
@@ -130,10 +131,10 @@ class InputField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: placeholder,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(color: AppColors.border),
             ),
             contentPadding: const EdgeInsets.all(16),
           ),
@@ -143,7 +144,7 @@ class InputField extends StatelessWidget {
   }
 }
 
-class HeaderWidget extends StatelessWidget {
+class HeaderWidget extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
@@ -161,7 +162,7 @@ class HeaderWidget extends StatelessWidget {
       child: Container(
         height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        color: AppTheme.brandNavy,
+        color: AppColors.foreground,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -175,20 +176,20 @@ class HeaderWidget extends StatelessWidget {
                       child: Text(
                         '←',
                         style: TextStyle(
-                          color: AppTheme.brandOrange,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
                   ),
                 Text(
                   title.toUpperCase(),
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.headingMedium.copyWith(
                     color: Colors.white,
                     fontSize: 12,
-                    fontWeight: FontWeight.w900,
                     letterSpacing: 2,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -199,6 +200,9 @@ class HeaderWidget extends StatelessWidget {
       ),
     );
   }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(60);
 }
 
 class StatusBadgeSmall extends StatelessWidget {
@@ -229,15 +233,15 @@ class StatusBadgeSmall extends StatelessWidget {
   Map<String, Color> _config(String s) {
     switch (s.toUpperCase()) {
       case 'PENDING':
-        return {'bg': const Color(0xFFFFF7ED), 'text': const Color(0xFFC2410C)};
+        return {'bg': AppColors.pendingBackground, 'text': AppColors.pending};
       case 'SUBMITTED':
-        return {'bg': const Color(0xFFF0F9FF), 'text': const Color(0xFF0369A1)};
+        return {'bg': AppColors.infoBackground, 'text': AppColors.info};
       case 'APPROVED':
-        return {'bg': const Color(0xFF059669), 'text': Colors.white};
+        return {'bg': AppColors.success, 'text': AppColors.successForeground};
       case 'REJECTED':
-        return {'bg': const Color(0xFFE11D48), 'text': Colors.white};
+        return {'bg': AppColors.dangerBackground, 'text': AppColors.danger};
       default:
-        return {'bg': const Color(0xFFF1F5F9), 'text': const Color(0xFF475569)};
+        return {'bg': AppColors.card, 'text': AppColors.mutedForeground};
     }
   }
 }

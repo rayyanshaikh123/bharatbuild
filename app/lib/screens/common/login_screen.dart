@@ -40,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (_role == 'labour') {
-      Navigator.pushNamed(context, '/labour-auth');
+      Navigator.pushNamed(context, '/login', arguments: {'role': 'labour'});
       return;
     }
 
