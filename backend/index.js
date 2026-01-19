@@ -51,12 +51,14 @@ app.use("/auth/labour", require("./routes/auth/labourAuth"));
 
 /* ---------------- OWNER ROUTES ---------------- */
 app.use("/owner", require("./routes/owner/owner"));
+app.use("/owner/dashboard", require("./routes/owner/dashboard"));
 app.use("/owner/organization", require("./routes/owner/organization"));
 app.use("/owner/requests", require("./routes/owner/organizationReq"));
 app.use("/owner/project", require("./routes/owner/project"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
+app.use("/manager/dashboard", require("./routes/manager/dashboard"));
 app.use("/manager/organization", require("./routes/manager/manOrganization"));
 app.use(
   "/manager/organization-requests",
@@ -75,6 +77,7 @@ app.use(
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
+app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
 app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
 app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 
