@@ -51,6 +51,7 @@ app.use("/auth/labour", require("./routes/auth/labourAuth"));
 
 /* ---------------- OWNER ROUTES ---------------- */
 app.use("/owner", require("./routes/owner/owner"));
+app.use("/owner/dashboard", require("./routes/owner/dashboard"));
 app.use("/owner/organization", require("./routes/owner/organization"));
 app.use("/owner/requests", require("./routes/owner/organizationReq"));
 
@@ -60,6 +61,28 @@ app.use("/manager", require("./routes/manager/manager"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
+app.use("/manager/dashboard", require("./routes/manager/dashboard"));
+app.use("/manager/organization", require("./routes/manager/manOrganization"));
+app.use(
+  "/manager/organization-requests",
+  require("./routes/manager/enOrganiztionReq"),
+);
+app.use("/manager/project", require("./routes/manager/project"));
+app.use("/manager/projects", require("./routes/manager/managerProject"));
+app.use(
+  "/manager/project-requests",
+  require("./routes/manager/managerProjectReq"),
+);
+app.use(
+  "/manager/project-engineer-requests",
+  require("./routes/manager/projectEngineerReq"),
+);
+
+/* ---------------- ENGINEER ROUTES ---------------- */
+app.use("/engineer", require("./routes/engineer/engineer"));
+app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
+app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
+app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
