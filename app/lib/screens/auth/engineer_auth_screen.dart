@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_providers.dart';
-import 'signin_template.dart';
+import '../common/signin_template.dart';
 
-class EngineerAuthScreenClean extends ConsumerStatefulWidget {
-  const EngineerAuthScreenClean({super.key});
+class EngineerAuthScreen extends StatefulWidget {
+  const EngineerAuthScreen({super.key});
 
   @override
-  ConsumerState<EngineerAuthScreenClean> createState() =>
-      _EngineerAuthScreenCleanState();
+  State<EngineerAuthScreen> createState() => _EngineerAuthScreenState();
 }
 
-class _EngineerAuthScreenCleanState
-    extends ConsumerState<EngineerAuthScreenClean> {
+class _EngineerAuthScreenState extends State<EngineerAuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -26,22 +22,10 @@ class _EngineerAuthScreenCleanState
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-    try {
-      final res = await ref.read(
-        engineerLoginProvider({'email': email, 'password': password}).future,
-      );
-      // handle success, navigate
-      Navigator.pushReplacementNamed(context, '/engineer-flow');
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-    }
+    Navigator.pushReplacementNamed(context, '/engineer-flow');
   }
 
   @override

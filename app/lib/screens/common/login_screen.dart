@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_providers.dart';
+import '../../providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   LoginScreen({super.key});
@@ -40,7 +40,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (_role == 'labour') {
-      // for labour redirect to labour auth (OTP flow)
       Navigator.pushNamed(context, '/labour-auth');
       return;
     }
@@ -50,7 +49,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     try {
-      // Only engineer login is supported for non-labour roles
       await ref.read(
         engineerLoginProvider({'email': email, 'password': password}).future,
       );
@@ -64,9 +62,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // role initialization moved to didChangeDependencies to avoid mutating
-    // state during build
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -102,7 +97,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onChanged: (v) => setState(() {
                       final newRole = v ?? 'engineer';
                       if (newRole != _role) {
-                        // clear fields that are not relevant for the new role
                         _emailController.clear();
                         _phoneController.clear();
                         _passwordController.clear();

@@ -1,60 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../widgets/app_ui.dart';
-import '../widgets/offline_banner.dart';
-import '../providers/app_state.dart';
 import '../layouts/app_layout.dart';
 
-class LabourFlowScreen extends StatelessWidget {
+class LabourFlowScreen extends StatefulWidget {
   static const routeName = '/labour-flow';
   const LabourFlowScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final items = List.generate(8, (i) => 'Worker ${i + 1}');
-    final statuses = [
-      'AVAILABLE',
-      'PENDING',
-      'ACTIVE',
-      'DELAYED',
-      'COMPLETE',
-      'PENDING',
-      'APPROVED',
-      'ACTIVE',
-    ];
-    final appState = Provider.of<AppState>(context);
+  State<LabourFlowScreen> createState() => _LabourFlowScreenState();
+}
 
-    return AppLayout(
+class _LabourFlowScreenState extends State<LabourFlowScreen> {
+  bool _redirected = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_redirected) {
+      _redirected = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/labour-dashboard');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Simple placeholder while redirecting to the dashboard.
+    return const AppLayout(
       title: 'Labour Flow',
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            OfflineBanner(
-              isOffline: appState.isOffline,
-              syncStatus: appState.syncStatus,
-              toggleOffline: () => appState.toggleOffline(),
-            ),
-            const Text(
-              'Labour dashboard',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (_, idx) => WebCard(
-                  title: items[idx],
-                  subtitle: 'Status: ${statuses[idx]}',
-                  status: statuses[idx],
-                  onTap: () {},
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }

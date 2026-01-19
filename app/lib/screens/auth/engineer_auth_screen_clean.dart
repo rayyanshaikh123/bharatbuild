@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_providers.dart';
-import 'signin_template.dart';
+import '../../providers/auth_providers.dart';
+import '../../providers/user_provider.dart';
+import '../common/signin_template.dart';
 
 class EngineerAuthScreenClean extends ConsumerStatefulWidget {
   const EngineerAuthScreenClean({super.key});
@@ -35,7 +36,8 @@ class _EngineerAuthScreenCleanState
       final res = await ref.read(
         engineerLoginProvider({'email': email, 'password': password}).future,
       );
-      // handle success, navigate
+      final user = (res is Map && res.containsKey('user')) ? res['user'] : res;
+      ref.read(currentUserProvider).state = user as Map<String, dynamic>?;
       Navigator.pushReplacementNamed(context, '/engineer-flow');
     } catch (e) {
       ScaffoldMessenger.of(
