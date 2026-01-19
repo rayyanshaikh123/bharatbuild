@@ -165,12 +165,35 @@ router.post("/reset-password", async (req, res) => {
 
 /* ---------------- LOGOUT ---------------- */
 router.post("/logout", (req, res) => {
-	req.logout(() => {
-		req.session.destroy(() => {
-			res.clearCookie("connect.sid");
-			res.json({ message: "Logged out successfully" });
-		});
-	});
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ error: 'Failed to destroy session' });
+      }
+      if (typeof req.logout === 'function') {
+        try {
+          req.logout(() => {
+            res.clearCookie('connect.sid');
+            return res.json({ message: 'Logged out successfully' });
+          });
+        } catch (logoutErr) {
+          console.warn('Logout error:', logoutErr);
+          res.clearCookie('connect.sid');
+          return res.json({ message: 'Logged out (with warnings)' });
+        }
+      } else {
+        res.clearCookie('connect.sid');
+        return res.json({ message: 'Logged out successfully' });
+      }
+    });
+  } else {
+    if (typeof req.logout === 'function') {
+      try { req.logout(() => {}); } catch (_) {}
+    }
+    res.clearCookie('connect.sid');
+    return res.json({ message: 'Logged out successfully' });
+  }
 });
 
 module.exports = router;

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
+import 'package:provider/provider.dart' as p;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/app_state.dart';
+import 'providers/user_provider.dart';
+
+import 'services/auth_service.dart';
+
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
-// unified login screen used for all roles
 import 'screens/signup_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/engineer_flow.dart';
-import 'screens/labour_flow.dart';
+
 import 'screens/labour/labour_dashboard_screen.dart';
 import 'screens/labour_profile.dart';
-import 'screens/labour_tasks.dart';
-import 'screens/labour_attendance.dart';
+import 'screens/complate_profile_screen.dart';
 import 'screens/profile_screen.dart';
+
 import 'theme/app_theme.dart';
 
 void main() {
@@ -29,28 +30,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return p.MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => AppState()),
+        p.ChangeNotifierProvider(create: (_) => AuthProvider()),
+        p.ChangeNotifierProvider(create: (_) => AppState()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Flutter Auth',
         theme: AppTheme.light(),
-        home: const OnboardingScreen(),
+        home: const SessionGate(),
         routes: {
           '/login': (_) => LoginScreen(),
-          '/home': (_) => HomeScreen(),
           '/signup': (_) => SignupScreen(),
           '/forgot-password': (_) => ForgotPasswordScreen(),
-          '/engineer-flow': (_) => EngineerFlowScreen(),
-          '/labour-flow': (_) => LabourFlowScreen(),
+
           '/labour-dashboard': (_) => const LabourDashboardScreen(),
           '/labour-profile': (_) => const LabourProfileScreen(),
+          '/complete-profile': (_) => const ComplateProfileScreen(),
           '/profile': (_) => const ProfileScreen(),
-          '/labour-tasks': (_) => const LabourTasksScreen(),
-          '/labour-attendance': (_) => const LabourAttendanceScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {
@@ -63,5 +61,55 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+////////////////////////////////////////////////////////////
+/// SESSION GATE MUST BE OUTSIDE MyApp
+////////////////////////////////////////////////////////////
+
+class SessionGate extends ConsumerStatefulWidget {
+  const SessionGate({super.key});
+
+  @override
+  ConsumerState<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends ConsumerState<SessionGate> {
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    final auth = AuthService();
+
+    try {
+      final user = await auth.checkLabourSession();
+
+      if (user != null) {
+        ref.read(currentUserProvider.notifier).state = user;
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        return;
+      }
+    } catch (e) {
+      // ignore error and go to onboarding
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return const OnboardingScreen();
   }
 }

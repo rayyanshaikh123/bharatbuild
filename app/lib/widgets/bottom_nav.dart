@@ -42,20 +42,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
           label: 'Home',
         ),
-        BottomNavigationBarItem(
-          icon: SvgPicture.string(
-            heartIcon,
-            colorFilter: const ColorFilter.mode(
-              inActiveIconColor,
-              BlendMode.srcIn,
-            ),
-          ),
-          activeIcon: SvgPicture.string(
-            heartIcon,
-            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-          ),
-          label: 'Tasks',
-        ),
+        // Tasks tab removed
         BottomNavigationBarItem(
           icon: SvgPicture.string(
             mapIcon,
@@ -67,20 +54,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           ),
           label: 'Map',
         ),
-        BottomNavigationBarItem(
-          icon: SvgPicture.string(
-            chatIcon,
-            colorFilter: const ColorFilter.mode(
-              inActiveIconColor,
-              BlendMode.srcIn,
-            ),
-          ),
-          activeIcon: SvgPicture.string(
-            chatIcon,
-            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-          ),
-          label: 'Attendance',
-        ),
+        // Attendance tab removed
         BottomNavigationBarItem(
           icon: Stack(
             alignment: Alignment.center,

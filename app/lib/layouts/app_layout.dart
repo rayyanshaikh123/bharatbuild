@@ -61,9 +61,7 @@ class AppLayout extends ConsumerWidget {
               mobilePages ??
               [
                 const LabourDashboardContent(),
-                const LabourTasksContent(),
                 const LiveMapContent(),
-                const LabourAttendanceContent(),
                 const ProfileContent(),
               ];
 

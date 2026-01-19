@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_providers.dart';
+import '../providers/user_provider.dart';
 
 class VerificationScreen extends StatelessWidget {
   const VerificationScreen({super.key});
@@ -145,14 +146,29 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                     }
                     setState(() => _loading = true);
                     try {
-                      await ref.read(
+                      final result = await ref.read(
                         labourOtpVerifyProvider({
                           'phone': widget.phone,
                           'otp': otp,
                         }).future,
                       );
+                      // save authenticated user/session into provider
+                      ref.read(currentUserProvider.notifier).state = result;
+                      final needsProfile =
+                          result['primary_latitude'] == null ||
+                          result['primary_longitude'] == null;
                       if (!mounted) return;
-                      Navigator.pushReplacementNamed(context, '/labour-flow');
+                      if (needsProfile) {
+                        Navigator.pushReplacementNamed(
+                          context,
+                          '/complete-profile',
+                        );
+                      } else {
+                        Navigator.pushReplacementNamed(
+                          context,
+                          '/labour-dashboard',
+                        );
+                      }
                     } catch (e) {
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -250,10 +266,7 @@ class LogoWithTitle extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(height: constraints.maxHeight * 0.1),
-                Image.network(
-                  "https://i.postimg.cc/nz0YBQcH/Logo-light.png",
-                  height: 100,
-                ),
+                Image.asset('assets/images/bharatbuild_logo.png', height: 100),
                 SizedBox(
                   height: constraints.maxHeight * 0.1,
                   width: double.infinity,

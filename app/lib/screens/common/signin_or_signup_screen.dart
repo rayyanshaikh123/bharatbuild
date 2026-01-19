@@ -13,12 +13,7 @@ class SigninOrSignupScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              Image.network(
-                MediaQuery.of(context).platformBrightness == Brightness.light
-                    ? "https://i.postimg.cc/nz0YBQcH/Logo-light.png"
-                    : "https://i.postimg.cc/MHH0DKv1/Logo-dark.png",
-                height: 146,
-              ),
+              Image.asset('assets/images/bharatbuild_logo.png', height: 146),
               const Spacer(),
               Text(
                 'Select your role',

@@ -10,7 +10,13 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(title, style: Theme.of(context).textTheme.headingMedium),
+      title: Row(
+        children: [
+          Image.asset('assets/images/bharatbuild_logo.png', height: 28),
+          const SizedBox(width: 12),
+          Text(title, style: Theme.of(context).textTheme.headingMedium),
+        ],
+      ),
       elevation: 0,
       backgroundColor: Colors.transparent,
       foregroundColor: AppColors.foreground,

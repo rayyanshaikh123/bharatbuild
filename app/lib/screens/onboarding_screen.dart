@@ -10,6 +10,8 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int currentPage = 0;
+  String selectedLanguage = 'en';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,6 +20,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: Column(
           children: [
             const Spacer(flex: 2),
+
+            /// Pages
             Expanded(
               flex: 14,
               child: PageView.builder(
@@ -27,14 +31,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     currentPage = value;
                   });
                 },
-                itemBuilder: (context, index) => OnboardContent(
-                  illustration: demoData[index]["illustration"],
-                  title: demoData[index]["title"],
-                  text: demoData[index]["text"],
-                ),
+                itemBuilder: (context, index) {
+                  final item = demoData[index];
+
+                  if (item["type"] == "language") {
+                    return LanguageOnboard(
+                      selectedLanguage: selectedLanguage,
+                      onChanged: (lang) {
+                        setState(() {
+                          selectedLanguage = lang;
+                        });
+                      },
+                    );
+                  }
+
+                  return OnboardContent(
+                    illustration: item["illustration"],
+                    title: item["title"],
+                    text: item["text"],
+                  );
+                },
               ),
             ),
+
             const Spacer(),
+
+            /// Dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -42,17 +64,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 (index) => DotIndicator(isActive: index == currentPage),
               ),
             ),
+
             const Spacer(flex: 2),
+
+            /// Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the unified login, preselect labour role
-                  Navigator.pushNamed(
-                    context,
-                    '/login',
-                    arguments: {'role': 'labour'},
-                  );
+                  if (currentPage < demoData.length - 1) {
+                    setState(() {
+                      currentPage++;
+                    });
+                  } else {
+                    Navigator.pushNamed(
+                      context,
+                      '/login',
+                      arguments: {
+                        'role': 'labour',
+                        'language': selectedLanguage,
+                      },
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -62,9 +95,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text("Get Started".toUpperCase()),
+                child: Text(
+                  currentPage == demoData.length - 1
+                      ? "CONTINUE"
+                      : "NEXT",
+                ),
               ),
             ),
+
             const Spacer(),
           ],
         ),
@@ -72,6 +110,68 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 }
+
+/// ---------------- LANGUAGE PAGE ----------------
+
+class LanguageOnboard extends StatelessWidget {
+  final String selectedLanguage;
+  final Function(String) onChanged;
+
+  const LanguageOnboard({
+    super.key,
+    required this.selectedLanguage,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Spacer(),
+        Icon(Icons.language, size: 80, color: Colors.grey.shade700),
+        const SizedBox(height: 24),
+
+        Text(
+          "Choose Your Language",
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge!
+              .copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+
+        Text(
+          "Select your preferred language to continue",
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 32),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: DropdownButtonFormField<String>(
+            value: selectedLanguage,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: "Language",
+            ),
+            items: const [
+              DropdownMenuItem(value: "en", child: Text("English")),
+              DropdownMenuItem(value: "hi", child: Text("हिंदी (Hindi)")),
+              DropdownMenuItem(value: "mr", child: Text("मराठी (Marathi)")),
+            ],
+            onChanged: (value) {
+              if (value != null) onChanged(value);
+            },
+          ),
+        ),
+
+        const Spacer(),
+      ],
+    );
+  }
+}
+
+/// ---------------- INFO PAGE ----------------
 
 class OnboardContent extends StatelessWidget {
   const OnboardContent({
@@ -94,13 +194,16 @@ class OnboardContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+
         Text(
           title!,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge!
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
+
         Text(
           text!,
           style: Theme.of(context).textTheme.bodyMedium,
@@ -110,6 +213,8 @@ class OnboardContent extends StatelessWidget {
     );
   }
 }
+
+/// ---------------- DOT INDICATOR ----------------
 
 class DotIndicator extends StatelessWidget {
   const DotIndicator({
@@ -126,7 +231,7 @@ class DotIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      margin: const EdgeInsets.symmetric(horizontal: 16 / 2),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
       height: 5,
       width: 8,
       decoration: BoxDecoration(
@@ -137,24 +242,26 @@ class DotIndicator extends StatelessWidget {
   }
 }
 
-// Demo data for our Onboarding screen
+/// ---------------- ONBOARDING DATA ----------------
+
 List<Map<String, dynamic>> demoData = [
   {
-    "illustration": "https://i.postimg.cc/L43CKddq/Illustrations.png",
-    "title": "All your favorites",
-    "text":
-        "Order from the best local restaurants \nwith easy, on-demand delivery.",
+    "type": "language",
+    "title": "Choose Your Language",
+    "text": "Select your preferred language to continue",
   },
   {
-    "illustration": "https://i.postimg.cc/xTjs9sY6/Illustrations-1.png",
-    "title": "Free delivery offers",
+    "type": "info",
+    "illustration": "https://i.postimg.cc/CKQF6tZB/construction1.png",
+    "title": "Built for Real Construction Sites",
     "text":
-        "Free delivery for new customers via Apple Pay\nand others payment methods.",
+        "Digitize attendance, daily progress and material tracking even when internet is weak or unavailable.",
   },
   {
-    "illustration": "https://i.postimg.cc/6qcYdZVV/Illustrations-2.png",
-    "title": "Choose your food",
+    "type": "info",
+    "illustration": "https://i.postimg.cc/yYy0L3Jk/construction2.png",
+    "title": "Simple Site to Office Flow",
     "text":
-        "Easily find your type of food craving and\nyou’ll get delivery in wide range.",
+        "Site Engineer submits data, Manager approves, Owner gets real-time visibility across all projects.",
   },
 ];

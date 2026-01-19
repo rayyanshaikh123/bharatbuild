@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../map/live_map_screen.dart';
 import '../../theme/app_colors.dart';
+import 'profile_screen.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/auth_providers.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends StatelessWidget {
@@ -314,65 +316,7 @@ class LiveMapContent extends StatelessWidget {
   }
 }
 
-class LabourTasksContent extends StatelessWidget {
-  const LabourTasksContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final tasks = ['Unload materials', 'Mix concrete', 'Clear debris'];
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          ...tasks
-              .map(
-                (t) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_box_outline_blank,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            t,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00BF6D),
-                            shape: const StadiumBorder(),
-                          ),
-                          child: const Text('Start'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ],
-      ),
-    );
-  }
-}
+// Labour task list removed — page intentionally omitted.
 
 class LabourAttendanceContent extends StatelessWidget {
   const LabourAttendanceContent({super.key});
@@ -486,7 +430,14 @@ class ProfileContent extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
-                _profileMenuItem(context, 'My Account', onTap: () {}),
+                _profileMenuItem(
+                  context,
+                  'My Account',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  ),
+                ),
                 _profileMenuItem(context, 'Notifications', onTap: () {}),
                 _profileMenuItem(context, 'Settings', onTap: () {}),
                 _profileMenuItem(context, 'Help Center', onTap: () {}),
@@ -503,13 +454,27 @@ class ProfileContent extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    // Clear user and reset bottom nav index
+                  onPressed: () async {
+                    final auth = ref.read(authServiceProvider);
+                    try {
+                      await auth.logoutLabour();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Logout failed: $e')),
+                      );
+                      return;
+                    }
+
+                    // Clear local state
                     ref.read(currentUserProvider.notifier).state = null;
                     ref.read(bottomNavIndexProvider.notifier).state = 0;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('Logged out')));
+
+                    // Navigate to login screen
+                    if (Navigator.canPop(context)) {
+                      Navigator.pushReplacementNamed(context, '/login');
+                    } else {
+                      Navigator.pushReplacementNamed(context, '/login');
+                    }
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

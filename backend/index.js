@@ -47,7 +47,6 @@ app.use("/auth/owner", require("./routes/auth/ownerAuth"));
 app.use("/auth/manager", require("./routes/auth/managerAuth"));
 app.use("/auth/engineer", require("./routes/auth/engineerAuth"));
 app.use("/auth/labour", require("./routes/auth/labourAuth"));
-app.use("/auth/labour", require("./routes/auth/labourAuth"));
 
 /* ---------------- OWNER ROUTES ---------------- */
 app.use("/owner", require("./routes/owner/owner"));
@@ -60,7 +59,6 @@ app.use("/manager", require("./routes/manager/manager"));
 
 
 /* ---------------- ENGINEER ROUTES ---------------- */
-app.use("/engineer", require("./routes/engineer/engineer"));
 app.use("/manager/dashboard", require("./routes/manager/dashboard"));
 app.use("/manager/organization", require("./routes/manager/manOrganization"));
 app.use(
@@ -68,10 +66,10 @@ app.use(
   require("./routes/manager/enOrganiztionReq"),
 );
 app.use("/manager/project", require("./routes/manager/project"));
-app.use("/manager/projects", require("./routes/manager/managerProject"));
+app.use("/manager/projects", require("./routes/manager/project"));
 app.use(
   "/manager/project-requests",
-  require("./routes/manager/managerProjectReq"),
+  require("./routes/manager/projectEngineerReq"),
 );
 app.use(
   "/manager/project-engineer-requests",
@@ -82,7 +80,7 @@ app.use(
 app.use("/engineer", require("./routes/engineer/engineer"));
 app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
 app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
-app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
+// project requests route for engineers not implemented yet; skip registration
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

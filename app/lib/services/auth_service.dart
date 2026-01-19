@@ -144,4 +144,43 @@ class AuthService {
       throw Exception('Logout failed: ${res.body}');
     }
   }
+
+  /// Check current labour session. Returns user map if authenticated, null otherwise.
+  Future<Map<String, dynamic>?> checkLabourSession() async {
+    final uri = Uri.parse('$_base/labour/check-auth');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['labour'] as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
+  /// Fetch labour profile from backend (requires session cookie)
+  Future<Map<String, dynamic>?> getLabourProfile() async {
+    final uri = Uri.parse('$_base/labour/profile');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['labour'] as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
+  /// Update labour profile on backend. Expects session cookie to be present.
+  Future<Map<String, dynamic>?> updateLabourProfile(
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = Uri.parse('$_base/labour/profile');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['labour'] as Map<String, dynamic>?;
+    }
+    throw Exception('Update failed: ${res.statusCode} ${res.body}');
+  }
 }

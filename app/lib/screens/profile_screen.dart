@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 // TODO: add flutter_svg to pubspec.yaml
 import 'package:flutter_svg/flutter_svg.dart';
+import 'empty_notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -26,7 +27,14 @@ class ProfileScreen extends StatelessWidget {
             ProfileMenu(
               text: "Notifications",
               icon: "assets/icons/Bell.svg",
-              press: () {},
+              press: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EmptyNotificationsScreen(),
+                  ),
+                );
+              },
             ),
             ProfileMenu(
               text: "Settings",

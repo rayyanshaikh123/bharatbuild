@@ -59,10 +59,7 @@ class LogoWithTitle extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(height: constraints.maxHeight * 0.1),
-                Image.network(
-                  "https://i.postimg.cc/nz0YBQcH/Logo-light.png",
-                  height: 100,
-                ),
+                Image.asset('assets/images/bharatbuild_logo.png', height: 100),
                 SizedBox(
                   height: constraints.maxHeight * 0.1,
                   width: double.infinity,
