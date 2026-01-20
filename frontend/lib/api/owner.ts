@@ -2,6 +2,23 @@ import { api } from "../api";
 
 // ==================== TYPES ====================
 
+export interface OwnerDashboardSummary {
+  total_managers_approved: number;
+  total_managers_pending: number;
+  total_managers_rejected: number;
+  total_site_engineers_approved: number;
+  total_site_engineers_pending: number;
+  total_site_engineers_rejected: number;
+  total_projects: number;
+  total_projects_planned: number;
+  total_projects_active: number;
+  total_projects_completed: number;
+  total_projects_on_hold: number;
+  total_budget_planned: number;
+  total_budget_active: number;
+  total_budget_completed: number;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -121,4 +138,43 @@ export const ownerProjects = {
     api.get<{ manager: ProjectManager | null }>(
       `/owner/project/project-manager/owner?projectId=${projectId}&organizationId=${organizationId}`
     ),
+};
+
+// ==================== OWNER DASHBOARD API ====================
+
+export const ownerDashboard = {
+  getSummary: () =>
+    api.get<{ summary: OwnerDashboardSummary }>("/owner/dashboard"),
+};
+
+// ==================== OWNER PLANS API (READ-ONLY) ====================
+
+export interface Plan {
+  id: string;
+  project_id: string;
+  created_by: string;
+  start_date: string;
+  end_date: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PlanItem {
+  id: string;
+  plan_id: string;
+  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_start: string;
+  period_end: string;
+  task_name: string;
+  description?: string;
+  planned_quantity?: number;
+  planned_manpower?: number;
+  planned_cost?: number;
+  created_at?: string;
+}
+
+export const ownerPlans = {
+  // Get plan and items for a project (read-only)
+  getByProjectId: (projectId: string) =>
+    api.get<{ plan: Plan; items: PlanItem[] }>(`/owner/plan/plans/${projectId}`),
 };
