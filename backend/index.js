@@ -64,6 +64,7 @@ app.use(
 );
 app.use("/owner/plan", require("./routes/owner/plan"));
 app.use("/owner/labour-request", require("./routes/owner/labourRequest"));
+app.use("/owner/dpr", require("./routes/owner/dpr"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -85,6 +86,7 @@ app.use(
 );
 app.use("/manager/plan", require("./routes/manager/plan"));
 app.use("/manager/labour-request", require("./routes/manager/labourRequest"));
+app.use("/manager/dpr", require("./routes/manager/dpr"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
@@ -93,6 +95,7 @@ app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
 app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 app.use("/engineer/plan", require("./routes/engineer/plan"));
 app.use("/engineer/labour-request", require("./routes/engineer/labourRequest"));
+app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

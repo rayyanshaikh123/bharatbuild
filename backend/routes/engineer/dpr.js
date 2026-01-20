@@ -1,0 +1,709 @@
+const express = require("express");
+const pool = require("../../db");
+const router = express.Router();
+const engineerCheck = require("../../middleware/engineerCheck");
+
+// Check if engineer is ACTIVE in project
+async function engineerProjectStatusCheck(engineerId, projectId) {
+  const result = await pool.query(
+    `SELECT COUNT(*) FROM project_site_engineers
+     WHERE site_engineer_id = $1 
+       AND project_id = $2 
+       AND status = 'ACTIVE'`,
+    [engineerId, projectId],
+  );
+  return parseInt(result.rows[0].count) > 0;
+}
+
+/* ---------------- GET PLAN ITEMS (FOR DROPDOWN) ---------------- */
+router.get(
+  "/projects/:projectId/plans/items",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      // Check if engineer is ACTIVE in project
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      // Get plan for project
+      const planResult = await pool.query(
+        `SELECT id FROM plans WHERE project_id = $1`,
+        [projectId],
+      );
+
+      if (planResult.rows.length === 0) {
+        return res.json({ plan_items: [] });
+      }
+
+      const planId = planResult.rows[0].id;
+
+      // Get plan items
+      const itemsResult = await pool.query(
+        `SELECT * FROM plan_items WHERE plan_id = $1 ORDER BY period_start, created_at`,
+        [planId],
+      );
+
+      res.json({ plan_items: itemsResult.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- CREATE DPR ---------------- */
+router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
+  try {
+    const engineerId = req.user.id;
+    const { projectId } = req.params;
+    const {
+      title,
+      description,
+      plan_id,
+      plan_item_id,
+      report_date,
+      report_image,
+      report_image_mime,
+    } = req.body;
+
+    // Check if engineer is ACTIVE in project
+    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+    if (!isActive) {
+      return res.status(403).json({
+        error: "Access denied. Not an active engineer in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO dprs (project_id, site_engineer_id, title, description, 
+       plan_id, plan_item_id, report_date, report_image, report_image_mime)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [
+        projectId,
+        engineerId,
+        title,
+        description,
+        plan_id || null,
+        plan_item_id || null,
+        report_date,
+        report_image || null,
+        report_image_mime || null,
+      ],
+    );
+
+    res.status(201).json({ dpr: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET OWN DPRs ---------------- */
+router.get("/projects/:projectId/dprs/my", engineerCheck, async (req, res) => {
+  try {
+    const engineerId = req.user.id;
+    const { projectId } = req.params;
+
+    // Check if engineer is ACTIVE in project
+    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+    if (!isActive) {
+      return res.status(403).json({
+        error: "Access denied. Not an active engineer in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM dprs 
+       WHERE project_id = $1 AND site_engineer_id = $2
+       ORDER BY report_date DESC, submitted_at DESC`,
+      [projectId, engineerId],
+    );
+
+    res.json({ dprs: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET ALL DPRs IN PROJECT ---------------- */
+router.get("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
+  try {
+    const engineerId = req.user.id;
+    const { projectId } = req.params;
+
+    // Check if engineer is ACTIVE in project
+    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+    if (!isActive) {
+      return res.status(403).json({
+        error: "Access denied. Not an active engineer in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1
+       ORDER BY d.report_date DESC, d.submitted_at DESC`,
+      [projectId],
+    );
+
+    res.json({ dprs: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET PENDING DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/pending",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.status = 'PENDING'
+       ORDER BY d.report_date DESC, d.submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET APPROVED DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/approved",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.status = 'APPROVED'
+       ORDER BY d.report_date DESC, d.submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET REJECTED DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/rejected",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.status = 'REJECTED'
+       ORDER BY d.report_date DESC, d.submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET SINGLE DPR ---------------- */
+router.get("/dprs/:dprId", engineerCheck, async (req, res) => {
+  try {
+    const engineerId = req.user.id;
+    const { dprId } = req.params;
+
+    // Get DPR with project_id
+    const dprCheck = await pool.query(
+      `SELECT project_id FROM dprs WHERE id = $1`,
+      [dprId],
+    );
+
+    if (dprCheck.rows.length === 0) {
+      return res.status(404).json({ error: "DPR not found" });
+    }
+
+    const projectId = dprCheck.rows[0].project_id;
+
+    // Check if engineer is ACTIVE in project
+    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+    if (!isActive) {
+      return res.status(403).json({
+        error: "Access denied. Not an active engineer in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.id = $1`,
+      [dprId],
+    );
+
+    res.json({ dpr: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET DPR IMAGE ---------------- */
+router.get("/dprs/:dprId/image", engineerCheck, async (req, res) => {
+  try {
+    const engineerId = req.user.id;
+    const { dprId } = req.params;
+
+    // Get DPR with project_id and image
+    const dprCheck = await pool.query(
+      `SELECT project_id, report_image, report_image_mime FROM dprs WHERE id = $1`,
+      [dprId],
+    );
+
+    if (dprCheck.rows.length === 0) {
+      return res.status(404).json({ error: "DPR not found" });
+    }
+
+    const {
+      project_id: projectId,
+      report_image,
+      report_image_mime,
+    } = dprCheck.rows[0];
+
+    // Check if engineer is ACTIVE in project
+    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+    if (!isActive) {
+      return res.status(403).json({
+        error: "Access denied. Not an active engineer in the project.",
+      });
+    }
+
+    if (!report_image) {
+      return res.status(404).json({ error: "Image not found" });
+    }
+
+    res.set("Content-Type", report_image_mime || "image/jpeg");
+    res.send(report_image);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET DPRs BY DATE ---------------- */
+router.get(
+  "/projects/:projectId/dprs/date/:date",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId, date } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.report_date = $2
+       ORDER BY d.submitted_at DESC`,
+        [projectId, date],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET PENDING DPRs BY DATE ---------------- */
+router.get(
+  "/projects/:projectId/dprs/date/:date/pending",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId, date } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.report_date = $2 AND d.status = 'PENDING'
+       ORDER BY d.submitted_at DESC`,
+        [projectId, date],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET APPROVED DPRs BY DATE ---------------- */
+router.get(
+  "/projects/:projectId/dprs/date/:date/approved",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId, date } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.report_date = $2 AND d.status = 'APPROVED'
+       ORDER BY d.submitted_at DESC`,
+        [projectId, date],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- GET REJECTED DPRs BY DATE ---------------- */
+router.get(
+  "/projects/:projectId/dprs/date/:date/rejected",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId, date } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT d.*, 
+              se.name AS engineer_name, 
+              se.phone AS engineer_phone,
+              p.start_date AS plan_start_date,
+              p.end_date AS plan_end_date,
+              pi.task_name AS plan_item_task_name,
+              pi.period_start AS plan_item_period_start,
+              pi.period_end AS plan_item_period_end
+       FROM dprs d
+       JOIN site_engineers se ON d.site_engineer_id = se.id
+       LEFT JOIN plans p ON d.plan_id = p.id
+       LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
+       WHERE d.project_id = $1 AND d.report_date = $2 AND d.status = 'REJECTED'
+       ORDER BY d.submitted_at DESC`,
+        [projectId, date],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- LIGHTWEIGHT: GET ALL DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/light",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id AS dpr_id, 
+              title, 
+              description, 
+              status, 
+              report_date, 
+              site_engineer_id AS created_by
+       FROM dprs
+       WHERE project_id = $1
+       ORDER BY report_date DESC, submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- LIGHTWEIGHT: GET PENDING DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/light/pending",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id AS dpr_id, 
+              title, 
+              description, 
+              status, 
+              report_date, 
+              site_engineer_id AS created_by
+       FROM dprs
+       WHERE project_id = $1 AND status = 'PENDING'
+       ORDER BY report_date DESC, submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- LIGHTWEIGHT: GET APPROVED DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/light/approved",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id AS dpr_id, 
+              title, 
+              description, 
+              status, 
+              report_date, 
+              site_engineer_id AS created_by
+       FROM dprs
+       WHERE project_id = $1 AND status = 'APPROVED'
+       ORDER BY report_date DESC, submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+/* ---------------- LIGHTWEIGHT: GET REJECTED DPRs ---------------- */
+router.get(
+  "/projects/:projectId/dprs/light/rejected",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const engineerId = req.user.id;
+      const { projectId } = req.params;
+
+      const isActive = await engineerProjectStatusCheck(engineerId, projectId);
+      if (!isActive) {
+        return res.status(403).json({
+          error: "Access denied. Not an active engineer in the project.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id AS dpr_id, 
+              title, 
+              description, 
+              status, 
+              report_date, 
+              site_engineer_id AS created_by
+       FROM dprs
+       WHERE project_id = $1 AND status = 'REJECTED'
+       ORDER BY report_date DESC, submitted_at DESC`,
+        [projectId],
+      );
+
+      res.json({ dprs: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
+
+module.exports = router;
