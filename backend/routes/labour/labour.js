@@ -301,5 +301,56 @@ router.delete("/addresses/:id", labourCheck, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+/* ---------------- UPDATE SKILLS & CATEGORIES ---------------- */
+router.patch("/profile/skills", labourCheck, async (req, res) => {
+  try {
+    const labourId = req.user.id;
+    const { skill_type, add_categories = [], remove_categories = [] } = req.body;
+
+    if (
+      skill_type &&
+      !["SKILLED", "SEMI_SKILLED", "UNSKILLED"].includes(skill_type)
+    ) {
+      return res.status(400).json({ error: "invalid_skill_type" });
+    }
+
+    // Fetch current categories
+    const currentResult = await pool.query(
+      `SELECT categories FROM labours WHERE id = $1`,
+      [labourId],
+    );
+
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: "Labour not found" });
+    }
+
+    let categories = currentResult.rows[0].categories || [];
+
+    // Add categories
+    for (const cat of add_categories) {
+      if (!categories.includes(cat)) {
+        categories.push(cat);
+      }
+    }
+
+    // Remove categories
+    categories = categories.filter(
+      (cat) => !remove_categories.includes(cat),
+    );
+
+    const result = await pool.query(
+      `UPDATE labours SET
+        skill_type = COALESCE($1, skill_type),
+        categories = $2
+       WHERE id = $3 RETURNING *`,
+      [skill_type, categories, labourId],
+    );
+
+    res.json({ labour: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router;

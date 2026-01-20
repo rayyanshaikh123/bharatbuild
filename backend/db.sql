@@ -141,14 +141,44 @@ CREATE TABLE project_site_engineers (
     UNIQUE (project_id, site_engineer_id)
 );
 
+
+
+CREATE TABLE plans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES managers(id),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now(),
+    UNIQUE (project_id)
+);
+
+CREATE TABLE plan_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+    period_type TEXT CHECK (period_type IN ('WEEK','CUSTOM')) NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    task_name TEXT NOT NULL,
+    description TEXT,
+    planned_quantity NUMERIC,
+    planned_manpower INTEGER,
+    planned_cost NUMERIC,
+    created_at TIMESTAMP DEFAULT now()
+);
+
 -- =========================================================
 -- DPRs
 -- =========================================================
-
 CREATE TABLE dprs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     site_engineer_id UUID REFERENCES site_engineers(id),
+    title TEXT,
+    description TEXT,
+    plan_id UUID,
+    plan_item_id UUID,
     report_date DATE NOT NULL,
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
     report_image BYTEA,
@@ -302,37 +332,6 @@ CREATE TABLE wages (
     approved_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT now(),
     UNIQUE (attendance_id)
-);
-CREATE TABLE plan_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-
-    period_type TEXT CHECK (period_type IN ('WEEK','CUSTOM')) NOT NULL,
-    period_start DATE NOT NULL,
-    period_end DATE NOT NULL,
-
-    task_name TEXT NOT NULL,
-    description TEXT,
-
-    planned_quantity NUMERIC,
-    planned_manpower INTEGER,
-    planned_cost NUMERIC,
-
-    created_at TIMESTAMP DEFAULT now()
-);
-
-CREATE TABLE plans (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    created_by UUID NOT NULL REFERENCES managers(id),
-
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now(),
-
-    UNIQUE (project_id)
 );
 
 CREATE INDEX idx_prt_user ON password_reset_tokens(user_id, user_role);
