@@ -9,10 +9,15 @@ import '../../services/persistent_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/user_provider.dart';
 import 'project_geofence_screen.dart';
+import 'operation_zones_home.dart';
+import 'nearby_sites_screen.dart';
+import 'attendance_status_card.dart';
+import 'pending_verification_widget.dart';
 
 /// Content-only labour dashboard — intended to be embedded inside `AppLayout`.
 class LabourDashboardContent extends ConsumerStatefulWidget {
-  const LabourDashboardContent({super.key});
+  final Map<String, dynamic>? initialProject;
+  const LabourDashboardContent({super.key, this.initialProject});
 
   @override
   ConsumerState<LabourDashboardContent> createState() =>
@@ -61,6 +66,13 @@ class _LabourDashboardContentState
         'description': 'Mixed-use development',
       },
     ]);
+
+    // If an initial project was passed, open it after first frame.
+    if (widget.initialProject != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _openProject(widget.initialProject!),
+      );
+    }
   }
 
   void _openProject(Map<String, dynamic> site) {
@@ -313,134 +325,24 @@ class _LabourDashboardContentState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Map preview (placeholder) showing nearby geofences; tappable to open project list/map
+          // Map preview (now in its own file)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
             child: GestureDetector(
               onTap: () {
-                // open first site or a list - for now open first site if present
                 if (_nearbySites.isNotEmpty) _openProject(_nearbySites.first);
               },
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.map, size: 48, color: Color(0xFF00BF6D)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Live map preview',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_nearbySites.length} nearby sites',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    // simple visual markers
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      children: _nearbySites
-                          .map(
-                            (s) => Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.9),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
+              child: const OperationZonesHome(),
             ),
           ),
 
-          // Registry preview: nearby sites horizontally
+          // Nearby sites list (separated file)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text('Nearby Sites', style: theme.textTheme.titleMedium),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 140,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              scrollDirection: Axis.horizontal,
-              itemCount: _nearbySites.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, idx) {
-                final s = _nearbySites[idx];
-                return GestureDetector(
-                  onTap: () => _openProject(s),
-                  child: Container(
-                    width: 260,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s['name'],
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          s['address'],
-                          style: theme.textTheme.bodySmall,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Spacer(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${s['distance']} m',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                            ElevatedButton(
-                              onPressed: () => _openProject(s),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00BF6D),
-                              ),
-                              child: const Text('View'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+          NearbySitesScreen(sites: _nearbySites),
           const SizedBox(height: 18),
           // Offline banner
           Container(
@@ -504,196 +406,16 @@ class _LabourDashboardContentState
             ],
           ),
           const SizedBox(height: 18),
-          // Card
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Top blue zone area
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEAF6FF),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      topRight: Radius.circular(14),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00BF6D),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.place,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Inside Geo-fence Zone',
-                        style: TextStyle(
-                          color: Color(0xFF2B6EAF),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // White content area
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 16.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0FFF4),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFE6F6EA),
-                              ),
-                            ),
-                            child: Row(
-                              children: const [
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Color(0xFF00BF6D),
-                                  size: 16,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Location Verified',
-                                  style: TextStyle(
-                                    color: Color(0xFF0B8D47),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'You\'re at the site!',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Your location has been detected within the geo-fence boundary.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      // Info boxes
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          _infoBox('SITE', 'Oberoi Sky City'),
-                          _infoBox('ZONE', 'Block A'),
-                          _infoBox('CHECK-IN TIME', '08:15 AM'),
-                          _infoBox(
-                            'STATUS',
-                            'Awaiting\nApproval',
-                            highlight: true,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          // Attendance status card (extracted)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: const AttendanceStatusCard(),
           ),
           const SizedBox(height: 18),
-          // Pending verification notice
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E9),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFF5E1B8)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 2.0),
-                  child: Icon(Icons.info_outline, color: Color(0xFFB06A00)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pending Verification',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Your Site Engineer will verify your entry. Once approved, your attendance will be recorded.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          // Pending verification (extracted)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: const PendingVerificationWidget(),
           ),
           const SizedBox(height: 40),
         ],
@@ -737,10 +459,14 @@ class _LabourDashboardContentState
 
 /// Full-screen wrapper that embeds the content inside `AppLayout`.
 class LabourDashboardScreen extends StatelessWidget {
-  const LabourDashboardScreen({super.key});
+  final Map<String, dynamic>? initialProject;
+  const LabourDashboardScreen({super.key, this.initialProject});
 
   @override
   Widget build(BuildContext context) {
-    return const AppLayout(title: '', child: LabourDashboardContent());
+    return AppLayout(
+      title: '',
+      child: LabourDashboardContent(initialProject: initialProject),
+    );
   }
 }

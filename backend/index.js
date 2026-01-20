@@ -84,6 +84,8 @@ app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
+/* ---------------- META (client config) ---------------- */
+
 /* ---------------- HEALTH ---------------- */
 
 app.get("/health", async (req, res) => {

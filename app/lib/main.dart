@@ -15,6 +15,7 @@ import 'screens/verify_email_screen.dart';
 import 'screens/forgot_password_screen.dart';
 
 import 'screens/labour/labour_dashboard_screen.dart';
+// overview removed; main dashboard uses `LabourDashboardScreen` with AppLayout
 import 'screens/labour_profile.dart';
 import 'screens/complate_profile_screen.dart';
 import 'screens/profile_screen.dart';

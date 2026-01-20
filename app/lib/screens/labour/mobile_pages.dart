@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../map/live_map_screen.dart';
+import 'operation_zones_live_map.dart';
 import '../../theme/app_colors.dart';
 import 'profile_screen.dart';
 import '../../providers/user_provider.dart';
@@ -8,12 +9,14 @@ import '../../providers/navigation_provider.dart';
 import '../../providers/auth_providers.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
-class LabourDashboardContent extends StatelessWidget {
+class LabourDashboardContent extends ConsumerWidget {
   const LabourDashboardContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final user = ref.watch(currentUserProvider);
+    final displayName = user != null && user['name'] != null ? user['name'] as String : 'Guest';
 
     return SingleChildScrollView(
       child: Column(
@@ -52,7 +55,7 @@ class LabourDashboardContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Good Morning, Ramesh!',
+                      'Good Morning, $displayName!',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -312,52 +315,46 @@ class LiveMapContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(height: 500, child: LiveMapScreen());
-  }
-}
-
-// Labour task list removed — page intentionally omitted.
-
-class LabourAttendanceContent extends StatelessWidget {
-  const LabourAttendanceContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final records = [
-      {'date': '2026-01-16', 'status': 'Present'},
-      {'date': '2026-01-15', 'status': 'Absent'},
-      {'date': '2026-01-14', 'status': 'Present'},
-    ];
+    // Show a compact map preview followed by the operation zones (available sites)
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          ...records.map(
-            (r) => ListTile(
-              tileColor: const Color(0xFFF5FCF9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              title: Text(
-                r['date']!,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              trailing: Text(
-                r['status']!,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+        children: const [
+          SizedBox(height: 8),
+          // Map preview box (kept simple to avoid nested AppBars)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: SizedBox(
+              height: 200,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.04),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(Icons.map, size: 48, color: Color(0xFF00BF6D)),
+                ),
               ),
             ),
+          ),
+          SizedBox(height: 12),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: OperationZonesLiveMap(),
           ),
         ],
       ),
     );
   }
 }
+
+// Labour task list removed — page intentionally omitted.
 
 class ProfileContent extends ConsumerWidget {
   const ProfileContent({super.key});

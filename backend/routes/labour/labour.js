@@ -38,10 +38,21 @@ router.post("/profile", labourCheck, async (req, res) => {
       return res.status(400).json({ error: "Invalid skill_type" });
     }
 
-    // Geocode address (if provided) using Nominatim (OpenStreetMap)
+    // Accept coordinates from client if provided, otherwise geocode the address
     let primary_latitude = null;
     let primary_longitude = null;
-    if (address && typeof address === "string" && address.trim() !== "") {
+
+    if (
+      req.body.primary_latitude !== undefined &&
+      req.body.primary_longitude !== undefined
+    ) {
+      const lat = parseFloat(req.body.primary_latitude);
+      const lon = parseFloat(req.body.primary_longitude);
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+        primary_latitude = lat;
+        primary_longitude = lon;
+      }
+    } else if (address && typeof address === "string" && address.trim() !== "") {
       try {
         const geoRes = await axios.get(
           "https://nominatim.openstreetmap.org/search",
