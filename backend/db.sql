@@ -46,6 +46,24 @@ CREATE TABLE labours (
     phone TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL DEFAULT 'LABOUR',
     skill_type TEXT CHECK (skill_type IN ('SKILLED','SEMI_SKILLED','UNSKILLED')),
+    categories TEXT[] NOT NULL DEFAULT '{}',
+    primary_latitude NUMERIC,
+    primary_longitude NUMERIC,
+    travel_radius_meters INTEGER,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- =========================================================
+-- LABOUR ADDRESSES
+-- =========================================================
+
+CREATE TABLE labour_addresses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    labour_id UUID REFERENCES labours(id) ON DELETE CASCADE,
+    latitude NUMERIC NOT NULL,
+    longitude NUMERIC NOT NULL,
+    address_text TEXT,
+    is_primary BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -62,10 +80,6 @@ CREATE TABLE organizations (
     owner_id UUID NOT NULL REFERENCES owners(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT now()
 );
-
--- =========================================================
--- ORGANIZATION MEMBERSHIP
--- =========================================================
 
 CREATE TABLE organization_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -103,6 +117,7 @@ CREATE TABLE projects (
     start_date DATE,
     end_date DATE,
     budget NUMERIC,
+    current_invested NUMERIC DEFAULT 0,
     status TEXT CHECK (status IN ('PLANNED','ACTIVE','COMPLETED','ON_HOLD')),
     created_by UUID REFERENCES managers(id),
     created_at TIMESTAMP DEFAULT now()
@@ -112,6 +127,7 @@ CREATE TABLE project_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     manager_id UUID REFERENCES managers(id),
+    status TEXT CHECK (status IN ('PENDING','ACTIVE','REJECTED')) NOT NULL,
     assigned_at TIMESTAMP DEFAULT now(),
     UNIQUE (project_id, manager_id)
 );
@@ -120,41 +136,13 @@ CREATE TABLE project_site_engineers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     site_engineer_id UUID REFERENCES site_engineers(id),
-    status TEXT CHECK (status IN ('ACTIVE','REMOVED')) DEFAULT 'ACTIVE',
+    status TEXT CHECK (status IN ('PENDING','ACTIVE','REMOVED','REJECTED')) DEFAULT 'PENDING',
     assigned_at TIMESTAMP DEFAULT now(),
     UNIQUE (project_id, site_engineer_id)
 );
 
 -- =========================================================
--- PLAN (BASELINE)
--- =========================================================
-
-CREATE TABLE plans (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    created_by UUID REFERENCES managers(id),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT now(),
-    UNIQUE (project_id)
-);
-
-CREATE TABLE plan_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    plan_id UUID REFERENCES plans(id) ON DELETE CASCADE,
-    period_type TEXT CHECK (period_type IN ('WEEK','MONTH')),
-    period_start DATE,
-    period_end DATE,
-    task_name TEXT NOT NULL,
-    description TEXT,
-    planned_quantity NUMERIC,
-    planned_manpower INTEGER,
-    planned_cost NUMERIC,
-    created_at TIMESTAMP DEFAULT now()
-);
-
--- =========================================================
--- DPR
+-- DPRs
 -- =========================================================
 
 CREATE TABLE dprs (
@@ -163,6 +151,8 @@ CREATE TABLE dprs (
     site_engineer_id UUID REFERENCES site_engineers(id),
     report_date DATE NOT NULL,
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
+    report_image BYTEA,
+    report_image_mime TEXT,
     submitted_at TIMESTAMP DEFAULT now(),
     reviewed_by UUID REFERENCES managers(id),
     reviewed_at TIMESTAMP,
@@ -179,99 +169,47 @@ CREATE TABLE material_requests (
     project_id UUID REFERENCES projects(id),
     site_engineer_id UUID REFERENCES site_engineers(id),
     dpr_id UUID REFERENCES dprs(id),
-
     title TEXT NOT NULL,
     category TEXT NOT NULL,
     quantity NUMERIC NOT NULL,
     description TEXT,
-
+    request_image BYTEA,
+    request_image_mime TEXT,
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
     manager_feedback TEXT,
-
     reviewed_by UUID REFERENCES managers(id),
     reviewed_at TIMESTAMP,
-
     created_at TIMESTAMP DEFAULT now()
 );
 
 -- =========================================================
--- MATERIAL BILLS / INVOICES
+-- MATERIAL BILLS
 -- =========================================================
 
 CREATE TABLE material_bills (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     material_request_id UUID REFERENCES material_requests(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id),
-
     vendor_name TEXT NOT NULL,
     vendor_contact TEXT,
-
     bill_number TEXT NOT NULL,
     bill_amount NUMERIC NOT NULL,
-
     gst_percentage NUMERIC NOT NULL,
     gst_amount NUMERIC NOT NULL,
     total_amount NUMERIC NOT NULL,
-
-    bill_photo_url TEXT NOT NULL,
+    bill_image BYTEA,
+    bill_image_mime TEXT,
     category TEXT NOT NULL,
-
     status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
     manager_feedback TEXT,
-
     uploaded_by UUID REFERENCES site_engineers(id),
     reviewed_by UUID REFERENCES managers(id),
     reviewed_at TIMESTAMP,
-
     created_at TIMESTAMP DEFAULT now()
 );
 
 -- =========================================================
--- ATTENDANCE (APPROVED BY SITE ENGINEER)
--- =========================================================
-
-CREATE TABLE attendance (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(id),
-    labour_id UUID REFERENCES labours(id),
-    site_engineer_id UUID REFERENCES site_engineers(id),
-
-    attendance_date DATE NOT NULL,
-    check_in_time TIMESTAMP,
-    check_out_time TIMESTAMP,
-    work_hours NUMERIC,
-
-    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
-    approved_by UUID REFERENCES site_engineers(id),
-    approved_at TIMESTAMP,
-
-    UNIQUE (project_id, labour_id, attendance_date)
-);
-
--- =========================================================
--- WAGES
--- =========================================================
-
-CREATE TABLE wages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    attendance_id UUID REFERENCES attendance(id) ON DELETE CASCADE,
-    labour_id UUID REFERENCES labours(id),
-    project_id UUID REFERENCES projects(id),
-
-    wage_type TEXT CHECK (wage_type IN ('DAILY','HOURLY')) DEFAULT 'DAILY',
-    rate NUMERIC NOT NULL,
-    total_amount NUMERIC NOT NULL,
-
-    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
-    approved_by UUID REFERENCES managers(id),
-    approved_at TIMESTAMP,
-
-    created_at TIMESTAMP DEFAULT now(),
-    UNIQUE (attendance_id)
-);
-
--- =========================================================
--- OTP LOGS (FOR LABOUR LOGIN)
+-- OTP, AUDIT, SESSION, PASSWORD RESET
 -- =========================================================
 
 CREATE TABLE otp_logs (
@@ -283,10 +221,6 @@ CREATE TABLE otp_logs (
     created_at TIMESTAMP DEFAULT now()
 );
 
--- =========================================================
--- AUDIT LOGS
--- =========================================================
-
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     entity_type TEXT NOT NULL,
@@ -297,16 +231,112 @@ CREATE TABLE audit_logs (
     acted_by_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT now()
 );
+
 CREATE TABLE session (
     sid VARCHAR PRIMARY KEY,
     sess JSON NOT NULL,
     expire TIMESTAMP NOT NULL
 );
 
+CREATE TABLE password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    user_role TEXT NOT NULL CHECK (
+        user_role IN ('OWNER','MANAGER','SITE_ENGINEER','LABOUR')
+    ),
+    token_hash TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT now()
+);
+CREATE TABLE labour_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    site_engineer_id UUID REFERENCES site_engineers(id),
+    category TEXT NOT NULL,
+    required_count INTEGER NOT NULL,
+    search_radius_meters INTEGER NOT NULL,
+    request_date DATE NOT NULL,
+    status TEXT CHECK (status IN ('OPEN','LOCKED','CLOSED')) DEFAULT 'OPEN',
+    copied_from UUID REFERENCES labour_requests(id),
+    created_at TIMESTAMP DEFAULT now(),
+    UNIQUE (project_id, category, request_date)
+);
+
+CREATE TABLE labour_request_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    labour_request_id UUID REFERENCES labour_requests(id) ON DELETE CASCADE,
+    labour_id UUID REFERENCES labours(id),
+    joined_at TIMESTAMP DEFAULT now(),
+    UNIQUE (labour_request_id, labour_id)
+);
 
 -- =========================================================
--- INDEXES
+-- ATTENDANCE
 -- =========================================================
+
+CREATE TABLE attendance (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES projects(id),
+    labour_id UUID REFERENCES labours(id),
+    site_engineer_id UUID REFERENCES site_engineers(id),
+    attendance_date DATE NOT NULL,
+    check_in_time TIMESTAMP,
+    check_out_time TIMESTAMP,
+    work_hours NUMERIC,
+    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
+    approved_by UUID REFERENCES site_engineers(id),
+    approved_at TIMESTAMP,
+    UNIQUE (project_id, labour_id, attendance_date)
+);
+CREATE TABLE wages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    attendance_id UUID REFERENCES attendance(id) ON DELETE CASCADE,
+    labour_id UUID REFERENCES labours(id),
+    project_id UUID REFERENCES projects(id),
+    wage_type TEXT CHECK (wage_type IN ('DAILY','HOURLY')) DEFAULT 'DAILY',
+    rate NUMERIC NOT NULL,
+    total_amount NUMERIC NOT NULL,
+    status TEXT CHECK (status IN ('PENDING','APPROVED','REJECTED')) DEFAULT 'PENDING',
+    approved_by UUID REFERENCES managers(id),
+    approved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    UNIQUE (attendance_id)
+);
+CREATE TABLE plan_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+
+    period_type TEXT CHECK (period_type IN ('WEEK','CUSTOM')) NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+
+    task_name TEXT NOT NULL,
+    description TEXT,
+
+    planned_quantity NUMERIC,
+    planned_manpower INTEGER,
+    planned_cost NUMERIC,
+
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE plans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES managers(id),
+
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now(),
+
+    UNIQUE (project_id)
+);
+
+CREATE INDEX idx_prt_user ON password_reset_tokens(user_id, user_role);
+CREATE INDEX idx_prt_expires ON password_reset_tokens(expires_at);
 
 -- Login
 CREATE INDEX idx_owner_email ON owners(email);
