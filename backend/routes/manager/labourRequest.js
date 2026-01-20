@@ -1,0 +1,59 @@
+const express = require("express");
+const pool = require("../../db");
+const router = express.Router();
+const managerCheck = require("../../middleware/managerCheck");
+
+// Check if manager is ACTIVE in the project
+async function managerProjectStatusCheck(managerId, projectId) {
+  const statusResult = await pool.query(
+    `SELECT count(*) FROM project_managers
+     WHERE manager_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+    [managerId, projectId],
+  );
+  return parseInt(statusResult.rows[0].count) > 0;
+}
+
+// Check if manager is the creator of the project
+async function isProjectCreator(managerId, projectId) {
+  const result = await pool.query(
+    `SELECT count(*) FROM projects WHERE id = $1 AND created_by = $2`,
+    [projectId, managerId],
+  );
+  return parseInt(result.rows[0].count) > 0;
+}
+
+/* ---------------- GET LABOUR REQUESTS (READ-ONLY) ---------------- */
+router.get("/labour-requests", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { projectId } = req.query;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+
+    // Check if manager is ACTIVE in project or creator
+    const isActive = await managerProjectStatusCheck(managerId, projectId);
+    const isCreator = await isProjectCreator(managerId, projectId);
+
+    if (!isActive && !isCreator) {
+      return res.status(403).json({
+        error: "Access denied. Not an active manager in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM labour_requests 
+       WHERE project_id = $1 
+       ORDER BY request_date DESC, created_at DESC`,
+      [projectId],
+    );
+
+    res.json({ labour_requests: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+module.exports = router;

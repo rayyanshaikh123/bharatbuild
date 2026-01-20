@@ -80,6 +80,14 @@ router.patch("/:id", ownerCheck, async (req, res) => {
   const userId = req.user.id;
   const { status } = req.body;
   try {
+    // Validate status
+    const validStatuses = ["APPROVED", "REJECTED", "PENDING"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: "Invalid status. Must be APPROVED, REJECTED, or PENDING",
+      });
+    }
+
     const result = await pool.query(
       `UPDATE organization_managers om
        SET status = $1, approved_at = CASE WHEN $1 = 'APPROVED' THEN NOW() ELSE approved_at END

@@ -15,7 +15,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-  })
+  }),
 );
 
 /* ---------------- MIDDLEWARE ---------------- */
@@ -36,7 +36,7 @@ app.use(
       secure: false, // 1 day
       sameSite: "lax",
     },
-  })
+  }),
 );
 
 app.use(passport.initialize());
@@ -53,12 +53,21 @@ app.use("/owner", require("./routes/owner/owner"));
 app.use("/owner/dashboard", require("./routes/owner/dashboard"));
 app.use("/owner/organization", require("./routes/owner/organization"));
 app.use("/owner/requests", require("./routes/owner/organizationReq"));
+app.use("/owner/project", require("./routes/owner/project"));
+app.use(
+  "/owner/organization-engineers",
+  require("./routes/owner/organizationEngineers"),
+);
+app.use(
+  "/owner/organization-managers",
+  require("./routes/owner/organizationManagers"),
+);
+app.use("/owner/plan", require("./routes/owner/plan"));
+app.use("/owner/labour-request", require("./routes/owner/labourRequest"));
+app.use("/owner/dpr", require("./routes/owner/dpr"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
-
-
-/* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/manager/dashboard", require("./routes/manager/dashboard"));
 app.use("/manager/organization", require("./routes/manager/manOrganization"));
 app.use(
@@ -66,21 +75,27 @@ app.use(
   require("./routes/manager/enOrganiztionReq"),
 );
 app.use("/manager/project", require("./routes/manager/project"));
-app.use("/manager/projects", require("./routes/manager/project"));
+app.use("/manager/projects", require("./routes/manager/managerProject"));
 app.use(
   "/manager/project-requests",
-  require("./routes/manager/projectEngineerReq"),
+  require("./routes/manager/managerProjectReq"),
 );
 app.use(
   "/manager/project-engineer-requests",
   require("./routes/manager/projectEngineerReq"),
 );
+app.use("/manager/plan", require("./routes/manager/plan"));
+app.use("/manager/labour-request", require("./routes/manager/labourRequest"));
+app.use("/manager/dpr", require("./routes/manager/dpr"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
 app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
 app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
-// project requests route for engineers not implemented yet; skip registration
+app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
+app.use("/engineer/plan", require("./routes/engineer/plan"));
+app.use("/engineer/labour-request", require("./routes/engineer/labourRequest"));
+app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
