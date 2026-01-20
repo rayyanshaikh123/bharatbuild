@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/auth_providers.dart';
 import 'signin_template.dart';
-import '../theme/app_colors.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -38,7 +38,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           }).future,
         );
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/labour-flow');
+        Navigator.pushReplacementNamed(context, '/labour-dashboard');
         return;
       }
 
@@ -52,90 +52,50 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           }).future,
         );
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/engineer-flow');
+        Navigator.pushReplacementNamed(context, '/engineer-dashboard');
         return;
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Register failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args['role'] != null) {
         _role = args['role'] as String;
       }
       _initialized = true;
     }
 
+    final theme = Theme.of(context);
+
     return SignInTemplate(
-      title: 'Sign Up',
+      title: 'signup'.tr(),
       child: Column(
         children: [
           DropdownButtonFormField<String>(
             value: _role,
             items: [
-              const DropdownMenuItem(
-                value: 'engineer',
-                child: Text('Engineer'),
-              ),
-              const DropdownMenuItem(value: 'labour', child: Text('Labour')),
+              DropdownMenuItem(value: 'engineer', child: Text('engineer'.tr())),
+              DropdownMenuItem(value: 'labour', child: Text('labour'.tr())),
             ],
             onChanged: (v) => setState(() => _role = v ?? 'engineer'),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              filled: true,
-              fillColor: AppColors.accent,
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(50),
-              ),
-            ),
-            dropdownColor: Theme.of(context).colorScheme.surface,
+            decoration: const InputDecoration(),
           ),
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 16.0),
           TextField(
             controller: _nameController,
-            decoration: InputDecoration(
-              hintText: 'Name',
-              filled: true,
-              fillColor: AppColors.accent,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(50),
-              ),
-            ),
+            decoration: InputDecoration(hintText: 'name'.tr()),
           ),
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 16.0),
           if (_role == 'labour')
             TextField(
               controller: _phoneController,
-              decoration: InputDecoration(
-                hintText: 'Phone',
-                filled: true,
-                fillColor: AppColors.accent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(50),
-                ),
-              ),
+              decoration: InputDecoration(hintText: 'phone'.tr()),
               keyboardType: TextInputType.phone,
             )
           else
@@ -143,87 +103,48 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               children: [
                 TextField(
                   controller: _emailController,
-                  decoration: InputDecoration(
-                    hintText: 'Email',
-                    filled: true,
-                    fillColor: AppColors.accent,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                  ),
+                  decoration: InputDecoration(hintText: 'email'.tr()),
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 12.0),
+                const SizedBox(height: 16.0),
                 TextField(
                   controller: _phoneController,
-                  decoration: InputDecoration(
-                    hintText: 'Phone',
-                    filled: true,
-                    fillColor: AppColors.accent,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                  ),
+                  decoration: InputDecoration(hintText: 'phone'.tr()),
                   keyboardType: TextInputType.phone,
                 ),
               ],
             ),
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 16.0),
           if (_role != 'labour')
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(
-                hintText: 'Password',
-                filled: true,
-                fillColor: AppColors.accent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(50),
-                ),
-              ),
+              decoration: InputDecoration(hintText: 'password'.tr()),
               obscureText: true,
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _submit,
             style: ElevatedButton.styleFrom(
-              elevation: 0,
-              minimumSize: const Size(160, 48),
-              shape: const StadiumBorder(),
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.primaryForeground,
+              minimumSize: const Size(double.infinity, 56),
             ),
-            child: const Text('Sign Up'),
+            child: Text('register'.tr()),
           ),
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 24.0),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Already have an account? '),
+              Text('already_have_account'.tr() + " "),
               TextButton(
                 onPressed: () => Navigator.pushNamed(
                   context,
                   '/login',
                   arguments: {'role': _role},
                 ),
-                child: const Text('Sign in'),
+                child: Text('login'.tr(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
+          const SizedBox(height: 16.0),
         ],
       ),
     );

@@ -99,6 +99,8 @@ app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
+app.use("/labour/jobs", require("./routes/labour/jobs"));
+app.use("/labour/attendance", require("./routes/labour/attendance"));
 /* ---------------- META (client config) ---------------- */
 
 /* ---------------- HEALTH ---------------- */

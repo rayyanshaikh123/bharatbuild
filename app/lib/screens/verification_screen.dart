@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/auth_providers.dart';
 import '../providers/user_provider.dart';
 
@@ -15,16 +16,45 @@ class VerificationScreen extends StatelessWidget {
       phone = args['phone'] ?? '';
     }
 
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: LogoWithTitle(
-        title: 'Verification',
-        subText: "SMS Verification code has been sent",
-        children: [
-          Text(phone.isNotEmpty ? phone : '+1 18577 11111'),
-          SizedBox(height: MediaQuery.of(context).size.height * 0.04),
-          OtpForm(phone: phone),
-        ],
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  SizedBox(height: constraints.maxHeight * 0.1),
+                  Hero(
+                    tag: 'logo',
+                    child: Image.asset('assets/images/bharatbuild_logo.png', height: 100),
+                  ),
+                  SizedBox(height: constraints.maxHeight * 0.08),
+                  Text(
+                    'verify_otp'.tr(),
+                    style: theme.textTheme.headlineSmall!.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text(
+                      'otp_sent_to'.tr(args: [phone.isNotEmpty ? phone : '...']),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  OtpForm(phone: phone),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -40,10 +70,6 @@ class OtpForm extends ConsumerStatefulWidget {
 
 class _OtpFormState extends ConsumerState<OtpForm> {
   final _formKey = GlobalKey<FormState>();
-  final List<TextInputFormatter> otpTextInputFormatters = [
-    FilteringTextInputFormatter.digitsOnly,
-    LengthLimitingTextInputFormatter(1),
-  ];
   late FocusNode _pin1Node;
   late FocusNode _pin2Node;
   late FocusNode _pin3Node;
@@ -91,11 +117,10 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                   onChanged: (value) {
                     if (value.length == 1) _pin2Node.requestFocus();
                   },
-                  onSaved: (pin) {},
                   autofocus: true,
                 ),
               ),
-              const SizedBox(width: 16.0),
+              const SizedBox(width: 12.0),
               Expanded(
                 child: OtpTextFormField(
                   controller: _c2,
@@ -103,10 +128,9 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                   onChanged: (value) {
                     if (value.length == 1) _pin3Node.requestFocus();
                   },
-                  onSaved: (pin) {},
                 ),
               ),
-              const SizedBox(width: 16.0),
+              const SizedBox(width: 12.0),
               Expanded(
                 child: OtpTextFormField(
                   controller: _c3,
@@ -114,10 +138,9 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                   onChanged: (value) {
                     if (value.length == 1) _pin4Node.requestFocus();
                   },
-                  onSaved: (pin) {},
                 ),
               ),
-              const SizedBox(width: 16.0),
+              const SizedBox(width: 12.0),
               Expanded(
                 child: OtpTextFormField(
                   controller: _c4,
@@ -125,12 +148,11 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                   onChanged: (value) {
                     if (value.length == 1) _pin4Node.unfocus();
                   },
-                  onSaved: (pin) {},
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 40.0),
           ElevatedButton(
             onPressed: _loading
                 ? null
@@ -140,7 +162,7 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                     final otp = '${_c1.text}${_c2.text}${_c3.text}${_c4.text}';
                     if (otp.length != 4) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Enter 4-digit OTP')),
+                        SnackBar(content: Text('enter_4_digit_otp'.tr())),
                       );
                       return;
                     }
@@ -152,49 +174,33 @@ class _OtpFormState extends ConsumerState<OtpForm> {
                           'otp': otp,
                         }).future,
                       );
-                      // save authenticated user/session into provider
                       ref.read(currentUserProvider.notifier).state = result;
-                      final needsProfile =
-                          result['primary_latitude'] == null ||
-                          result['primary_longitude'] == null;
+                      final needsProfile = result['primary_latitude'] == null;
                       if (!mounted) return;
                       if (needsProfile) {
-                        Navigator.pushReplacementNamed(
-                          context,
-                          '/complete-profile',
-                        );
+                        Navigator.pushReplacementNamed(context, '/complete-profile');
                       } else {
-                        Navigator.pushReplacementNamed(
-                          context,
-                          '/labour-dashboard',
-                        );
+                        Navigator.pushReplacementNamed(context, '/labour-dashboard');
                       }
                     } catch (e) {
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('OTP verify failed: $e')),
+                        SnackBar(content: Text('error'.tr() + ': $e')),
                       );
                     } finally {
                       if (mounted) setState(() => _loading = false);
                     }
                   },
             style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor: const Color(0xFF00BF6D),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 48),
-              shape: const StadiumBorder(),
+              minimumSize: const Size(double.infinity, 56),
             ),
             child: _loading
                 ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : const Text("Next"),
+                : Text("continue".tr()),
           ),
         ],
       ),
@@ -202,16 +208,9 @@ class _OtpFormState extends ConsumerState<OtpForm> {
   }
 }
 
-const InputDecoration otpInputDecoration = InputDecoration(
-  filled: false,
-  border: UnderlineInputBorder(),
-  hintText: "0",
-);
-
 class OtpTextFormField extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
-  final FormFieldSetter<String>? onSaved;
   final bool autofocus;
   final TextEditingController? controller;
 
@@ -219,82 +218,40 @@ class OtpTextFormField extends StatelessWidget {
     Key? key,
     this.focusNode,
     this.onChanged,
-    this.onSaved,
     this.autofocus = false,
     this.controller,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return TextFormField(
-      autovalidateMode: AutovalidateMode.onUserInteraction,
       controller: controller,
       focusNode: focusNode,
       onChanged: onChanged,
-      onSaved: onSaved,
       autofocus: autofocus,
-      obscureText: true,
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(1),
       ],
       textAlign: TextAlign.center,
       keyboardType: TextInputType.number,
-      style: Theme.of(context).textTheme.headlineSmall,
-      decoration: otpInputDecoration,
-    );
-  }
-}
-
-class LogoWithTitle extends StatelessWidget {
-  final String title, subText;
-  final List<Widget> children;
-
-  const LogoWithTitle({
-    Key? key,
-    required this.title,
-    this.subText = '',
-    required this.children,
-  }) : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              children: [
-                SizedBox(height: constraints.maxHeight * 0.1),
-                Image.asset('assets/images/bharatbuild_logo.png', height: 100),
-                SizedBox(
-                  height: constraints.maxHeight * 0.1,
-                  width: double.infinity,
-                ),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text(
-                    subText,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      height: 1.5,
-                      color: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge!.color!.withOpacity(0.64),
-                    ),
-                  ),
-                ),
-                ...children,
-              ],
-            ),
-          );
-        },
+      style: theme.textTheme.headlineSmall,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: theme.colorScheme.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+        ),
       ),
     );
   }

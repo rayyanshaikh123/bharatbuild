@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/user_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../theme/app_colors.dart';
@@ -24,75 +25,103 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final currentIndex = ref.watch(bottomNavIndexProvider);
+    final String role = user?['role']?.toString().toUpperCase() ?? 'LABOUR';
+    final isEngineer = role == 'ENGINEER' || role == 'SITE_ENGINEER';
+
+    final List<BottomNavigationBarItem> items = [
+      BottomNavigationBarItem(
+        icon: SvgPicture.string(
+          homeIcon,
+          colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+        ),
+        activeIcon: SvgPicture.string(
+          homeIcon,
+          colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+        ),
+        label: 'home'.tr(),
+      ),
+      if (isEngineer)
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            briefcaseIcon,
+            colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            briefcaseIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'projects'.tr(),
+        )
+      else
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            briefcaseIcon,
+            colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            briefcaseIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'my_jobs'.tr(),
+        ),
+      if (isEngineer)
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            chartIcon,
+            colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            chartIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'reports'.tr(),
+        ),
+      BottomNavigationBarItem(
+        icon: Stack(
+          alignment: Alignment.center,
+          children: [
+            SvgPicture.string(
+              userIcon,
+              colorFilter: const ColorFilter.mode(
+                inActiveIconColor,
+                BlendMode.srcIn,
+              ),
+            ),
+            if (user != null && user['name'] != null)
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 8,
+                    minHeight: 8,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        activeIcon: SvgPicture.string(
+          userIcon,
+          colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+        ),
+        label: user != null && user['name'] != null
+            ? (user['name'] as String).split(' ').first
+            : 'profile'.tr(),
+      ),
+    ];
+
     return BottomNavigationBar(
       onTap: updateCurrentIndex,
-      currentIndex: currentIndex,
+      currentIndex: currentIndex >= items.length ? 0 : currentIndex,
       showSelectedLabels: false,
       showUnselectedLabels: false,
       type: BottomNavigationBarType.fixed,
-      items: [
-        BottomNavigationBarItem(
-          icon: SvgPicture.string(
-            homeIcon,
-            colorFilter: ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
-          ),
-          activeIcon: SvgPicture.string(
-            homeIcon,
-            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-          ),
-          label: 'Home',
-        ),
-        // Tasks tab removed
-        BottomNavigationBarItem(
-          icon: SvgPicture.string(
-            mapIcon,
-            colorFilter: ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
-          ),
-          activeIcon: SvgPicture.string(
-            mapIcon,
-            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-          ),
-          label: 'Map',
-        ),
-        // Attendance tab removed
-        BottomNavigationBarItem(
-          icon: Stack(
-            alignment: Alignment.center,
-            children: [
-              SvgPicture.string(
-                userIcon,
-                colorFilter: const ColorFilter.mode(
-                  inActiveIconColor,
-                  BlendMode.srcIn,
-                ),
-              ),
-              if (user != null && user['name'] != null)
-                Positioned(
-                  right: -6,
-                  top: -6,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 8,
-                      minHeight: 8,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          activeIcon: SvgPicture.string(
-            userIcon,
-            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-          ),
-          label: user != null && user['name'] != null
-              ? (user['name'] as String).split(' ').first
-              : 'Profile',
-        ),
-      ],
+      items: items,
     );
   }
 }
@@ -112,3 +141,9 @@ const userIcon =
 
 const mapIcon =
     '''<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 11-9 11S3 16 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="2"/></svg>''';
+
+const briefcaseIcon =
+    '''<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>''';
+
+const chartIcon = 
+    '''<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>''';

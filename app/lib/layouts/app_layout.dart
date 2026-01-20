@@ -62,24 +62,16 @@ class AppLayout extends ConsumerWidget {
               mobilePages ??
               [
                 const OperationZonesHome(),
-                const LiveMapContent(),
+                const ApplicationsContent(),
                 const ProfileContent(),
               ];
 
           return Scaffold(
             appBar: AppHeader(title: title),
             bottomNavigationBar: const BottomNavBar(),
-            body: Container(
-              color: Theme.of(context).colorScheme.background,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: IndexedStack(
-                  index: idx,
-                  children: pages
-                      .map((p) => SingleChildScrollView(child: p))
-                      .toList(),
-                ),
-              ),
+            body: IndexedStack(
+              index: idx,
+              children: pages,
             ),
           );
         }

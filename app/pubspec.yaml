@@ -55,6 +55,8 @@ dependencies:
   workmanager: ^0.9.0+3
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  easy_localization: ^3.0.8
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +82,7 @@ flutter:
 
   assets:
     - assets/images/bharatbuild_logo.png
+    - assets/translations/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

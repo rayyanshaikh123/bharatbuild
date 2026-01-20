@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/auth_providers.dart';
-import '../theme/app_colors.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final String? initialRole;
-  LoginScreen({super.key, this.initialRole});
+  const LoginScreen({super.key, this.initialRole});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
@@ -33,12 +34,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_didInitArgs) {
-      // Priority: explicit constructor `initialRole`, then route args.
       if (widget.initialRole != null) {
         _role = widget.initialRole!;
       } else {
-        final args =
-            ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
         if (args != null && args['role'] != null) {
           _role = args['role'] as String;
         }
@@ -49,47 +48,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (_role == 'labour') {
-      // Labour OTP flow handled inline here
       if (!_otpSent) {
         final phone = _phoneController.text.trim();
         if (phone.isEmpty) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Phone is required')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
           return;
         }
         try {
           await ref.read(labourOtpRequestProvider(phone).future);
           setState(() => _otpSent = true);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('OTP requested')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('otp_requested'.tr())));
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('OTP request failed: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
         }
         return;
       }
 
-      // Verify OTP
       final phone = _phoneController.text.trim();
       final otp = _otpController.text.trim();
       if (otp.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('OTP is required')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
         return;
       }
       try {
-        await ref.read(
-          labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future,
-        );
-        Navigator.pushReplacementNamed(context, '/labour-flow');
+        await ref.read(labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future);
+        Navigator.pushReplacementNamed(context, '/labour-dashboard');
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('OTP verify failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
       }
       return;
     }
@@ -99,80 +84,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     try {
-      // Only engineer login is supported for non-labour roles
-      await ref.read(
-        engineerLoginProvider({'email': email, 'password': password}).future,
-      );
-      Navigator.pushReplacementNamed(context, '/engineer-flow');
+      await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
+      Navigator.pushReplacementNamed(context, '/engineer-dashboard');
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // role initialization moved to didChangeDependencies to avoid mutating
-    // state during build
-
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
                   SizedBox(height: constraints.maxHeight * 0.1),
-                  Image.asset(
-                    'assets/images/bharatbuild_logo.png',
-                    height: 100,
+                  Hero(
+                    tag: 'logo',
+                    child: Image.asset(
+                      'assets/images/bharatbuild_logo.png',
+                      height: 100,
+                    ),
                   ),
-                  SizedBox(height: constraints.maxHeight * 0.1),
+                  SizedBox(height: constraints.maxHeight * 0.08),
                   Text(
-                    "Sign In",
-                    style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                    "sign_in".tr(),
+                    style: theme.textTheme.headlineSmall!.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: constraints.maxHeight * 0.05),
-
+                  SizedBox(height: 32),
                   DropdownButtonFormField<String>(
                     value: _role,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'engineer',
-                        child: Text('Engineer'),
-                      ),
-                      DropdownMenuItem(value: 'labour', child: Text('Labour')),
+                    items: [
+                      DropdownMenuItem(value: 'engineer', child: Text('engineer'.tr())),
+                      DropdownMenuItem(value: 'labour', child: Text('labour'.tr())),
                     ],
                     onChanged: (v) => setState(() {
                       final newRole = v ?? 'engineer';
                       if (newRole != _role) {
-                        // clear fields that are not relevant for the new role
                         _emailController.clear();
                         _phoneController.clear();
                         _passwordController.clear();
+                        _otpSent = false;
                       }
                       _role = newRole;
                     }),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppColors.accent,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 16.0,
-                      ),
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.all(Radius.circular(50)),
-                      ),
-                    ),
-                    dropdownColor: AppColors.accent,
+                    decoration: const InputDecoration(),
                   ),
-                  const SizedBox(height: 12.0),
+                  const SizedBox(height: 16.0),
                   Form(
                     key: _formKey,
                     child: Column(
@@ -180,123 +144,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         if (_role == 'labour') ...[
                           TextFormField(
                             controller: _phoneController,
-                            decoration: InputDecoration(
-                              hintText: 'Phone',
-                              filled: true,
-                              fillColor: AppColors.accent,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 24.0,
-                                vertical: 16.0,
-                              ),
-                              border: OutlineInputBorder(
-                                borderSide: BorderSide.none,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(50),
-                                ),
-                              ),
-                            ),
+                            decoration: InputDecoration(hintText: 'phone'.tr()),
                             keyboardType: TextInputType.phone,
-                            validator: (v) =>
-                                (v ?? '').isEmpty ? 'Required' : null,
+                            validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 16.0),
                           if (_otpSent) ...[
                             TextFormField(
                               controller: _otpController,
-                              decoration: InputDecoration(
-                                hintText: 'OTP',
-                                filled: true,
-                                fillColor: AppColors.accent,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 24.0,
-                                  vertical: 16.0,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderSide: BorderSide.none,
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(50),
-                                  ),
-                                ),
-                              ),
+                              decoration: InputDecoration(hintText: 'otp'.tr()),
                               keyboardType: TextInputType.number,
                             ),
                           ],
                         ] else ...[
                           TextFormField(
                             controller: _emailController,
-                            decoration: InputDecoration(
-                              hintText: 'Email',
-                              filled: true,
-                              fillColor: AppColors.accent,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 24.0,
-                                vertical: 16.0,
-                              ),
-                              border: OutlineInputBorder(
-                                borderSide: BorderSide.none,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(50),
-                                ),
-                              ),
-                            ),
+                            decoration: InputDecoration(hintText: 'email'.tr()),
                             keyboardType: TextInputType.emailAddress,
-                            validator: (v) =>
-                                (v ?? '').isEmpty ? 'Required' : null,
+                            validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
                           ),
-                          const SizedBox(height: 12.0),
+                          const SizedBox(height: 16.0),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: InputDecoration(
-                              hintText: 'Password',
-                              filled: true,
-                              fillColor: AppColors.accent,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 24.0,
-                                vertical: 16.0,
-                              ),
-                              border: OutlineInputBorder(
-                                borderSide: BorderSide.none,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(50),
-                                ),
-                              ),
-                            ),
+                            decoration: InputDecoration(hintText: 'password'.tr()),
                             obscureText: true,
-                            validator: (v) =>
-                                (v ?? '').isEmpty ? 'Required' : null,
+                            validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
                           ),
                         ],
-                        const SizedBox(height: 16.0),
+                        const SizedBox(height: 24.0),
                         ElevatedButton(
                           onPressed: _submit,
                           style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 48),
-                            shape: const StadiumBorder(),
+                            minimumSize: const Size(double.infinity, 56),
                           ),
-                          child: Text(
-                            _role == 'labour' ? 'Continue' : 'Sign in',
-                          ),
+                          child: Text(_role == 'labour' ? 'continue'.tr() : 'sign_in'.tr()),
                         ),
                         const SizedBox(height: 16.0),
                         if (_role != 'labour')
                           TextButton(
-                            onPressed: () => Navigator.pushNamed(
-                              context,
-                              '/forgot-password',
-                            ),
+                            onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                             child: Text(
-                              'Forgot Password?',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color
-                                        ?.withOpacity(0.64),
-                                  ),
+                              'forgot_password_q'.tr(),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              ),
                             ),
                           ),
                         TextButton(
@@ -307,22 +198,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           child: Text.rich(
                             TextSpan(
-                              text: "Don’t have an account? ",
+                              text: "dont_have_account".tr() + " ",
                               children: [
                                 TextSpan(
-                                  text: "Sign Up",
-                                  style: TextStyle(color: AppColors.primary),
+                                  text: "signup".tr(),
+                                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.color
-                                      ?.withOpacity(0.64),
-                                ),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            ),
                           ),
                         ),
                       ],

@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_theme.dart';
+import '../providers/app_config_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AppHeader extends StatelessWidget implements PreferredSizeWidget {
+class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   const AppHeader({super.key, required this.title});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return AppBar(
       title: Row(
         children: [
-          Image.asset('assets/images/bharatbuild_logo.png', height: 28),
-          const SizedBox(width: 12),
-          Text(title, style: Theme.of(context).textTheme.headingMedium),
+          Image.asset('assets/images/bharatbuild_logo.png', height: 32),
         ],
       ),
       elevation: 0,
@@ -24,10 +26,14 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       actions: [
         IconButton(
-          tooltip: 'Profile',
-          onPressed: () => Navigator.pushNamed(context, '/profile'),
-          icon: const Icon(Icons.person_outline),
+          tooltip: 'Toggle Theme',
+          onPressed: () => ref.read(themeProvider.notifier).toggleTheme(),
+          icon: Icon(
+            themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+            color: AppColors.foreground,
+          ),
         ),
+        const SizedBox(width: 8),
       ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
