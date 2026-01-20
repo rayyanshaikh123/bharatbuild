@@ -4,7 +4,7 @@ const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
 
 // Check if owner owns the organization of the project
-async function ownerOfProject(ownerId, projectId) {
+async function ownerOwnsProject(ownerId, projectId) {
   const result = await pool.query(
     `SELECT COUNT(*) FROM projects p
      JOIN organizations o ON p.org_id = o.id
@@ -21,7 +21,7 @@ router.get("/projects/:projectId/dprs", ownerCheck, async (req, res) => {
     const { projectId } = req.params;
 
     // Check if owner owns the organization of this project
-    const isOwner = await ownerOfProject(ownerId, projectId);
+    const isOwner = await ownerOwnsProject(ownerId, projectId);
     if (!isOwner) {
       return res.status(403).json({
         error: "Access denied. You do not own this project's organization.",
@@ -62,7 +62,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -104,7 +104,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -146,7 +146,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -198,7 +198,7 @@ router.get("/dprs/:dprId", ownerCheck, async (req, res) => {
     const projectId = dprCheck.rows[0].project_id;
 
     // Check if owner owns the organization of this project
-    const isOwner = await ownerOfProject(ownerId, projectId);
+    const isOwner = await ownerOwnsProject(ownerId, projectId);
     if (!isOwner) {
       return res.status(403).json({
         error: "Access denied. You do not own this project's organization.",
@@ -252,7 +252,7 @@ router.get("/dprs/:dprId/image", ownerCheck, async (req, res) => {
     } = dprCheck.rows[0];
 
     // Check if owner owns the organization of this project
-    const isOwner = await ownerOfProject(ownerId, projectId);
+    const isOwner = await ownerOwnsProject(ownerId, projectId);
     if (!isOwner) {
       return res.status(403).json({
         error: "Access denied. You do not own this project's organization.",
@@ -280,7 +280,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -322,7 +322,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -364,7 +364,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",
@@ -406,7 +406,7 @@ router.get(
       const ownerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const isOwner = await ownerOfProject(ownerId, projectId);
+      const isOwner = await ownerOwnsProject(ownerId, projectId);
       if (!isOwner) {
         return res.status(403).json({
           error: "Access denied. You do not own this project's organization.",

@@ -4,7 +4,7 @@ const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
 
 // Check if owner owns the organization of the project
-async function ownerOfProject(ownerId, projectId) {
+async function ownerOwnsProject(ownerId, projectId) {
   const result = await pool.query(
     `SELECT COUNT(*) FROM projects p
      JOIN organizations o ON p.org_id = o.id
@@ -25,7 +25,7 @@ router.get("/labour-requests", ownerCheck, async (req, res) => {
     }
 
     // Check if owner owns the organization of this project
-    const isOwner = await ownerOfProject(ownerId, projectId);
+    const isOwner = await ownerOwnsProject(ownerId, projectId);
 
     if (!isOwner) {
       return res.status(403).json({

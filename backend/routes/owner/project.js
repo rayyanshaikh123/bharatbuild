@@ -3,19 +3,32 @@ const pool = require("../../db");
 const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
 
-async function ownerOfProjectOrganization(ownerId, projectId) {
+async function ownerOwnsOrganization(ownerId, organizationId) {
   const result = await pool.query(
-    `SELECT COUNT(*) FROM projects p
+    `SELECT 1
+     FROM organizations
+     WHERE id = $1 AND owner_id = $2`,
+    [organizationId, ownerId],
+  );
+  return result.rowCount > 0;
+}
+
+async function ownerOwnsProject(ownerId, projectId) {
+  const result = await pool.query(
+    `SELECT 1
+     FROM projects p
      JOIN organizations o ON p.org_id = o.id
      WHERE p.id = $1 AND o.owner_id = $2`,
     [projectId, ownerId],
   );
-  return parseInt(result.rows[0].count) > 0;
+  return result.rowCount > 0;
 }
+
 router.get("/all/projects", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
+  console.log(ownerId);
   const { organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
@@ -35,7 +48,7 @@ router.get("/project/:projectId", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
   const { projectId } = req.params;
   const { organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
@@ -56,7 +69,7 @@ router.get("/project/:projectId", ownerCheck, async (req, res) => {
 router.get("/project-managers/active", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
   const { projectId, organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
@@ -79,7 +92,7 @@ router.get("/project-managers/active", ownerCheck, async (req, res) => {
 router.get("/project-managers/pending", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
   const { projectId, organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
@@ -102,7 +115,7 @@ router.get("/project-managers/pending", ownerCheck, async (req, res) => {
 router.get("/project-managers/rejected", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
   const { projectId, organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
@@ -125,7 +138,7 @@ router.get("/project-managers/rejected", ownerCheck, async (req, res) => {
 router.get("/project-manager/owner", ownerCheck, async (req, res) => {
   const ownerId = req.user.id;
   const { projectId, organizationId } = req.query;
-  const status = await ownerOfProjectOrganization(ownerId, organizationId);
+  const status = await ownerOwnsOrganization(ownerId, organizationId);
   if (!status) {
     return res
       .status(403)
