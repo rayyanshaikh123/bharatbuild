@@ -27,10 +27,8 @@ interface NavItem {
 
 const ownerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
-  { label: "Organizations", href: "/owner/organizations", icon: Building2 },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Reports", href: "/owner/reports", icon: FileText },
-  { label: "Settings", href: "/owner/settings", icon: Settings },
 ];
 
 const managerNavItems: NavItem[] = [
@@ -38,7 +36,6 @@ const managerNavItems: NavItem[] = [
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
-  { label: "Settings", href: "/manager/settings", icon: Settings },
 ];
 
 export function DashboardSidebar() {
