@@ -58,4 +58,3 @@ final labourRegisterProvider =
       final svc = ref.read(authServiceProvider);
       return await svc.labourRegister(args['name']!, args['phone']!);
     });
-// Note: manager role removed — keep labour and engineer providers only.

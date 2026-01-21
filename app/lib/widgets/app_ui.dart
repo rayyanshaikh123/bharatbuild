@@ -5,6 +5,8 @@ import '../theme/app_text_theme.dart';
 import '../providers/app_config_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../offline_sync/sync_service.dart';
+
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   const AppHeader({super.key, required this.title});
@@ -12,6 +14,8 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final theme = Theme.of(context);
+    final foreground = theme.brightness == Brightness.dark ? Colors.white : AppColors.foreground;
 
     return AppBar(
       title: Row(
@@ -21,31 +25,43 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
       ),
       elevation: 0,
       backgroundColor: Colors.transparent,
-      foregroundColor: AppColors.foreground,
+      foregroundColor: foreground,
       centerTitle: false,
       automaticallyImplyLeading: false,
       actions: [
+        IconButton(
+          tooltip: 'Sync Data',
+          onPressed: () async {
+            try {
+              final count = await ref.read(syncServiceProvider).performManualSync();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('$count items synced successfully'), backgroundColor: Colors.green),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+                );
+              }
+            }
+          },
+          icon: const Icon(Icons.sync_outlined),
+        ),
         IconButton(
           tooltip: 'Toggle Theme',
           onPressed: () => ref.read(themeProvider.notifier).toggleTheme(),
           icon: Icon(
             themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-            color: AppColors.foreground,
           ),
         ),
         const SizedBox(width: 8),
       ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.background.withOpacity(0.95),
-              AppColors.background.withOpacity(0.85),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          border: Border(bottom: BorderSide(color: AppColors.border)),
+          color: theme.scaffoldBackgroundColor,
+          border: Border(bottom: BorderSide(color: AppColors.border.withOpacity(0.5))),
         ),
       ),
     );

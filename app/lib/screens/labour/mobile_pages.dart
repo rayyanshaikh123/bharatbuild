@@ -13,6 +13,9 @@ import '../../providers/job_provider.dart';
 import 'job_details_screen.dart';
 import '../../providers/attendance_provider.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../widgets/site_map_widget.dart';
+import 'package:latlong2/latlong.dart';
+import '../../providers/current_project_provider.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends ConsumerWidget {
@@ -81,6 +84,30 @@ class LabourDashboardContent extends ConsumerWidget {
             const _AttendanceSection(),
 
             const SizedBox(height: 32),
+
+            // Site Map (if checked-in)
+            ref.watch(todayAttendanceProvider).maybeWhen(
+              data: (attendance) {
+                if (attendance != null && attendance['check_out'] == null && attendance['geofence'] != null) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'site_geofence'.tr(),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      SiteMapWidget(
+                        geofence: (attendance['geofence'] as List).map((p) => LatLng(p[0], p[1])).toList(),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
             
             // Available Jobs Title
             Row(

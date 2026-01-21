@@ -24,6 +24,14 @@ import 'screens/profile_screen.dart';
 import 'screens/labour/address_management_screen.dart';
 import 'screens/common/settings_screen.dart';
 import 'screens/engineer/engineer_flow.dart';
+import 'screens/engineer/edit_profile.dart';
+import 'screens/engineer/account_settings.dart';
+import 'screens/engineer/notifications.dart';
+import 'screens/engineer/labour_requests_screen.dart';
+import 'screens/engineer/manual_attendance_screen.dart';
+import 'screens/engineer/material_management_screen.dart';
+import 'screens/engineer/daily_wages_screen.dart';
+import 'screens/engineer/organization_list_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -33,7 +41,13 @@ void main() async {
   
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('hi')],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('hi'),
+        Locale('ta'),
+        Locale('gu'),
+        Locale('mr'),
+      ],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
       child: const ProviderScope(child: MyApp()),
@@ -75,6 +89,14 @@ class MyApp extends ConsumerWidget {
           '/addresses': (_) => const AddressManagementScreen(),
           '/engineer-dashboard': (_) => const EngineerFlowScreen(),
           '/labour-flow': (_) => const LabourFlowScreen(),
+          '/engineer-edit-profile': (_) => const EditProfileScreen(),
+          '/engineer-settings': (_) => const AccountSettingsScreen(),
+          '/engineer-notifications': (_) => const NotificationsScreen(),
+          '/engineer-labour-requests': (_) => const LabourRequestsScreen(),
+          '/engineer-attendance': (_) => const ManualAttendanceScreen(),
+          '/engineer-materials': (_) => const MaterialManagementScreen(),
+          '/engineer-wages': (_) => const DailyWagesScreen(),
+          '/engineer-organization': (_) => const OrganizationListScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {
