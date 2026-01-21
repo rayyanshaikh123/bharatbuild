@@ -212,6 +212,18 @@ CREATE TABLE material_requests (
     reviewed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT now()
 );
+-- Make dpr_id explicitly nullable (if not already)
+ALTER TABLE material_requests
+ALTER COLUMN dpr_id DROP NOT NULL;
+
+-- Ensure foreign key does NOT cascade deletes
+ALTER TABLE material_requests
+DROP CONSTRAINT IF EXISTS material_requests_dpr_id_fkey;
+
+ALTER TABLE material_requests
+ADD CONSTRAINT material_requests_dpr_id_fkey
+FOREIGN KEY (dpr_id) REFERENCES dprs(id)
+ON DELETE SET NULL;
 
 -- =========================================================
 -- MATERIAL BILLS
@@ -239,6 +251,17 @@ CREATE TABLE material_bills (
     created_at TIMESTAMP DEFAULT now()
 );
 
+ALTER TABLE material_bills
+ALTER COLUMN material_request_id DROP NOT NULL;
+
+-- Remove cascading delete to prevent data loss
+ALTER TABLE material_bills
+DROP CONSTRAINT IF EXISTS material_bills_material_request_id_fkey;
+
+ALTER TABLE material_bills
+ADD CONSTRAINT material_bills_material_request_id_fkey
+FOREIGN KEY (material_request_id) REFERENCES material_requests(id)
+ON DELETE SET NULL;
 -- =========================================================
 -- OTP, AUDIT, SESSION, PASSWORD RESET
 -- =========================================================
@@ -362,4 +385,3 @@ CREATE INDEX idx_wages_status ON wages(status);
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor ON audit_logs(acted_by_role, acted_by_id);
 CREATE INDEX idx_audit_time ON audit_logs(created_at);
-tset

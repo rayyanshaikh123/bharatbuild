@@ -46,10 +46,14 @@ router.post("/", engineerCheck, async (req, res) => {
       const activeProject = await pool.query(
         `SELECT project_id FROM project_site_engineers 
          WHERE site_engineer_id = $1 AND status = 'ACTIVE' LIMIT 1`,
-        [engineerId]
+        [engineerId],
       );
       if (activeProject.rows.length === 0) {
-        return res.status(400).json({ error: "No active project found. Please provide project_id." });
+        return res
+          .status(400)
+          .json({
+            error: "No active project found. Please provide project_id.",
+          });
       }
       project_id = activeProject.rows[0].project_id;
     }
@@ -108,7 +112,7 @@ router.get("/", engineerCheck, async (req, res) => {
       const activeProject = await pool.query(
         `SELECT project_id FROM project_site_engineers 
          WHERE site_engineer_id = $1 AND status = 'ACTIVE' LIMIT 1`,
-        [engineerId]
+        [engineerId],
       );
       if (activeProject.rows.length > 0) {
         projectId = activeProject.rows[0].project_id;
@@ -148,13 +152,13 @@ router.get("/:requestId/applicants", engineerCheck, async (req, res) => {
        JOIN labours l ON lrp.labour_id = l.id
        JOIN labour_requests lr ON lrp.labour_request_id = lr.id
        WHERE lrp.labour_request_id = $1`,
-      [requestId]
+      [requestId],
     );
     res.json({
-      applicants: result.rows.map(row => ({
+      applicants: result.rows.map((row) => ({
         ...row,
-        status: row.status || 'PENDING'
-      }))
+        status: row.status || "PENDING",
+      })),
     });
   } catch (err) {
     console.error(err);
@@ -163,37 +167,42 @@ router.get("/:requestId/applicants", engineerCheck, async (req, res) => {
 });
 
 /* ---------------- APPROVE LABOURER ---------------- */
-router.post("/:requestId/approve/:labourId", engineerCheck, async (req, res) => {
-  try {
-    const { requestId, labourId } = req.params;
-    const engineerId = req.user.id;
+router.post(
+  "/:requestId/approve/:labourId",
+  engineerCheck,
+  async (req, res) => {
+    try {
+      const { requestId, labourId } = req.params;
+      const engineerId = req.user.id;
 
-    // Get request details
-    const reqResult = await pool.query(
-      `SELECT project_id, request_date FROM labour_requests WHERE id = $1`,
-      [requestId]
-    );
-    if (reqResult.rows.length === 0) return res.status(404).json({ error: "Request not found" });
+      // Get request details
+      const reqResult = await pool.query(
+        `SELECT project_id, request_date FROM labour_requests WHERE id = $1`,
+        [requestId],
+      );
+      if (reqResult.rows.length === 0)
+        return res.status(404).json({ error: "Request not found" });
 
-    const { project_id, request_date } = reqResult.rows[0];
+      const { project_id, request_date } = reqResult.rows[0];
 
-    // Create entry in attendance table (or update if exists)
-    // In this system, "Approval" means we are creating a pending attendance record that allows them to check-in/out
-    // or marking them as 'APPROVED' for that day.
-    await pool.query(
-      `INSERT INTO attendance (project_id, labour_id, site_engineer_id, attendance_date, status, approved_by, approved_at)
+      // Create entry in attendance table (or update if exists)
+      // In this system, "Approval" means we are creating a pending attendance record that allows them to check-in/out
+      // or marking them as 'APPROVED' for that day.
+      await pool.query(
+        `INSERT INTO attendance (project_id, labour_id, site_engineer_id, attendance_date, status, approved_by, approved_at)
        VALUES ($1, $2, $3, $4, 'APPROVED', $3, NOW())
        ON CONFLICT (project_id, labour_id, attendance_date) 
        DO UPDATE SET status = 'APPROVED', approved_by = $3, approved_at = NOW()`,
-      [project_id, labourId, engineerId, request_date]
-    );
+        [project_id, labourId, engineerId, request_date],
+      );
 
-    res.json({ message: "Labourer approved successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+      res.json({ message: "Labourer approved successfully" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+);
 
 /* ---------------- REJECT LABOURER ---------------- */
 router.post("/:requestId/reject/:labourId", engineerCheck, async (req, res) => {
@@ -204,9 +213,10 @@ router.post("/:requestId/reject/:labourId", engineerCheck, async (req, res) => {
     // Get request details
     const reqResult = await pool.query(
       `SELECT project_id, request_date FROM labour_requests WHERE id = $1`,
-      [requestId]
+      [requestId],
     );
-    if (reqResult.rows.length === 0) return res.status(404).json({ error: "Request not found" });
+    if (reqResult.rows.length === 0)
+      return res.status(404).json({ error: "Request not found" });
 
     const { project_id, request_date } = reqResult.rows[0];
 
@@ -215,7 +225,7 @@ router.post("/:requestId/reject/:labourId", engineerCheck, async (req, res) => {
        VALUES ($1, $2, $3, $4, 'REJECTED', $3, NOW())
        ON CONFLICT (project_id, labour_id, attendance_date) 
        DO UPDATE SET status = 'REJECTED', approved_by = $3, approved_at = NOW()`,
-      [project_id, labourId, engineerId, request_date]
+      [project_id, labourId, engineerId, request_date],
     );
 
     res.json({ message: "Labourer rejected" });
@@ -257,7 +267,10 @@ router.put("/:id", engineerCheck, async (req, res) => {
       ],
     );
 
-    if (result.rows.length === 0) return res.status(404).json({ error: "Request not found or unauthorized" });
+    if (result.rows.length === 0)
+      return res
+        .status(404)
+        .json({ error: "Request not found or unauthorized" });
 
     res.json({ labour_request: result.rows[0] });
   } catch (err) {
@@ -272,8 +285,14 @@ router.delete("/:id", engineerCheck, async (req, res) => {
     const engineerId = req.user.id;
     const { id } = req.params;
 
-    const result = await pool.query(`DELETE FROM labour_requests WHERE id = $1 AND site_engineer_id = $2`, [id, engineerId]);
-    if (result.rowCount === 0) return res.status(404).json({ error: "Request not found or unauthorized" });
+    const result = await pool.query(
+      `DELETE FROM labour_requests WHERE id = $1 AND site_engineer_id = $2`,
+      [id, engineerId],
+    );
+    if (result.rowCount === 0)
+      return res
+        .status(404)
+        .json({ error: "Request not found or unauthorized" });
 
     res.json({ message: "Labour request deleted successfully" });
   } catch (err) {
@@ -281,7 +300,5 @@ router.delete("/:id", engineerCheck, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-module.exports = router;
 
 module.exports = router;
