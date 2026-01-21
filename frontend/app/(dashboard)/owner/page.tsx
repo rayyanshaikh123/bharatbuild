@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
-import { Building2, Users, HardHat, DollarSign, FolderKanban, Loader2 } from "lucide-react";
+import { Building2, Users, HardHat, DollarSign, FolderKanban, Loader2, IndianRupeeIcon } from "lucide-react";
 import Link from "next/link";
 import { OwnerOrganization } from "@/components/dashboard/OrganizationList";
 import { PendingManagerRequests } from "@/components/dashboard/PendingManagerRequests";
@@ -108,7 +108,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
           title="Total Budget"
           value={formatBudget(totalBudget)}
           subtitle={`${formatBudget(summary.total_budget_active)} currently deployed`}
-          icon={DollarSign}
+          icon={IndianRupeeIcon}
         />
         <StatCard
           title="Overall Health"

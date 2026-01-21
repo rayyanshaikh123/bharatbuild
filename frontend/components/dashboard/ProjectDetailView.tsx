@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, MapPin, Calendar, DollarSign, Users, Edit, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Calendar, IndianRupeeIcon, Users, Edit, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ProjectDetailMap } from "@/components/maps/ProjectsMap";
@@ -175,7 +175,7 @@ export function ProjectDetailView({
         <div className="glass-card rounded-2xl p-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <DollarSign size={18} className="text-primary" />
+              <IndianRupeeIcon size={18} className="text-primary" />
             </div>
             <span className="text-sm text-muted-foreground">Budget</span>
           </div>

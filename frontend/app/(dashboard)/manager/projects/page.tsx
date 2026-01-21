@@ -1,30 +1,24 @@
+// frontend/app/(dashboard)/manager/projects/page.tsx - UPDATED WITH TABLE
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Calendar, DollarSign, Loader2, ArrowLeft, Plus } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Building2, Plus, Loader2, Edit, Trash2, Eye, UserPlus } from "lucide-react";
 import { managerOrganization, managerProjects, Project, ManagerOrgRequest } from "@/lib/api/manager";
+import { DataTable, Column } from "@/components/ui/DataTable";
 
-const statusColors = {
-  PLANNED: "bg-blue-500/10 text-blue-600 border-blue-500/30",
-  ACTIVE: "bg-green-500/10 text-green-600 border-green-500/30",
-  COMPLETED: "bg-gray-500/10 text-gray-600 border-gray-500/30",
-  ON_HOLD: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
-};
-
-
-
-export default function ManagerProjectsPage() {
+export default function ManagerProjectsTablePage() {
+  const router = useRouter();
   const [approvedOrg, setApprovedOrg] = useState<ManagerOrgRequest | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       const reqsRes = await managerOrganization.getMyRequests();
-      const approved = reqsRes.requests?.find(r => r.status === "APPROVED");
-      
+      const approved = reqsRes.requests?.find((r) => r.status === "APPROVED");
+
       if (approved) {
         setApprovedOrg(approved);
         const projRes = await managerProjects.getMyProjects(approved.org_id);
@@ -41,109 +35,316 @@ export default function ManagerProjectsPage() {
     fetchData();
   }, []);
 
+  const handleDelete = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!approvedOrg) return;
+    if (!confirm("Are you sure? This action cannot be undone.")) return;
+
+    setDeletingId(projectId);
+    try {
+      await managerProjects.delete(projectId, approvedOrg.org_id);
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    } catch (err) {
+      console.error("Failed to delete:", err);
+      alert("Failed to delete project");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatBudget = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(0)}K`;
+    return `₹${value}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const statusStyles = {
+    ACTIVE: { bg: "rgba(34, 197, 94, 0.1)", text: "#16a34a", border: "rgba(34, 197, 94, 0.3)" },
+    COMPLETED: { bg: "rgba(59, 130, 246, 0.1)", text: "#2563eb", border: "rgba(59, 130, 246, 0.3)" },
+    PLANNED: { bg: "rgba(249, 115, 22, 0.1)", text: "#ea580c", border: "rgba(249, 115, 22, 0.3)" },
+    ON_HOLD: { bg: "rgba(100, 116, 139, 0.1)", text: "#475569", border: "rgba(100, 116, 139, 0.3)" },
+  };
+
+  const columns: Column<Project>[] = [
+    {
+      key: "name",
+      label: "Project Name",
+      sortable: true,
+      width: "25%",
+      render: (value, row) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div
+            style={{
+              width: "2.5rem",
+              height: "2.5rem",
+              backgroundColor: "rgba(var(--primary-rgb, 71, 85, 105), 0.1)",
+              borderRadius: "0.75rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Building2 size={18} style={{ color: "var(--primary)" }} />
+          </div>
+          <div style={{ fontWeight: "600", color: "var(--foreground)" }}>{value}</div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      width: "12%",
+      render: (value) => {
+        const style = statusStyles[value as keyof typeof statusStyles];
+        return (
+          <span
+            style={{
+              display: "inline-block",
+              padding: "0.375rem 0.75rem",
+              backgroundColor: style.bg,
+              color: style.text,
+              border: `1px solid ${style.border}`,
+              borderRadius: "9999px",
+              fontSize: "0.75rem",
+              fontWeight: "600",
+            }}
+          >
+            {value}
+          </span>
+        );
+      },
+    },
+    {
+      key: "budget",
+      label: "Budget",
+      sortable: true,
+      width: "15%",
+      render: (value) => (
+        <span style={{ fontWeight: "600" }}>{formatBudget(value || 0)}</span>
+      ),
+    },
+    {
+      key: "start_date",
+      label: "Start Date",
+      sortable: true,
+      width: "12%",
+      render: (value) => (
+        <span style={{ fontSize: "0.875rem" }}>{formatDate(value)}</span>
+      ),
+    },
+    {
+      key: "end_date",
+      label: "End Date",
+      sortable: true,
+      width: "12%",
+      render: (value) => (
+        <span style={{ fontSize: "0.875rem" }}>{formatDate(value)}</span>
+      ),
+    },
+    {
+      key: "id",
+      label: "Actions",
+      width: "24%",
+      render: (value) => (
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/manager/projects/${value}`);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.375rem",
+              padding: "0.5rem 0.75rem",
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              border: "none",
+              borderRadius: "0.5rem",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            <Eye size={14} />
+            View
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/manager/projects/${value}/edit`);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.375rem",
+              padding: "0.5rem 0.75rem",
+              backgroundColor: "transparent",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              borderRadius: "0.5rem",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--muted)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <Edit size={14} />
+            Edit
+          </button>
+          <button
+            onClick={(e) => handleDelete(value, e)}
+            disabled={deletingId === value}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "2.5rem",
+              height: "2.5rem",
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              color: "#dc2626",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              borderRadius: "0.5rem",
+              cursor: deletingId === value ? "not-allowed" : "pointer",
+              opacity: deletingId === value ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (deletingId !== value) {
+                e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+            }}
+          >
+            {deletingId === value ? (
+              <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+            ) : (
+              <Trash2 size={14} />
+            )}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   if (isLoading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div style={{ minHeight: "50vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 size={32} style={{ animation: "spin 1s linear infinite", color: "var(--primary)" }} />
       </div>
     );
   }
 
   if (!approvedOrg) {
     return (
-      <div className="text-center py-12">
-        <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-foreground">Not Approved</h2>
-        <p className="text-muted-foreground mt-2">Join an organization first to manage projects.</p>
-        <Link href="/manager">
-          <Button className="mt-4">Go to Dashboard</Button>
-        </Link>
+      <div style={{ textAlign: "center", padding: "3rem" }}>
+        <Building2 size={48} style={{ color: "var(--muted-foreground)", margin: "0 auto 1rem" }} />
+        <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--foreground)" }}>Not Approved</h2>
+        <p style={{ color: "var(--muted-foreground)", marginTop: "0.5rem" }}>
+          Join an organization first to manage projects.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pt-12 md:pt-0">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/manager">
-            <Button variant="outline" size="sm">
-              <ArrowLeft size={16} className="mr-2" /> Back
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase italic">
-              My <span className="text-primary">Projects</span>
-            </h1>
-            <p className="text-muted-foreground mt-1">{approvedOrg.org_name}</p>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingTop: "3rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h1
+            style={{
+              fontSize: "1.875rem",
+              fontWeight: "900",
+              letterSpacing: "-0.025em",
+              color: "var(--foreground)",
+              textTransform: "uppercase",
+              fontStyle: "italic",
+            }}
+          >
+            My <span style={{ color: "var(--primary)" }}>Projects</span>
+          </h1>
+          <p style={{ color: "var(--muted-foreground)", marginTop: "0.25rem" }}>{approvedOrg.org_name}</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/manager/projects/join">
-            <Button variant="outline">Join Project</Button>
-          </Link>
-          <Link href="/manager/projects/new">
-            <Button>
-              <Plus size={16} className="mr-2" /> Create Project
-            </Button>
-          </Link>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            onClick={() => router.push("/manager/projects/join")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.625rem 1rem",
+              backgroundColor: "transparent",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              borderRadius: "0.75rem",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--muted)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <UserPlus size={16} />
+            Join Project
+          </button>
+          <button
+            onClick={() => router.push("/manager/projects/new")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.625rem 1rem",
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              border: "none",
+              borderRadius: "0.75rem",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            <Plus size={16} />
+            Create Project
+          </button>
         </div>
       </div>
 
-      {/* Projects Grid */}
-      {projects.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-12 text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-foreground">No Projects Yet</h3>
-          <p className="text-muted-foreground mt-2 mb-4">
-            Create your first project to get started.
-          </p>
-          <Link href="/manager/projects/new">
-            <Button><Plus size={16} className="mr-2" /> Create Project</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="bg-card border border-border rounded-2xl p-6 hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                  <Building2 size={24} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${statusColors[project.status]}`}>
-                    {project.status}
-                  </span>
-                  <Link href={`/manager/projects/${project.id}`}>
-                    <Button size="sm" variant="outline" className="h-8">Open</Button>
-                  </Link>
-                </div>
-              </div>
-              
-              <h4 className="text-lg font-bold text-foreground mb-3">{project.name}</h4>
-              
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} />
-                  <span className="truncate">{project.location_text}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} />
-                  <span>{new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign size={14} />
-                  <span>₹{project.budget?.toLocaleString() || "N/A"}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        data={projects}
+        columns={columns}
+        searchable={true}
+        searchKeys={["name", "location_text", "status"]}
+        onRowClick={(row) => router.push(`/manager/projects/${row.id}`)}
+        emptyMessage="No projects yet. Create your first project to get started."
+        itemsPerPage={10}
+      />
     </div>
   );
+}
+
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
 }

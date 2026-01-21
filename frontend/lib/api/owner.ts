@@ -1,3 +1,4 @@
+// frontend/lib/api/owner.ts - FIXED VERSION
 import { api } from "../api";
 
 // ==================== TYPES ====================
@@ -43,6 +44,7 @@ export interface Project {
   id: string;
   org_id: string;
   name: string;
+  description?: string;
   location_text: string;
   latitude: number;
   longitude: number;
@@ -50,8 +52,10 @@ export interface Project {
   start_date: string;
   end_date: string;
   budget: number;
+  current_invested?: number;
   status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ON_HOLD";
   created_by: string;
+  created_at?: string;
 }
 
 export interface ProjectManager {
@@ -71,6 +75,12 @@ export const ownerOrganization = {
   create: (data: { name: string; address: string; phone: string; org_type: string }) =>
     api.post<{ organization: Organization }>("/owner/organization/create-organization", data),
 
+  // FIX: Added get() method for single organization
+  get: async (): Promise<{ organization: Organization | null }> => {
+    const result = await api.get<{ organizations: Organization[] }>("/owner/organization/organizations");
+    return { organization: result.organizations?.[0] || null };
+  },
+
   getAll: () =>
     api.get<{ organizations: Organization[] }>("/owner/organization/organizations"),
 
@@ -78,7 +88,7 @@ export const ownerOrganization = {
     api.get<{ organization: Organization }>(`/owner/organization/organization/${id}`),
 
   update: (id: string, data: Partial<{ name: string; address: string; phone: string; org_type: string }>) =>
-    api.put<{ organization: Organization }>(`/owner/organization/organization/${id}`, data),
+    api.patch<{ organization: Organization }>(`/owner/organization/organization/${id}`, data),
 
   delete: (id: string) =>
     api.delete<{ message: string }>(`/owner/organization/organization/${id}`),
@@ -95,7 +105,7 @@ export const ownerProfile = {
 
 export const ownerRequests = {
   getAll: (orgId: string) =>
-    api.get<{ managers: ManagerRequest[] }>(`/owner/requests/?orgId=${orgId}`),
+    api.post<{ managers: ManagerRequest[] }>(`/owner/requests/`, { orgId }),
 
   getPending: (orgId: string) =>
     api.get<{ managers: ManagerRequest[] }>(`/owner/requests/pending?orgId=${orgId}`),
@@ -162,7 +172,7 @@ export interface Plan {
 export interface PlanItem {
   id: string;
   plan_id: string;
-  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_type: "WEEK" | "CUSTOM";
   period_start: string;
   period_end: string;
   task_name: string;
@@ -174,7 +184,6 @@ export interface PlanItem {
 }
 
 export const ownerPlans = {
-  // Get plan and items for a project (read-only)
   getByProjectId: (projectId: string) =>
     api.get<{ plan: Plan; items: PlanItem[] }>(`/owner/plan/plans/${projectId}`),
 };

@@ -1,21 +1,14 @@
+// frontend/app/(dashboard)/owner/projects/page.tsx - UPDATED
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/providers/AuthContext";
-import { Building2, MapPin, Calendar, DollarSign, Loader2, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Building2, MapPin, Calendar, DollarSign, Loader2, Eye, IndianRupeeIcon  } from "lucide-react";
 import { ownerOrganization, ownerProjects, Project, Organization } from "@/lib/api/owner";
+import { DataTable, Column } from "@/components/ui/DataTable";
 
-const statusColors = {
-  PLANNED: "bg-blue-500/10 text-blue-600 border-blue-500/30",
-  ACTIVE: "bg-green-500/10 text-green-600 border-green-500/30",
-  COMPLETED: "bg-gray-500/10 text-gray-600 border-gray-500/30",
-  ON_HOLD: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
-};
-
-export default function OwnerProjectsPage() {
-  const { user } = useAuth();
+export default function OwnerProjectsTablePage() {
+  const router = useRouter();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,14 +16,10 @@ export default function OwnerProjectsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // First get organization
-        const orgRes = await ownerOrganization.getAll();
-        if (orgRes.organizations && orgRes.organizations.length > 0) {
-          const org = orgRes.organizations[0];
-          setOrganization(org);
-          
-          // Then fetch projects
-          const projRes = await ownerProjects.getAll(org.id);
+        const orgRes = await ownerOrganization.get();
+        if (orgRes.organization) {
+          setOrganization(orgRes.organization);
+          const projRes = await ownerProjects.getAll(orgRes.organization.id);
           setProjects(projRes.projects || []);
         }
       } catch (err) {
@@ -43,91 +32,242 @@ export default function OwnerProjectsPage() {
     fetchData();
   }, []);
 
+  const formatBudget = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(0)}K`;
+    return `₹${value}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const statusStyles = {
+    ACTIVE: { bg: "rgba(34, 197, 94, 0.1)", text: "#16a34a", border: "rgba(34, 197, 94, 0.3)" },
+    COMPLETED: { bg: "rgba(59, 130, 246, 0.1)", text: "#2563eb", border: "rgba(59, 130, 246, 0.3)" },
+    PLANNED: { bg: "rgba(249, 115, 22, 0.1)", text: "#ea580c", border: "rgba(249, 115, 22, 0.3)" },
+    ON_HOLD: { bg: "rgba(100, 116, 139, 0.1)", text: "#475569", border: "rgba(100, 116, 139, 0.3)" },
+  };
+
+  const columns: Column<Project>[] = [
+    {
+      key: "name",
+      label: "Project Name",
+      sortable: true,
+      width: "25%",
+      render: (value, row) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div
+            style={{
+              width: "2.5rem",
+              height: "2.5rem",
+              backgroundColor: "rgba(var(--primary-rgb, 71, 85, 105), 0.1)",
+              borderRadius: "0.75rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Building2 size={18} style={{ color: "var(--primary)" }} />
+          </div>
+          <div>
+            <div style={{ fontWeight: "600", color: "var(--foreground)" }}>{value}</div>
+            <div
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--muted-foreground)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.25rem",
+                marginTop: "0.125rem",
+              }}
+            >
+              <MapPin size={10} />
+              {row.location_text || "—"}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      width: "12%",
+      render: (value) => {
+        const style = statusStyles[value as keyof typeof statusStyles];
+        return (
+          <span
+            style={{
+              display: "inline-block",
+              padding: "0.375rem 0.75rem",
+              backgroundColor: style.bg,
+              color: style.text,
+              border: `1px solid ${style.border}`,
+              borderRadius: "9999px",
+              fontSize: "0.75rem",
+              fontWeight: "600",
+            }}
+          >
+            {value}
+          </span>
+        );
+      },
+    },
+    {
+      key: "budget",
+      label: "Budget",
+      sortable: true,
+      width: "15%",
+      render: (value) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <IndianRupeeIcon size={14} style={{ color: "var(--muted-foreground)" }} />
+          <span style={{ fontWeight: "600" }}>{formatBudget(value || 0)}</span>
+        </div>
+      ),
+    },
+    {
+      key: "start_date",
+      label: "Timeline",
+      width: "20%",
+      render: (value, row) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+          <Calendar size={14} style={{ color: "var(--muted-foreground)" }} />
+          <span>
+            {formatDate(value)} → {formatDate(row.end_date)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "created_at",
+      label: "Created",
+      sortable: true,
+      width: "15%",
+      render: (value) => (
+        <span style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
+          {value ? formatDate(value) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "id",
+      label: "Actions",
+      width: "13%",
+      render: (value) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/owner/projects/${value}`);
+          }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.5rem 0.75rem",
+            backgroundColor: "var(--primary)",
+            color: "var(--primary-foreground)",
+            border: "none",
+            borderRadius: "0.5rem",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          <Eye size={14} />
+          View
+        </button>
+      ),
+    },
+  ];
+
   if (isLoading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div style={{ minHeight: "50vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2
+          size={32}
+          style={{ animation: "spin 1s linear infinite", color: "var(--primary)" }}
+        />
       </div>
     );
   }
 
   if (!organization) {
     return (
-      <div className="text-center py-12">
-        <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-foreground">No Organization</h2>
-        <p className="text-muted-foreground mt-2">Create an organization first to view projects.</p>
-        <Link href="/owner">
-          <Button className="mt-4">Go to Dashboard</Button>
-        </Link>
+      <div style={{ textAlign: "center", padding: "3rem" }}>
+        <Building2 size={48} style={{ color: "var(--muted-foreground)", margin: "0 auto 1rem" }} />
+        <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--foreground)" }}>
+          No Organization
+        </h2>
+        <p style={{ color: "var(--muted-foreground)", marginTop: "0.5rem" }}>
+          Create an organization first to view projects.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pt-12 md:pt-0">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/owner">
-          <Button variant="outline" size="sm">
-            <ArrowLeft size={16} className="mr-2" /> Back
-          </Button>
-        </Link>
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingTop: "3rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground uppercase italic">
-            All <span className="text-primary">Projects</span>
+          <h1
+            style={{
+              fontSize: "1.875rem",
+              fontWeight: "900",
+              letterSpacing: "-0.025em",
+              color: "var(--foreground)",
+              textTransform: "uppercase",
+              fontStyle: "italic",
+            }}
+          >
+            All <span style={{ color: "var(--primary)" }}>Projects</span>
           </h1>
-          <p className="text-muted-foreground mt-1">
-            View all projects in your organization
+          <p style={{ color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
+            View all projects in {organization.name} (Read-only)
           </p>
+        </div>
+        <div
+          style={{
+            padding: "0.75rem 1rem",
+            backgroundColor: "rgba(var(--primary-rgb, 71, 85, 105), 0.1)",
+            borderRadius: "0.75rem",
+            fontSize: "0.875rem",
+            fontWeight: "600",
+            color: "var(--primary)",
+          }}
+        >
+          {projects.length} Project{projects.length !== 1 ? "s" : ""}
         </div>
       </div>
 
-      {/* Projects Grid */}
-      {projects.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-12 text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-foreground">No Projects Yet</h3>
-          <p className="text-muted-foreground mt-2">
-            Projects created by managers will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="bg-card border border-border rounded-2xl p-6 hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                  <Building2 size={24} />
-                </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${statusColors[project.status]}`}>
-                  {project.status}
-                </span>
-              </div>
-              
-              <h4 className="text-lg font-bold text-foreground mb-3">{project.name}</h4>
-              
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} />
-                  <span className="truncate">{project.location_text}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} />
-                  <span>{new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign size={14} />
-                  <span>₹{project.budget?.toLocaleString() || "N/A"}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        data={projects}
+        columns={columns}
+        searchable={true}
+        searchKeys={["name", "location_text", "status"]}
+        onRowClick={(row) => router.push(`/owner/projects/${row.id}`)}
+        emptyMessage="No projects found in this organization. Projects created by managers will appear here."
+        itemsPerPage={10}
+      />
     </div>
   );
+}
+
+// Add animation keyframe for loader
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
 }
