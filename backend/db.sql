@@ -361,3 +361,4 @@ CREATE INDEX idx_wages_status ON wages(status);
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor ON audit_logs(acted_by_role, acted_by_id);
 CREATE INDEX idx_audit_time ON audit_logs(created_at);
+tset
