@@ -77,9 +77,6 @@ export function OwnerOrganization({ onOrganizationLoad }: OwnerOrganizationProps
                 {organization.org_type}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Organization ID: <span className="font-mono text-foreground">{organization.id}</span>
-            </p>
           </div>
         </div>
       </div>

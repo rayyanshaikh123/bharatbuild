@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'persistent_client.dart';
 
 class AuthService {
@@ -110,22 +111,6 @@ class AuthService {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> managerLogin(
-    String email,
-    String password,
-  ) async {
-    final uri = Uri.parse('$_base/auth/manager/login');
-    final res = await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    if (res.statusCode != 200) {
-      throw Exception('Login failed: ${res.body}');
-    }
-    return jsonDecode(res.body) as Map<String, dynamic>;
-  }
-
   /// Logout (clears server session and local cookies)
   Future<void> logoutLabour() async {
     final uri = Uri.parse('$_base/auth/labour/logout');
@@ -156,6 +141,16 @@ class AuthService {
     return null;
   }
 
+  Future<Map<String, dynamic>?> checkEngineerSession() async {
+    final uri = Uri.parse('$_base/engineer/check-auth');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['engineer'] as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
   /// Fetch labour profile from backend (requires session cookie)
   Future<Map<String, dynamic>?> getLabourProfile() async {
     final uri = Uri.parse('$_base/labour/profile');
@@ -172,7 +167,7 @@ class AuthService {
     Map<String, dynamic> payload,
   ) async {
     final uri = Uri.parse('$_base/labour/profile');
-    final res = await _client.post(
+    final res = await _client.patch(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
@@ -182,5 +177,440 @@ class AuthService {
       return data['labour'] as Map<String, dynamic>?;
     }
     throw Exception('Update failed: ${res.statusCode} ${res.body}');
+  }
+
+  /// Fetch engineer profile from backend (requires session cookie)
+  Future<Map<String, dynamic>?> getEngineerProfile() async {
+    final uri = Uri.parse('$_base/engineer/profile');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['engineer'] as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
+  /// Update engineer profile on backend. Expects session cookie to be present.
+  Future<Map<String, dynamic>?> updateEngineerProfile(
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = Uri.parse('$_base/engineer/profile');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['engineer'] as Map<String, dynamic>?;
+    }
+    throw Exception('Update failed: ${res.statusCode} ${res.body}');
+  }
+
+  /* ---------------- ORGANIZATIONS ---------------- */
+  Future<Map<String, dynamic>> getOrganizations() async {
+    final uri = Uri.parse('$_base/engineer/organization/all');
+    final res = await _client.get(uri);
+    if (res.statusCode != 200) throw Exception('Failed to fetch organizations');
+    return jsonDecode(res.body);
+  }
+
+  Future<Map<String, dynamic>> getCurrentOrganization() async {
+    final uri = Uri.parse('$_base/engineer/organization/');
+    final res = await _client.get(uri);
+    // 404 is fine here, means no org
+    if (res.statusCode == 404) return {'organizations': []};
+    if (res.statusCode != 200) throw Exception('Failed to fetch organization');
+    return jsonDecode(res.body);
+  }
+
+  Future<Map<String, dynamic>> getMyOrgRequests() async {
+    final uri = Uri.parse('$_base/engineer/organization/my-requests');
+    final res = await _client.get(uri);
+    if (res.statusCode != 200) throw Exception('Failed to fetch requests');
+    return jsonDecode(res.body);
+  }
+
+  Future<void> joinOrganization(String orgId) async {
+    final uri = Uri.parse('$_base/engineer/organization/join-organization');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizationId': orgId}),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to join organization: ${res.body}');
+  }
+
+  /* ---------------- LABOUR REQUESTS (ENGINEER) ---------------- */
+
+  /// Get all labour requests created by the engineer
+  Future<List<dynamic>> getLabourRequests() async {
+    final uri = Uri.parse('$_base/engineer/labour-requests');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['requests'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch labour requests: ${res.body}');
+  }
+
+  /// Create a new labour request
+  Future<void> createLabourRequest(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/engineer/labour-requests');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('Failed to create labour request: ${res.body}');
+    }
+  }
+
+  /// Get applicants for a specific labour request
+  Future<List<dynamic>> getLabourRequestApplicants(String requestId) async {
+    final uri = Uri.parse('$_base/engineer/labour-requests/$requestId/applicants');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['applicants'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch applicants: ${res.body}');
+  }
+
+  /// Approve a labourer for a labour request
+  Future<void> approveLabourer(String requestId, String labourId) async {
+    final uri = Uri.parse('$_base/engineer/labour-requests/$requestId/approve/$labourId');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to approve labourer: ${res.body}');
+    }
+  }
+
+  /// Reject a labourer for a labour request
+  Future<void> rejectLabourer(String requestId, String labourId) async {
+    final uri = Uri.parse('$_base/engineer/labour-requests/$requestId/reject/$labourId');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to reject labourer: ${res.body}');
+    }
+  }
+
+  /* ---------------- PROJECTS (ENGINEER) ---------------- */
+
+  Future<List<dynamic>> getMyProjects() async {
+    final uri = Uri.parse('$_base/engineer/project-requests/my-projects');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['projects'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch projects: ${res.body}');
+  }
+
+  /* ---------------- DPR (ENGINEER) ---------------- */
+
+  Future<List<dynamic>> getProjectPlanItems(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/dpr/projects/$projectId/plans/items');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['plan_items'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch plan items: ${res.body}');
+  }
+
+  Future<void> createDPR(String projectId, Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/engineer/dpr/projects/$projectId/dprs');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('Failed to create DPR: ${res.body}');
+    }
+  }
+
+  Future<List<dynamic>> getMyDPRs(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/dpr/projects/$projectId/dprs/my');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['dprs'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch DPRs: ${res.body}');
+  }
+
+  /* ---------------- ATTENDANCE (ENGINEER) ---------------- */
+
+  Future<List<dynamic>> getProjectTodayAttendance(String projectId, {String? date}) async {
+    final dateStr = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final uri = Uri.parse('$_base/engineer/attendance/today?projectId=$projectId&date=$dateStr');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['attendance'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch attendance: ${res.body}');
+  }
+
+  Future<void> markAttendance(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/engineer/attendance/mark');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark attendance: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> searchLabourByPhone(String phone) async {
+    final uri = Uri.parse('$_base/engineer/attendance/search-labour?phone=$phone');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['labour'] as Map<String, dynamic>;
+    }
+    throw Exception('Labourer not found: ${res.body}');
+  }
+
+  /* ---------------- JOB FEED ---------------- */
+
+  Future<List<dynamic>> getAvailableJobs() async {
+    final uri = Uri.parse('$_base/labour/jobs/available');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['jobs'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch jobs: ${res.body}');
+  }
+
+  Future<void> applyForJob(String jobId) async {
+    final uri = Uri.parse('$_base/labour/jobs/$jobId/apply');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to apply for job: ${res.body}');
+    }
+  }
+
+  Future<List<dynamic>> getMyApplications() async {
+    final uri = Uri.parse('$_base/labour/jobs/my-applications');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['applications'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch applications: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getJobDetails(String jobId) async {
+    final uri = Uri.parse('$_base/labour/jobs/$jobId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['job'] as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch job details: ${res.body}');
+  }
+
+  /* ---------------- ADDRESSES ---------------- */
+
+  Future<List<dynamic>> getAddresses() async {
+    final uri = Uri.parse('$_base/labour/addresses');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['addresses'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch addresses: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> addAddress(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/labour/addresses');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 201) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['address'] as Map<String, dynamic>;
+    }
+    throw Exception('Failed to add address: ${res.body}');
+  }
+
+  Future<void> deleteAddress(String id) async {
+    final uri = Uri.parse('$_base/labour/addresses/$id');
+    final res = await _client.delete(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to delete address: ${res.body}');
+    }
+  }
+
+  Future<void> updateAddress(String id, Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/labour/addresses/$id');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update address: ${res.body}');
+    }
+  }
+
+  /* ---------------- ATTENDANCE ---------------- */
+
+  Future<Map<String, dynamic>> checkIn(String projectId, double lat, double lon) async {
+    final uri = Uri.parse('$_base/labour/attendance/check-in');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'project_id': projectId,
+        'latitude': lat,
+        'longitude': lon,
+      }),
+    );
+    if (res.statusCode == 201) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['attendance'] as Map<String, dynamic>;
+    }
+    throw Exception('Check-in failed: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> checkOut() async {
+    final uri = Uri.parse('$_base/labour/attendance/check-out');
+    final res = await _client.post(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['attendance'] as Map<String, dynamic>;
+    }
+    throw Exception('Check-out failed: ${res.body}');
+  }
+
+  Future<List<dynamic>> getAttendanceHistory() async {
+    final uri = Uri.parse('$_base/labour/attendance/history');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['history'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch attendance: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>?> getTodayAttendance() async {
+    final uri = Uri.parse('$_base/labour/attendance/today');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['attendance'] as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
+  /* ---------------- MATERIAL MANAGEMENT ---------------- */
+  Future<Map<String, dynamic>> createMaterialRequest(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/material/request');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to create material request: ${res.body}');
+  }
+
+  Future<List<dynamic>> getMaterialRequests({String? projectId}) async {
+    var url = '$_base/engineer/material/requests';
+    if (projectId != null) url += '?project_id=$projectId';
+    final uri = Uri.parse(url);
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['requests'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch material requests: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> uploadMaterialBill(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/material/upload-bill');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to upload material bill: ${res.body}');
+  }
+
+  Future<List<dynamic>> getMaterialBills({String? projectId}) async {
+    var url = '$_base/engineer/material/bills';
+    if (projectId != null) url += '?project_id=$projectId';
+    final uri = Uri.parse(url);
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['bills'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch material bills: ${res.body}');
+  }
+
+  /* ---------------- WAGES ---------------- */
+  Future<List<dynamic>> getWageQueue(String projectId, {String? date}) async {
+    final dateStr = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final uri = Uri.parse('$_base/engineer/wages/queue?projectId=$projectId&date=$dateStr');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['queue'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch wage queue: ${res.body}');
+  }
+
+  Future<void> submitWage(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/engineer/wages/submit');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to submit wage: ${res.body}');
+    }
+  }
+
+  /* ---------------- OFFLINE SYNC ---------------- */
+  Future<void> syncQueueItem({
+    required String endpoint,
+    required String method,
+    Map<String, dynamic>? payload,
+  }) async {
+    final uri = Uri.parse('$_base$endpoint');
+    final body = payload != null ? jsonEncode(payload) : null;
+    final headers = {'Content-Type': 'application/json'};
+
+    http.Response res;
+    if (method == 'POST') {
+      res = await _client.post(uri, headers: headers, body: body);
+    } else if (method == 'PATCH') {
+      res = await _client.patch(uri, headers: headers, body: body);
+    } else if (method == 'PUT') {
+      res = await _client.put(uri, headers: headers, body: body);
+    } else {
+      res = await _client.get(uri, headers: headers);
+    }
+
+    if (res.statusCode >= 400) {
+      throw Exception('Sync failed (${res.statusCode}): ${res.body}');
+    }
   }
 }

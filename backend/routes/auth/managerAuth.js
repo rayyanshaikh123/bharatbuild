@@ -10,29 +10,39 @@ const router = express.Router();
 
 /* ---------------- REGISTER ---------------- */
 router.post("/register", async (req, res) => {
-	const { name, email, phone, password } = req.body;
+  const { name, email, phone, password } = req.body;
 
-	try {
-		if (!name || !email || !phone || !password)
-			return res.status(400).json({ error: "missing_fields" });
+  try {
+    if (!name || !email || !phone || !password)
+      return res.status(400).json({ error: "missing_fields" });
 
-		const hash = await bcrypt.hash(password, 10);
+    // Check if email already exists
+    const existingUser = await pool.query(
+      "SELECT id FROM managers WHERE email = $1",
+      [email]
+    );
 
-		await pool.query(
-			"INSERT INTO managers (name, email, phone, password_hash) VALUES ($1, $2, $3, $4)",
-			[name, email, phone, hash]
-		);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: "email_already_exists" });
+    }
 
-		res.status(201).json({ message: "Manager registered successfully" });
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ error: "Server error" });
-	}
+    const hash = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      "INSERT INTO managers (name, email, phone, password_hash) VALUES ($1, $2, $3, $4)",
+      [name, email, phone, hash]
+    );
+
+    res.status(201).json({ message: "Manager registered successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 /* ---------------- LOGIN ---------------- */
 router.post("/login", passport.authenticate("manager-local"), (req, res) => {
-	res.json({ message: "Login successful", user: req.user });
+  res.json({ message: "Login successful", user: req.user });
 });
 
 /* ---------------- FORGOT PASSWORD ---------------- */
@@ -189,7 +199,7 @@ router.post("/logout", (req, res) => {
     });
   } else {
     if (typeof req.logout === 'function') {
-      try { req.logout(() => {}); } catch (_) {}
+      try { req.logout(() => { }); } catch (_) { }
     }
     res.clearCookie('connect.sid');
     return res.json({ message: 'Logged out successfully' });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, MapPin, Calendar, DollarSign, Loader2, ArrowLeft, Plus, Edit, Trash2, MoreVertical } from "lucide-react";
+import { Building2, MapPin, Calendar, DollarSign, Loader2, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { managerOrganization, managerProjects, Project, ManagerOrgRequest } from "@/lib/api/manager";
@@ -13,93 +13,7 @@ const statusColors = {
   ON_HOLD: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
 };
 
-interface ProjectActionsProps {
-  project: Project;
-  organizationId: string;
-  onStatusChange: () => void;
-  onDelete: () => void;
-}
 
-function ProjectActions({ project, organizationId, onStatusChange, onDelete }: ProjectActionsProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  const handleStatusChange = async (newStatus: Project["status"]) => {
-    setIsUpdating(true);
-    try {
-      await managerProjects.updateStatus(project.id, organizationId, newStatus);
-      onStatusChange();
-    } catch (err) {
-      console.error("Failed to update status:", err);
-    } finally {
-      setIsUpdating(false);
-      setIsOpen(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this project?")) return;
-    
-    setIsUpdating(true);
-    try {
-      await managerProjects.delete(project.id, organizationId);
-      onDelete();
-    } catch (err) {
-      console.error("Failed to delete:", err);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={isUpdating}
-        className="h-8 w-8 p-0"
-      >
-        {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical size={16} />}
-      </Button>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-xl shadow-lg p-2 min-w-[160px]">
-            <p className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wider">Status</p>
-            {(["PLANNED", "ACTIVE", "ON_HOLD", "COMPLETED"] as const).map((status) => (
-              <button
-                key={status}
-                onClick={() => handleStatusChange(status)}
-                disabled={project.status === status}
-                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
-                  project.status === status
-                    ? "bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted"
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-            <hr className="my-2 border-border" />
-            <Link href={`/manager/projects/${project.id}/edit`}>
-              <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-muted flex items-center gap-2">
-                <Edit size={14} /> Edit
-              </button>
-            </Link>
-            <button
-              onClick={handleDelete}
-              className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-500/10 text-red-600 flex items-center gap-2"
-            >
-              <Trash2 size={14} /> Delete
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 export default function ManagerProjectsPage() {
   const [approvedOrg, setApprovedOrg] = useState<ManagerOrgRequest | null>(null);
@@ -165,11 +79,16 @@ export default function ManagerProjectsPage() {
             <p className="text-muted-foreground mt-1">{approvedOrg.org_name}</p>
           </div>
         </div>
-        <Link href="/manager/projects/new">
-          <Button>
-            <Plus size={16} className="mr-2" /> Create Project
-          </Button>
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/manager/projects/join">
+            <Button variant="outline">Join Project</Button>
+          </Link>
+          <Link href="/manager/projects/new">
+            <Button>
+              <Plus size={16} className="mr-2" /> Create Project
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Projects Grid */}
@@ -199,12 +118,9 @@ export default function ManagerProjectsPage() {
                   <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${statusColors[project.status]}`}>
                     {project.status}
                   </span>
-                  <ProjectActions 
-                    project={project} 
-                    organizationId={approvedOrg.org_id}
-                    onStatusChange={fetchData}
-                    onDelete={fetchData}
-                  />
+                  <Link href={`/manager/projects/${project.id}`}>
+                    <Button size="sm" variant="outline" className="h-8">Open</Button>
+                  </Link>
                 </div>
               </div>
               

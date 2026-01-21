@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../login_screen.dart';
+import '../login_screen.dart';
 
 /// Compatibility wrapper for older imports referencing
 /// `auth/labour_auth_screen.dart`. Delegates to the unified
@@ -9,6 +9,6 @@ class LabourAuthScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const LoginScreen(initialRole: 'labour');
+    return LoginScreen(initialRole: 'labour');
   }
 }

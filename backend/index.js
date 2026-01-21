@@ -87,6 +87,8 @@ app.use(
 app.use("/manager/plan", require("./routes/manager/plan"));
 app.use("/manager/labour-request", require("./routes/manager/labourRequest"));
 app.use("/manager/dpr", require("./routes/manager/dpr"));
+app.use("/manager/material", require("./routes/manager/material"));
+app.use("/manager/wages", require("./routes/manager/wages"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
@@ -94,11 +96,18 @@ app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
 app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
 app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 app.use("/engineer/plan", require("./routes/engineer/plan"));
-app.use("/engineer/labour-request", require("./routes/engineer/labourRequest"));
+app.use("/engineer/labour-requests", require("./routes/engineer/labourRequest"));
 app.use("/engineer/dpr", require("./routes/engineer/dpr"));
+app.use("/engineer/attendance", require("./routes/engineer/attendance"));
+app.use("/engineer/material", require("./routes/engineer/material"));
+app.use("/engineer/wages", require("./routes/engineer/wages"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
+app.use("/labour/jobs", require("./routes/labour/jobs"));
+app.use("/labour/attendance", require("./routes/labour/attendance"));
+/* ---------------- META (client config) ---------------- */
+
 /* ---------------- HEALTH ---------------- */
 
 app.get("/health", async (req, res) => {

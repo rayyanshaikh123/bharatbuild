@@ -37,7 +37,8 @@ class _EngineerAuthScreenCleanState
         engineerLoginProvider({'email': email, 'password': password}).future,
       );
       final user = (res is Map && res.containsKey('user')) ? res['user'] : res;
-      ref.read(currentUserProvider).state = user as Map<String, dynamic>?;
+      ref.read(currentUserProvider.notifier).state =
+          user as Map<String, dynamic>?;
       Navigator.pushReplacementNamed(context, '/engineer-flow');
     } catch (e) {
       ScaffoldMessenger.of(

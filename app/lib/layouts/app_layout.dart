@@ -4,6 +4,7 @@ import '../widgets/app_ui.dart';
 import '../widgets/bottom_nav.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/labour/mobile_pages.dart';
+import '../screens/labour/operation_zones_home.dart';
 
 /// AppLayout provides a two-column layout (sidebar + content) inspired by
 /// the web frontend. Intended to be swapped to `gluestack_ui_flutter`
@@ -60,25 +61,17 @@ class AppLayout extends ConsumerWidget {
           final pages =
               mobilePages ??
               [
-                const LabourDashboardContent(),
-                const LiveMapContent(),
+                const OperationZonesHome(),
+                const ApplicationsContent(),
                 const ProfileContent(),
               ];
 
           return Scaffold(
             appBar: AppHeader(title: title),
             bottomNavigationBar: const BottomNavBar(),
-            body: Container(
-              color: Theme.of(context).colorScheme.background,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: IndexedStack(
-                  index: idx,
-                  children: pages
-                      .map((p) => SingleChildScrollView(child: p))
-                      .toList(),
-                ),
-              ),
+            body: IndexedStack(
+              index: idx,
+              children: pages,
             ),
           );
         }

@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Allow access to your location to set your primary address and discover nearby sites.</string>
 </dict>
 </plist>

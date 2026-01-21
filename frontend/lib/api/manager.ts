@@ -48,6 +48,18 @@ export interface EngineerRequest {
   engineer_phone?: string;
 }
 
+export interface ManagerDashboardSummary {
+  total_site_engineers_approved: number;
+  total_site_engineers_pending: number;
+  total_site_engineers_rejected: number;
+  total_projects_assigned: number;
+  total_projects_created: number;
+  total_projects_planned: number;
+  total_projects_active: number;
+  total_projects_completed: number;
+  total_projects_on_hold: number;
+}
+
 // ==================== MANAGER ORGANIZATION API ====================
 
 export interface OrganizationListItem {
@@ -151,4 +163,86 @@ export const managerOrgEngineerRequests = {
       requestId, 
       action 
     }),
+};
+
+// ==================== MANAGER DASHBOARD API ====================
+
+export const managerDashboard = {
+  getSummary: () =>
+    api.get<{ summary: ManagerDashboardSummary }>("/manager/dashboard"),
+};
+
+// ==================== PLAN TYPES ====================
+
+export interface Plan {
+  id: string;
+  project_id: string;
+  created_by: string;
+  start_date: string;
+  end_date: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PlanItem {
+  id: string;
+  plan_id: string;
+  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_start: string;
+  period_end: string;
+  task_name: string;
+  description?: string;
+  planned_quantity?: number;
+  planned_manpower?: number;
+  planned_cost?: number;
+  created_at?: string;
+}
+
+export interface CreatePlanData {
+  project_id: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface CreatePlanItemData {
+  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_start: string;
+  period_end: string;
+  task_name: string;
+  description?: string;
+  planned_quantity?: number;
+  planned_manpower?: number;
+  planned_cost?: number;
+}
+
+// ==================== MANAGER PLANS API ====================
+
+export const managerPlans = {
+  // Create a new plan for a project
+  create: (data: CreatePlanData) =>
+    api.post<{ plan: Plan }>("/manager/plan/plans", data),
+
+  // Get plan and items for a project
+  getByProjectId: (projectId: string) =>
+    api.get<{ plan: Plan; items: PlanItem[] }>(`/manager/plan/plans/${projectId}`),
+
+  // Update a plan
+  update: (planId: string, data: { start_date: string; end_date: string }) =>
+    api.put<{ plan: Plan }>(`/manager/plan/plans/${planId}`, data),
+
+  // Delete a plan
+  delete: (planId: string) =>
+    api.delete<{ message: string }>(`/manager/plan/plans/${planId}`),
+
+  // Add a plan item
+  addItem: (planId: string, data: CreatePlanItemData) =>
+    api.post<{ item: PlanItem }>(`/manager/plan/plans/${planId}/items`, data),
+
+  // Update a plan item
+  updateItem: (itemId: string, data: CreatePlanItemData) =>
+    api.put<{ item: PlanItem }>(`/manager/plan/plans/items/${itemId}`, data),
+
+  // Delete a plan item
+  deleteItem: (itemId: string) =>
+    api.delete<{ message: string }>(`/manager/plan/plans/items/${itemId}`),
 };

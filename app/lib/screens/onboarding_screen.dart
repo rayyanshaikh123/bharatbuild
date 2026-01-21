@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../theme/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -10,12 +11,10 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int currentPage = 0;
-  String selectedLanguage = 'en';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -35,20 +34,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   final item = demoData[index];
 
                   if (item["type"] == "language") {
-                    return LanguageOnboard(
-                      selectedLanguage: selectedLanguage,
-                      onChanged: (lang) {
-                        setState(() {
-                          selectedLanguage = lang;
-                        });
-                      },
-                    );
+                    return const LanguageOnboard();
                   }
 
                   return OnboardContent(
                     illustration: item["illustration"],
-                    title: item["title"],
-                    text: item["text"],
+                    title: (item["title"] as String).tr(),
+                    text: (item["text"] as String).tr(),
                   );
                 },
               ),
@@ -69,7 +61,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             /// Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: ElevatedButton(
                 onPressed: () {
                   if (currentPage < demoData.length - 1) {
@@ -77,28 +69,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       currentPage++;
                     });
                   } else {
-                    Navigator.pushNamed(
+                    Navigator.pushReplacementNamed(
                       context,
                       '/login',
                       arguments: {
                         'role': 'labour',
-                        'language': selectedLanguage,
                       },
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.primaryForeground,
-                  minimumSize: const Size(double.infinity, 40),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  minimumSize: const Size(double.infinity, 56),
                 ),
                 child: Text(
                   currentPage == demoData.length - 1
-                      ? "CONTINUE"
-                      : "NEXT",
+                      ? "CONTINUE".tr()
+                      : "NEXT".tr(),
                 ),
               ),
             ),
@@ -111,28 +97,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// ---------------- LANGUAGE PAGE ----------------
-
 class LanguageOnboard extends StatelessWidget {
-  final String selectedLanguage;
-  final Function(String) onChanged;
-
-  const LanguageOnboard({
-    super.key,
-    required this.selectedLanguage,
-    required this.onChanged,
-  });
+  const LanguageOnboard({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         const Spacer(),
-        Icon(Icons.language, size: 80, color: Colors.grey.shade700),
-        const SizedBox(height: 24),
+        Icon(Icons.language, size: 80, color: Theme.of(context).colorScheme.primary.withOpacity(0.8)),
+        const SizedBox(height: 32),
 
         Text(
-          "Choose Your Language",
+          "language".tr(),
           style: Theme.of(context)
               .textTheme
               .titleLarge!
@@ -141,27 +118,31 @@ class LanguageOnboard extends StatelessWidget {
         const SizedBox(height: 12),
 
         Text(
-          "Select your preferred language to continue",
+          "select_language_desc".tr(),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 48),
 
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 40),
           child: DropdownButtonFormField<String>(
-            value: selectedLanguage,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: "Language",
-            ),
+            value: context.locale.languageCode,
             items: const [
               DropdownMenuItem(value: "en", child: Text("English")),
               DropdownMenuItem(value: "hi", child: Text("हिंदी (Hindi)")),
+              DropdownMenuItem(value: "ta", child: Text("தமிழ் (Tamil)")),
+              DropdownMenuItem(value: "gu", child: Text("ગુજરાતી (Gujarati)")),
               DropdownMenuItem(value: "mr", child: Text("मराठी (Marathi)")),
             ],
             onChanged: (value) {
-              if (value != null) onChanged(value);
+              if (value != null) {
+                context.setLocale(Locale(value));
+              }
             },
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.language),
+              label: Text('language'.tr()),
+            ),
           ),
         ),
 
@@ -170,8 +151,6 @@ class LanguageOnboard extends StatelessWidget {
     );
   }
 }
-
-/// ---------------- INFO PAGE ----------------
 
 class OnboardContent extends StatelessWidget {
   const OnboardContent({
@@ -185,64 +164,64 @@ class OnboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: Image.network(illustration!, fit: BoxFit.contain),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: illustration!.startsWith('http') 
+                ? Image.network(illustration!, fit: BoxFit.contain)
+                : Image.asset(illustration!, fit: BoxFit.contain),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-        Text(
-          title!,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge!
-              .copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
+          Text(
+            title!,
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
 
-        Text(
-          text!,
-          style: Theme.of(context).textTheme.bodyMedium,
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-/// ---------------- DOT INDICATOR ----------------
-
-class DotIndicator extends StatelessWidget {
-  const DotIndicator({
-    super.key,
-    this.isActive = false,
-    this.activeColor = const Color(0xFF22A45D),
-    this.inActiveColor = const Color(0xFF868686),
-  });
-
-  final bool isActive;
-  final Color activeColor, inActiveColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      height: 5,
-      width: 8,
-      decoration: BoxDecoration(
-        color: isActive ? activeColor : inActiveColor.withOpacity(0.25),
-        borderRadius: const BorderRadius.all(Radius.circular(20)),
+          Text(
+            text!,
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 }
 
-/// ---------------- ONBOARDING DATA ----------------
+class DotIndicator extends StatelessWidget {
+  const DotIndicator({
+    super.key,
+    this.isActive = false,
+  });
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      height: 8,
+      width: isActive ? 24 : 8,
+      decoration: BoxDecoration(
+        color: isActive ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.2),
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+      ),
+    );
+  }
+}
 
 List<Map<String, dynamic>> demoData = [
   {
@@ -253,15 +232,13 @@ List<Map<String, dynamic>> demoData = [
   {
     "type": "info",
     "illustration": "https://i.postimg.cc/CKQF6tZB/construction1.png",
-    "title": "Built for Real Construction Sites",
-    "text":
-        "Digitize attendance, daily progress and material tracking even when internet is weak or unavailable.",
+    "title": "onboard_labour_title",
+    "text": "onboard_labour_text",
   },
   {
     "type": "info",
     "illustration": "https://i.postimg.cc/yYy0L3Jk/construction2.png",
-    "title": "Simple Site to Office Flow",
-    "text":
-        "Site Engineer submits data, Manager approves, Owner gets real-time visibility across all projects.",
+    "title": "onboard_engineer_title",
+    "text": "onboard_engineer_text",
   },
 ];

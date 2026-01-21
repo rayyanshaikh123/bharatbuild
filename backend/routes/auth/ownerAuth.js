@@ -16,6 +16,16 @@ router.post("/register", async (req, res, next) => {
     if (!name || !email || !phone || !password)
       return res.status(400).json({ error: "missing_fields" });
 
+    // Check if email already exists
+    const existingUser = await pool.query(
+      "SELECT id FROM owners WHERE email = $1",
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: "email_already_exists" });
+    }
+
     const hash = await bcrypt.hash(password, 10);
     const insert = await pool.query(
       "INSERT INTO owners (name, email, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, role",
@@ -194,7 +204,7 @@ router.post("/logout", (req, res) => {
     });
   } else {
     if (typeof req.logout === 'function') {
-      try { req.logout(() => {}); } catch (_) {}
+      try { req.logout(() => { }); } catch (_) { }
     }
     res.clearCookie('connect.sid');
     return res.json({ message: 'Logged out successfully' });

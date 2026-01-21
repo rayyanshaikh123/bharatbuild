@@ -1,72 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import './mobile_pages.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/app_ui.dart';
 import '../../widgets/offline_banner.dart';
 import '../../providers/app_state.dart';
 import '../../layouts/app_layout.dart';
-import 'mobile_pages.dart';
 
-class EngineerFlowScreen extends StatelessWidget {
-  static const routeName = '/engineer-flow';
+
+class EngineerFlowScreen extends ConsumerWidget {
+  static const routeName = '/engineer-dashboard';
   const EngineerFlowScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final items = List.generate(6, (i) => 'Task #${i + 1}');
-    final statuses = [
-      'ACTIVE',
-      'PENDING',
-      'DELAYED',
-      'COMPLETE',
-      'APPROVED',
-      'PENDING',
-    ];
-    final appState = Provider.of<AppState>(context);
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    // Note: AppState might be using different provider package, check imports
+    // If using Riverpod, it should be ref.watch(...)
+    
     return AppLayout(
-      title: 'Engineer Flow',
+      title: 'BharatBuild',
       mobilePages: const [
         EngineerDashboardContent(),
         EngineerJobsContent(),
         EngineerReportsContent(),
         EngineerProfileContent(),
       ],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OfflineBanner(
-              isOffline: appState.isOffline,
-              syncStatus: appState.syncStatus,
-              toggleOffline: () => appState.toggleOffline(),
-            ),
             const SizedBox(height: 8),
-            const Text(
-              'Welcome, Engineer',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'welcome'.tr(),
+              style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.separated(
-                itemBuilder: (_, idx) => WebCard(
-                  title: items[idx],
-                  subtitle: 'Detailed description for ${items[idx]}',
-                  status: statuses[idx],
-                  onTap: () {},
-                ),
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemCount: items.length,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerRight,
-              child: PrimaryButton(
-                label: 'Open Labour Flow',
-                onPressed: () => Navigator.pushNamed(context, '/labour-flow'),
-              ),
-            ),
+            const SizedBox(height: 24),
+            const EngineerDashboardContent(),
           ],
         ),
       ),

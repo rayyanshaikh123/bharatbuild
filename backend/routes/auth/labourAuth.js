@@ -14,6 +14,16 @@ router.post("/register", async (req, res) => {
     if (!name || !phone)
       return res.status(400).json({ error: "missing_fields" });
 
+    // Check if phone already exists
+    const existingLabour = await pool.query(
+      "SELECT id FROM labours WHERE phone = $1",
+      [phone]
+    );
+
+    if (existingLabour.rows.length > 0) {
+      return res.status(400).json({ error: "phone_already_exists" });
+    }
+
     await pool.query("INSERT INTO labours (name, phone) VALUES ($1, $2)", [
       name,
       phone,
@@ -95,7 +105,7 @@ router.post("/logout", (req, res) => {
     });
   } else {
     if (typeof req.logout === 'function') {
-      try { req.logout(() => {}); } catch (_) {}
+      try { req.logout(() => { }); } catch (_) { }
     }
     res.clearCookie('connect.sid');
     return res.json({ message: 'Logged out successfully' });

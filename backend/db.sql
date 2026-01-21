@@ -119,6 +119,7 @@ CREATE TABLE projects (
     budget NUMERIC,
     current_invested NUMERIC DEFAULT 0,
     status TEXT CHECK (status IN ('PLANNED','ACTIVE','COMPLETED','ON_HOLD')),
+    geofence JSONB,
     created_by UUID REFERENCES managers(id),
     created_at TIMESTAMP DEFAULT now()
 );
