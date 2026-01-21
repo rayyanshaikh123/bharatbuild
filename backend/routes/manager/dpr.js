@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if manager is ACTIVE in the project
 async function managerProjectStatusCheck(managerId, projectId) {
@@ -285,17 +289,17 @@ router.delete("/dprs/:dprId", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { dprId } = req.params;
 
-    // Get DPR with project_id and status
-    const dprCheck = await pool.query(
-      `SELECT project_id, status FROM dprs WHERE id = $1`,
-      [dprId],
-    );
+    // Get DPR with all details
+    const dprCheck = await pool.query(`SELECT * FROM dprs WHERE id = $1`, [
+      dprId,
+    ]);
 
     if (dprCheck.rows.length === 0) {
       return res.status(404).json({ error: "DPR not found" });
     }
 
-    const { project_id: projectId, status } = dprCheck.rows[0];
+    const beforeState = dprCheck.rows[0];
+    const { project_id: projectId, status } = beforeState;
 
     // Check if manager is ACTIVE in project
     const isActive = await managerProjectStatusCheck(managerId, projectId);
@@ -313,6 +317,20 @@ router.delete("/dprs/:dprId", managerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM dprs WHERE id = $1`, [dprId]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "DPR",
+      entityId: dprId,
+      category: "DPR",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
 
     res.json({ message: "DPR deleted successfully" });
   } catch (err) {

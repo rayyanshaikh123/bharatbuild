@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if manager is ACTIVE in project
 async function managerProjectStatusCheck(managerId, projectId) {
@@ -79,9 +83,9 @@ router.patch("/:id", managerCheck, async (req, res) => {
       return res.status(400).json({ error: "Hourly rate is required" });
     }
 
-    // Verify manager is ACTIVE in project
+    // Fetch before state and verify manager is ACTIVE in project
     const verifyRes = await pool.query(
-      `SELECT wr.project_id FROM wage_rates wr
+      `SELECT wr.* FROM wage_rates wr
        JOIN project_managers pm ON wr.project_id = pm.project_id
        WHERE wr.id = $1 AND pm.manager_id = $2 AND pm.status = 'ACTIVE'`,
       [id, managerId],
@@ -91,13 +95,32 @@ router.patch("/:id", managerCheck, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+    const beforeState = verifyRes.rows[0];
+    const project_id = beforeState.project_id;
+
     // Update wage rate
     const result = await pool.query(
       `UPDATE wage_rates SET hourly_rate = $1 WHERE id = $2 RETURNING *`,
       [hourly_rate, id],
     );
 
-    res.json({ wage_rate: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "WAGE_RATE",
+      entityId: id,
+      category: "WAGE_RATE",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ wage_rate: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -110,9 +133,9 @@ router.delete("/:id", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { id } = req.params;
 
-    // Verify manager is ACTIVE in project
+    // Fetch before state and verify manager is ACTIVE in project
     const verifyRes = await pool.query(
-      `SELECT wr.project_id FROM wage_rates wr
+      `SELECT wr.* FROM wage_rates wr
        JOIN project_managers pm ON wr.project_id = pm.project_id
        WHERE wr.id = $1 AND pm.manager_id = $2 AND pm.status = 'ACTIVE'`,
       [id, managerId],
@@ -122,8 +145,25 @@ router.delete("/:id", managerCheck, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+    const beforeState = verifyRes.rows[0];
+    const project_id = beforeState.project_id;
+
     // Delete wage rate
     await pool.query(`DELETE FROM wage_rates WHERE id = $1`, [id]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "WAGE_RATE",
+      entityId: id,
+      category: "WAGE_RATE",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
 
     res.json({ message: "Wage rate deleted successfully" });
   } catch (err) {

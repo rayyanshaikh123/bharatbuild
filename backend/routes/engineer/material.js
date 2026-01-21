@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if engineer is ACTIVE in project
 async function engineerProjectStatusCheck(engineerId, projectId) {
@@ -162,7 +166,7 @@ router.patch("/requests/:id", engineerCheck, async (req, res) => {
 
     // Verify engineer owns the request and it's PENDING
     const checkResult = await pool.query(
-      `SELECT project_id, status FROM material_requests 
+      `SELECT * FROM material_requests 
              WHERE id = $1 AND site_engineer_id = $2`,
       [id, engineerId],
     );
@@ -173,7 +177,8 @@ router.patch("/requests/:id", engineerCheck, async (req, res) => {
         .json({ error: "Request not found or access denied" });
     }
 
-    const { project_id, status } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { project_id, status } = beforeState;
 
     if (status !== "PENDING") {
       return res
@@ -205,7 +210,23 @@ router.patch("/requests/:id", engineerCheck, async (req, res) => {
       ],
     );
 
-    res.json({ request: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_REQUEST",
+      entityId: id,
+      category: "MATERIAL_REQUEST",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ request: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -220,7 +241,7 @@ router.delete("/requests/:id", engineerCheck, async (req, res) => {
 
     // Verify engineer owns the request and it's PENDING
     const checkResult = await pool.query(
-      `SELECT project_id, status FROM material_requests 
+      `SELECT * FROM material_requests 
              WHERE id = $1 AND site_engineer_id = $2`,
       [id, engineerId],
     );
@@ -231,7 +252,8 @@ router.delete("/requests/:id", engineerCheck, async (req, res) => {
         .json({ error: "Request not found or access denied" });
     }
 
-    const { project_id, status } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { project_id, status } = beforeState;
 
     if (status !== "PENDING") {
       return res
@@ -248,6 +270,20 @@ router.delete("/requests/:id", engineerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM material_requests WHERE id = $1`, [id]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_REQUEST",
+      entityId: id,
+      category: "MATERIAL_REQUEST",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
 
     res.json({ message: "Material request deleted successfully" });
   } catch (err) {
@@ -413,7 +449,7 @@ router.patch("/bills/:id", engineerCheck, async (req, res) => {
 
     // Verify engineer uploaded the bill and it's PENDING
     const checkResult = await pool.query(
-      `SELECT project_id, status FROM material_bills 
+      `SELECT * FROM material_bills 
              WHERE id = $1 AND uploaded_by = $2`,
       [id, engineerId],
     );
@@ -422,7 +458,8 @@ router.patch("/bills/:id", engineerCheck, async (req, res) => {
       return res.status(404).json({ error: "Bill not found or access denied" });
     }
 
-    const { project_id, status } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { project_id, status } = beforeState;
 
     if (status !== "PENDING") {
       return res
@@ -459,7 +496,23 @@ router.patch("/bills/:id", engineerCheck, async (req, res) => {
       ],
     );
 
-    res.json({ bill: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_BILL",
+      entityId: id,
+      category: "MATERIAL_BILL",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ bill: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -474,7 +527,7 @@ router.delete("/bills/:id", engineerCheck, async (req, res) => {
 
     // Verify engineer uploaded the bill and it's PENDING
     const checkResult = await pool.query(
-      `SELECT project_id, status FROM material_bills 
+      `SELECT * FROM material_bills 
              WHERE id = $1 AND uploaded_by = $2`,
       [id, engineerId],
     );
@@ -483,7 +536,8 @@ router.delete("/bills/:id", engineerCheck, async (req, res) => {
       return res.status(404).json({ error: "Bill not found or access denied" });
     }
 
-    const { project_id, status } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { project_id, status } = beforeState;
 
     if (status !== "PENDING") {
       return res
@@ -500,6 +554,20 @@ router.delete("/bills/:id", engineerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM material_bills WHERE id = $1`, [id]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_BILL",
+      entityId: id,
+      category: "MATERIAL_BILL",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
 
     res.json({ message: "Material bill deleted successfully" });
   } catch (err) {

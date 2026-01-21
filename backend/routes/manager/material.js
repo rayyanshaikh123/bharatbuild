@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 /* ---------------- LIST MATERIAL REQUESTS ---------------- */
 router.get("/requests", managerCheck, async (req, res) => {
@@ -50,9 +54,9 @@ router.patch("/requests/:id", managerCheck, async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // Verify manager has access to the project of this request
+    // Fetch before state and verify manager has access
     const verifyRes = await pool.query(
-      `SELECT mr.project_id FROM material_requests mr
+      `SELECT mr.* FROM material_requests mr
              JOIN project_managers pm ON mr.project_id = pm.project_id
              WHERE mr.id = $1 AND pm.manager_id = $2 AND pm.status = 'ACTIVE'`,
       [id, managerId],
@@ -64,6 +68,9 @@ router.patch("/requests/:id", managerCheck, async (req, res) => {
         .json({ error: "Access denied or request not found" });
     }
 
+    const beforeState = verifyRes.rows[0];
+    const project_id = beforeState.project_id;
+
     const result = await pool.query(
       `UPDATE material_requests 
              SET status = $1, manager_feedback = $2, reviewed_by = $3, reviewed_at = NOW()
@@ -71,7 +78,23 @@ router.patch("/requests/:id", managerCheck, async (req, res) => {
       [status, manager_feedback, managerId, id],
     );
 
-    res.json({ request: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_REQUEST",
+      entityId: id,
+      category: "MATERIAL_REQUEST",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ request: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -126,9 +149,9 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // Verify manager has access to the project of this bill
+    // Fetch before state and verify manager has access
     const verifyRes = await client.query(
-      `SELECT mb.project_id, mb.total_amount FROM material_bills mb
+      `SELECT mb.* FROM material_bills mb
              JOIN project_managers pm ON mb.project_id = pm.project_id
              WHERE mb.id = $1 AND pm.manager_id = $2 AND pm.status = 'ACTIVE'`,
       [id, managerId],
@@ -138,7 +161,8 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
       return res.status(403).json({ error: "Access denied or bill not found" });
     }
 
-    const { project_id, total_amount } = verifyRes.rows[0];
+    const beforeState = verifyRes.rows[0];
+    const { project_id, total_amount } = beforeState;
 
     // Start transaction
     await client.query("BEGIN");
@@ -151,6 +175,8 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
       [status, manager_feedback, managerId, id],
     );
 
+    const afterState = result.rows[0];
+
     // If approved, update project's current_invested
     if (status === "APPROVED") {
       await client.query(
@@ -161,9 +187,27 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
       );
     }
 
+    // Audit log (inside transaction)
+    const organizationId = await getOrganizationIdFromProject(
+      project_id,
+      client,
+    );
+    await logAudit({
+      entityType: "MATERIAL_BILL",
+      entityId: id,
+      category: "MATERIAL_BILL",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+      client,
+    });
+
     await client.query("COMMIT");
 
-    res.json({ bill: result.rows[0] });
+    res.json({ bill: afterState });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);

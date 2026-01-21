@@ -309,6 +309,55 @@ CREATE TABLE "wages" (
 	CONSTRAINT "wages_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))),
 	CONSTRAINT "wages_wage_type_check" CHECK (CHECK ((wage_type = ANY (ARRAY['DAILY'::text, 'HOURLY'::text]))))
 );
+CREATE TABLE material_ledger (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    dpr_id UUID REFERENCES dprs(id) ON DELETE SET NULL,
+    material_request_id UUID REFERENCES material_requests(id) ON DELETE SET NULL,
+
+    material_name TEXT NOT NULL,
+    category TEXT,
+    quantity NUMERIC NOT NULL,
+    unit TEXT NOT NULL, -- bags, kg, tons, meters, etc.
+
+    movement_type TEXT CHECK (
+        movement_type IN ('IN', 'OUT', 'ADJUSTMENT')
+    ) NOT NULL,
+
+    source TEXT CHECK (
+        source IN ('AI_DPR', 'MANUAL', 'BILL', 'ADJUSTMENT')
+    ) NOT NULL,
+
+    remarks TEXT,
+
+    recorded_by UUID,
+    recorded_by_role TEXT CHECK (
+        recorded_by_role IN ('SITE_ENGINEER', 'MANAGER')
+    ),
+
+    created_at TIMESTAMP DEFAULT now()
+);
+ALTER TABLE plan_items
+ADD COLUMN status TEXT CHECK (
+    status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED')
+) DEFAULT 'PENDING',
+
+ADD COLUMN completed_at DATE,
+
+ADD COLUMN updated_by UUID,
+
+ADD COLUMN updated_by_role TEXT CHECK (
+    updated_by_role IN ('MANAGER')
+),
+
+ADD COLUMN delay_info JSONB;
+ALTER TABLE audit_logs
+ADD COLUMN organization_id UUID,
+ADD COLUMN project_id UUID,
+ADD COLUMN category TEXT,
+ADD COLUMN change_summary JSONB;
+
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");

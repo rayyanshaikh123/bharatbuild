@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 /* ---------------- GET APPROVED ATTENDANCE FOR WAGES ---------------- */
 // Gets attendance records that are APPROVED but don't have a wage record yet
@@ -161,7 +165,7 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
     await client.query("BEGIN");
 
     const verifyRes = await client.query(
-      `SELECT w.id, w.project_id, w.total_amount FROM wages w
+      `SELECT w.* FROM wages w
              JOIN project_managers pm ON w.project_id = pm.project_id
              WHERE w.id = $1 AND pm.manager_id = $2 AND pm.status = 'ACTIVE'`,
       [id, managerId],
@@ -172,13 +176,16 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const { project_id, total_amount } = verifyRes.rows[0];
+    const beforeState = verifyRes.rows[0];
+    const { project_id, total_amount } = beforeState;
 
     const result = await client.query(
       `UPDATE wages SET status = $1, approved_by = $2, approved_at = NOW()
              WHERE id = $3 RETURNING *`,
       [status, managerId, id],
     );
+
+    const afterState = result.rows[0];
 
     // If approved, update project investment
     if (status === "APPROVED") {
@@ -188,9 +195,27 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
       );
     }
 
+    // Audit log (inside transaction)
+    const organizationId = await getOrganizationIdFromProject(
+      project_id,
+      client,
+    );
+    await logAudit({
+      entityType: "WAGES",
+      entityId: id,
+      category: "WAGES",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+      client,
+    });
+
     await client.query("COMMIT");
 
-    res.json({ wage: result.rows[0] });
+    res.json({ wage: afterState });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);

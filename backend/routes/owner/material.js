@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if owner owns the organization of the project
 async function ownerOwnsProject(ownerId, projectId) {
@@ -102,7 +106,7 @@ router.patch("/bills/:id", ownerCheck, async (req, res) => {
 
     // Verify owner owns the organization and bill is orphan
     const checkResult = await pool.query(
-      `SELECT mb.project_id, mb.material_request_id 
+      `SELECT mb.* 
              FROM material_bills mb
              JOIN projects p ON mb.project_id = p.id
              JOIN organizations o ON p.org_id = o.id
@@ -114,7 +118,8 @@ router.patch("/bills/:id", ownerCheck, async (req, res) => {
       return res.status(404).json({ error: "Bill not found or access denied" });
     }
 
-    const { material_request_id } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { material_request_id, project_id } = beforeState;
 
     // Only orphan bills can be edited by owner
     if (material_request_id !== null) {
@@ -145,7 +150,23 @@ router.patch("/bills/:id", ownerCheck, async (req, res) => {
       ],
     );
 
-    res.json({ bill: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_BILL",
+      entityId: id,
+      category: "MATERIAL_BILL",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ bill: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -160,7 +181,7 @@ router.delete("/bills/:id", ownerCheck, async (req, res) => {
 
     // Verify owner owns the organization and bill is orphan
     const checkResult = await pool.query(
-      `SELECT mb.project_id, mb.material_request_id 
+      `SELECT mb.* 
              FROM material_bills mb
              JOIN projects p ON mb.project_id = p.id
              JOIN organizations o ON p.org_id = o.id
@@ -172,7 +193,8 @@ router.delete("/bills/:id", ownerCheck, async (req, res) => {
       return res.status(404).json({ error: "Bill not found or access denied" });
     }
 
-    const { material_request_id } = checkResult.rows[0];
+    const beforeState = checkResult.rows[0];
+    const { material_request_id, project_id } = beforeState;
 
     // Only orphan bills can be deleted by owner
     if (material_request_id !== null) {
@@ -183,6 +205,20 @@ router.delete("/bills/:id", ownerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM material_bills WHERE id = $1`, [id]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "MATERIAL_BILL",
+      entityId: id,
+      category: "MATERIAL_BILL",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
 
     res.json({ message: "Orphan bill deleted successfully" });
   } catch (err) {

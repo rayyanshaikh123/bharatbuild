@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if engineer is APPROVED in organization
 async function engineerOrgStatusCheck(engineerId, projectId) {
@@ -49,11 +53,9 @@ router.post("/", engineerCheck, async (req, res) => {
         [engineerId],
       );
       if (activeProject.rows.length === 0) {
-        return res
-          .status(400)
-          .json({
-            error: "No active project found. Please provide project_id.",
-          });
+        return res.status(400).json({
+          error: "No active project found. Please provide project_id.",
+        });
       }
       project_id = activeProject.rows[0].project_id;
     }
@@ -248,6 +250,21 @@ router.put("/:id", engineerCheck, async (req, res) => {
       status,
     } = req.body;
 
+    // Fetch before state
+    const beforeResult = await pool.query(
+      `SELECT * FROM labour_requests WHERE id = $1 AND site_engineer_id = $2`,
+      [id, engineerId],
+    );
+
+    if (beforeResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Request not found or unauthorized" });
+    }
+
+    const beforeState = beforeResult.rows[0];
+    const project_id = beforeState.project_id;
+
     const result = await pool.query(
       `UPDATE labour_requests SET 
        category = $1, 
@@ -267,12 +284,23 @@ router.put("/:id", engineerCheck, async (req, res) => {
       ],
     );
 
-    if (result.rows.length === 0)
-      return res
-        .status(404)
-        .json({ error: "Request not found or unauthorized" });
+    const afterState = result.rows[0];
 
-    res.json({ labour_request: result.rows[0] });
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "LABOUR_REQUEST",
+      entityId: id,
+      category: "LABOUR_REQUEST",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
+
+    res.json({ labour_request: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -285,14 +313,39 @@ router.delete("/:id", engineerCheck, async (req, res) => {
     const engineerId = req.user.id;
     const { id } = req.params;
 
+    // Fetch before state
+    const beforeResult = await pool.query(
+      `SELECT * FROM labour_requests WHERE id = $1 AND site_engineer_id = $2`,
+      [id, engineerId],
+    );
+
+    if (beforeResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Request not found or unauthorized" });
+    }
+
+    const beforeState = beforeResult.rows[0];
+    const project_id = beforeState.project_id;
+
     const result = await pool.query(
       `DELETE FROM labour_requests WHERE id = $1 AND site_engineer_id = $2`,
       [id, engineerId],
     );
-    if (result.rowCount === 0)
-      return res
-        .status(404)
-        .json({ error: "Request not found or unauthorized" });
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(project_id);
+    await logAudit({
+      entityType: "LABOUR_REQUEST",
+      entityId: id,
+      category: "LABOUR_REQUEST",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+    });
 
     res.json({ message: "Labour request deleted successfully" });
   } catch (err) {

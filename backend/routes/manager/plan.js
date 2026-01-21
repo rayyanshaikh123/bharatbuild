@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if manager is ACTIVE in the project
 async function managerProjectStatusCheck(managerId, projectId) {
@@ -113,17 +117,17 @@ router.put("/plans/:planId", managerCheck, async (req, res) => {
     const { planId } = req.params;
     const { start_date, end_date } = req.body;
 
-    // Get project_id from plan
-    const planCheck = await pool.query(
-      `SELECT project_id FROM plans WHERE id = $1`,
-      [planId],
-    );
+    // Get plan with all details
+    const planCheck = await pool.query(`SELECT * FROM plans WHERE id = $1`, [
+      planId,
+    ]);
 
     if (planCheck.rows.length === 0) {
       return res.status(404).json({ error: "Plan not found" });
     }
 
-    const projectId = planCheck.rows[0].project_id;
+    const beforeState = planCheck.rows[0];
+    const projectId = beforeState.project_id;
 
     // Check if manager is ACTIVE in project or creator
     const isActive = await managerProjectStatusCheck(managerId, projectId);
@@ -141,7 +145,23 @@ router.put("/plans/:planId", managerCheck, async (req, res) => {
       [start_date, end_date, planId],
     );
 
-    res.json({ plan: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "PLAN",
+      entityId: planId,
+      category: "PLAN",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
+
+    res.json({ plan: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -154,17 +174,17 @@ router.delete("/plans/:planId", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { planId } = req.params;
 
-    // Get project_id from plan
-    const planCheck = await pool.query(
-      `SELECT project_id FROM plans WHERE id = $1`,
-      [planId],
-    );
+    // Get plan with all details
+    const planCheck = await pool.query(`SELECT * FROM plans WHERE id = $1`, [
+      planId,
+    ]);
 
     if (planCheck.rows.length === 0) {
       return res.status(404).json({ error: "Plan not found" });
     }
 
-    const projectId = planCheck.rows[0].project_id;
+    const beforeState = planCheck.rows[0];
+    const projectId = beforeState.project_id;
 
     // Check if manager is ACTIVE in project or creator
     const isActive = await managerProjectStatusCheck(managerId, projectId);
@@ -177,6 +197,20 @@ router.delete("/plans/:planId", managerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM plans WHERE id = $1`, [planId]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "PLAN",
+      entityId: planId,
+      category: "PLAN",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
 
     res.json({ message: "Plan deleted successfully" });
   } catch (err) {
@@ -263,9 +297,9 @@ router.put("/plans/items/:itemId", managerCheck, async (req, res) => {
       planned_cost,
     } = req.body;
 
-    // Get project_id from plan item
+    // Get plan item with all details
     const itemCheck = await pool.query(
-      `SELECT p.project_id FROM plan_items pi
+      `SELECT pi.*, p.project_id FROM plan_items pi
        JOIN plans p ON pi.plan_id = p.id
        WHERE pi.id = $1`,
       [itemId],
@@ -275,7 +309,8 @@ router.put("/plans/items/:itemId", managerCheck, async (req, res) => {
       return res.status(404).json({ error: "Plan item not found" });
     }
 
-    const projectId = itemCheck.rows[0].project_id;
+    const beforeState = itemCheck.rows[0];
+    const projectId = beforeState.project_id;
 
     // Check if manager is ACTIVE in project or creator
     const isActive = await managerProjectStatusCheck(managerId, projectId);
@@ -306,7 +341,23 @@ router.put("/plans/items/:itemId", managerCheck, async (req, res) => {
       ],
     );
 
-    res.json({ item: result.rows[0] });
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "PLAN_ITEM",
+      entityId: itemId,
+      category: "PLAN_ITEM",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
+
+    res.json({ item: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -319,9 +370,9 @@ router.delete("/plans/items/:itemId", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { itemId } = req.params;
 
-    // Get project_id from plan item
+    // Get plan item with all details
     const itemCheck = await pool.query(
-      `SELECT p.project_id FROM plan_items pi
+      `SELECT pi.*, p.project_id FROM plan_items pi
        JOIN plans p ON pi.plan_id = p.id
        WHERE pi.id = $1`,
       [itemId],
@@ -331,7 +382,8 @@ router.delete("/plans/items/:itemId", managerCheck, async (req, res) => {
       return res.status(404).json({ error: "Plan item not found" });
     }
 
-    const projectId = itemCheck.rows[0].project_id;
+    const beforeState = itemCheck.rows[0];
+    const projectId = beforeState.project_id;
 
     // Check if manager is ACTIVE in project or creator
     const isActive = await managerProjectStatusCheck(managerId, projectId);
@@ -344,6 +396,20 @@ router.delete("/plans/items/:itemId", managerCheck, async (req, res) => {
     }
 
     await pool.query(`DELETE FROM plan_items WHERE id = $1`, [itemId]);
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "PLAN_ITEM",
+      entityId: itemId,
+      category: "PLAN_ITEM",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
 
     res.json({ message: "Plan item deleted successfully" });
   } catch (err) {
