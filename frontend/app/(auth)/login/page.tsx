@@ -117,6 +117,16 @@ export default function LoginPage() {
                 />
               </div>
 
+              {/* Forgot Password Link */}
+              <div className="flex justify-end">
+                <Link 
+                  href="/forgot-password" 
+                  className="text-sm text-primary hover:text-primary/80 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
               {/* Error Message */}
               {error && (
                 <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl">

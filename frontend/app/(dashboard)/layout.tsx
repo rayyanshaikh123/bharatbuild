@@ -58,6 +58,11 @@ export default function DashboardLayout({
           <main className="md:ml-72 min-h-screen relative z-10">
             <div className="p-6 md:p-8">{children}</div>
           </main>
+          <script
+            async
+            crossOrigin="anonymous"
+            src="https://tweakcn.com/live-preview.min.js"
+          />
         </div>
       </AuthGuard>
     </ThemeProvider>

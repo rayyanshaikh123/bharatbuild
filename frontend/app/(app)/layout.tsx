@@ -16,6 +16,11 @@ export default function AppLayout({
     >
       <AuthProvider>
         {children}
+        <script
+          async
+          crossOrigin="anonymous"
+          src="https://tweakcn.com/live-preview.min.js"
+        />
       </AuthProvider>
     </ThemeProvider>
   );

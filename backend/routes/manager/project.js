@@ -46,6 +46,7 @@ router.post("/create-project", managerCheck, async (req, res) => {
       end_date,
       budget,
       status,
+      geofence,
     } = req.body;
 
     const isApproved = await managerOrgStatusCheck(managerId, organizationId);
@@ -60,8 +61,8 @@ router.post("/create-project", managerCheck, async (req, res) => {
     try {
       await client.query("BEGIN");
       const insertProjectText = `INSERT INTO projects (org_id, name, location_text,
-        latitude, longitude, geofence_radius, start_date, end_date, budget, status, created_by) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
+        latitude, longitude, geofence_radius, start_date, end_date, budget, status, created_by, geofence) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`;
       const insertProjectValues = [
         organizationId,
         name,
@@ -74,6 +75,7 @@ router.post("/create-project", managerCheck, async (req, res) => {
         budget,
         status,
         managerId,
+        geofence,
       ];
       const projectResult = await client.query(
         insertProjectText,
@@ -224,6 +226,7 @@ router.put("/project/:projectId", managerCheck, async (req, res) => {
       end_date,
       budget,
       status,
+      geofence,
     } = req.body;
 
     // Only the creator can update the project
@@ -236,14 +239,15 @@ router.put("/project/:projectId", managerCheck, async (req, res) => {
 
     const result = await pool.query(
       `UPDATE projects SET name=$1, location_text=$2, latitude=$3, longitude=$4,
-       geofence_radius=$5, start_date=$6, end_date=$7, budget=$8, status=$9
-       WHERE id=$10 AND org_id=$11 AND created_by=$12 RETURNING *`,
+       geofence_radius=$5, geofence=$6, start_date=$7, end_date=$8, budget=$9, status=$10
+       WHERE id=$11 AND org_id=$12 AND created_by=$13 RETURNING *`,
       [
         name,
         location_text,
         latitude,
         longitude,
         geofence_radius,
+        geofence,
         start_date,
         end_date,
         budget,

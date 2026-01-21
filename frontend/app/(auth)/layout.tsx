@@ -60,6 +60,11 @@ export default function AuthLayout({
         <main className="relative z-10 flex items-center justify-center min-h-[calc(100vh-100px)] px-6 pb-12">
           {children}
         </main>
+        <script
+          async
+          crossOrigin="anonymous"
+          src="https://tweakcn.com/live-preview.min.js"
+        />
       </div>
     </ThemeProvider>
   );

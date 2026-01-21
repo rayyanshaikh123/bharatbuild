@@ -24,6 +24,7 @@ export interface Project {
   budget: number;
   status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ON_HOLD";
   created_by: string;
+  geofence?: any;
 }
 
 export interface CreateProjectData {
@@ -37,6 +38,7 @@ export interface CreateProjectData {
   end_date: string;
   budget: number;
   status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ON_HOLD";
+  geofence?: any;
 }
 
 export interface EngineerRequest {

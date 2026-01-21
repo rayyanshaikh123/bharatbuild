@@ -3,7 +3,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { User, UserRole, auth } from "@/lib/api/auth";
 
-const STORAGE_KEY = "bharatbuild_user";
+const STORAGE_KEY = "bharatbuild_session";
+const SESSION_DURATION_DAYS = 16;
+const SESSION_DURATION_MS = SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000; // 16 days in milliseconds
+
+interface StoredSession {
+  user: User;
+  expiresAt: number; // Unix timestamp
+}
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +25,19 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper to check if session is expired
+function isSessionExpired(expiresAt: number): boolean {
+  return Date.now() > expiresAt;
+}
+
+// Helper to create session with expiry
+function createSession(user: User): StoredSession {
+  return {
+    user,
+    expiresAt: Date.now() + SESSION_DURATION_MS,
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -42,12 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-          const storedUser = JSON.parse(stored) as User;
-          const validatedUser = await validateSession(storedUser);
+          const session = JSON.parse(stored) as StoredSession;
+          
+          // Check if session has expired
+          if (isSessionExpired(session.expiresAt)) {
+            localStorage.removeItem(STORAGE_KEY);
+            setUser(null);
+            return;
+          }
+
+          const validatedUser = await validateSession(session.user);
 
           if (validatedUser) {
             setUser(validatedUser);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(validatedUser));
+            // Refresh session expiry on successful validation
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(createSession(validatedUser)));
           } else {
             localStorage.removeItem(STORAGE_KEY);
             setUser(null);
@@ -64,10 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [validateSession]);
 
-  // Persist user to localStorage when it changes
+  // Persist user to localStorage when it changes (with expiry)
   useEffect(() => {
     if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(createSession(user)));
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }

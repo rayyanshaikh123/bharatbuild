@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { managerOrganization, managerProjects, ManagerOrgRequest, CreateProjectData } from "@/lib/api/manager";
+import { ProjectsMap } from "@/components/maps/ProjectsMap";
 
 export default function CreateProjectPage() {
   const router = useRouter();
@@ -18,13 +19,14 @@ export default function CreateProjectPage() {
   const [formData, setFormData] = useState({
     name: "",
     location_text: "",
-    latitude: "",
-    longitude: "",
+    latitude: "20.5937", // Default to India center or similar
+    longitude: "78.9629",
     geofence_radius: "100",
     start_date: "",
     end_date: "",
     budget: "",
     status: "PLANNED" as const,
+    geofence: null as any,
   });
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function CreateProjectPage() {
         end_date: formData.end_date,
         budget: parseFloat(formData.budget) || 0,
         status: formData.status,
+        geofence: formData.geofence,
       };
 
       await managerProjects.create(data);
@@ -132,15 +135,37 @@ export default function CreateProjectPage() {
           {/* Location */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">
-              <MapPin size={14} /> Location
+              <MapPin size={14} /> Location & Boundaries
             </label>
             <Input
               name="location_text"
               value={formData.location_text}
               onChange={handleChange}
-              placeholder="Site address"
+              placeholder="Site address (e.g. 123 Main St)"
               required
+              className="mb-2"
             />
+            {/* Map Preview for Drawing */}
+            <div className="h-[400px] w-full rounded-xl overflow-hidden border border-border mt-2">
+              <ProjectsMap 
+                projects={[{
+                  id: "new",
+                  name: formData.name || "New Project",
+                  latitude: parseFloat(formData.latitude) || 20.5937,
+                  longitude: parseFloat(formData.longitude) || 78.9629,
+                  status: formData.status,
+                  geofence_radius: parseInt(formData.geofence_radius) || 100,
+                  geofence: formData.geofence
+                }]}
+                height="100%"
+                showRadius={true}
+                enableDraw={true}
+                onGeofenceChange={(geo) => setFormData(prev => ({ ...prev, geofence: geo }))}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use the draw tools on the left of the map to define the precise site boundary.
+            </p>
           </div>
 
           {/* Coordinates */}

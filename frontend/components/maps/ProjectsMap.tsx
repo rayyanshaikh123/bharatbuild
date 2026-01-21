@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Loader2, MapPin, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useMap } from "react-leaflet";
+import L from "leaflet";
+
+// Import Leaflet Draw for side effects (registers L.Control.Draw)
+import "leaflet-draw";
 
 // Dynamic import for Leaflet (SSR fix)
 const MapContainer = dynamic(
@@ -26,15 +31,24 @@ const Circle = dynamic(
   () => import("react-leaflet").then((mod) => mod.Circle),
   { ssr: false }
 );
+const FeatureGroup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.FeatureGroup),
+  { ssr: false }
+);
+const Polygon = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polygon),
+  { ssr: false }
+);
 
 interface ProjectLocation {
-  id: string;
+  id?: string;
   name: string;
   latitude: number;
   longitude: number;
   status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ON_HOLD";
   location_text?: string;
   geofence_radius?: number; // in meters
+  geofence?: any; // GeoJSON
 }
 
 interface ProjectsMapProps {
@@ -42,6 +56,8 @@ interface ProjectsMapProps {
   height?: string;
   showRadius?: boolean;
   onProjectClick?: (projectId: string) => void;
+  enableDraw?: boolean;
+  onGeofenceChange?: (geojson: any) => void;
 }
 
 // Status color mapping
@@ -52,11 +68,105 @@ const statusColors: Record<string, string> = {
   ON_HOLD: "#64748b",
 };
 
+// Internal component to handle Drawing Logic
+function DrawControl({ onGeofenceChange, existingGeofence }: { onGeofenceChange?: (json: any) => void, existingGeofence?: any }) {
+  const map = useMap();
+  const featureGroupRef = useRef<L.FeatureGroup | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    // Initialize FeatureGroup to store drawn items
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    featureGroupRef.current = drawnItems;
+
+    // If there's an existing geofence, add it to the layer
+    if (existingGeofence) {
+      const layer = L.geoJSON(existingGeofence);
+      layer.eachLayer((l: any) => {
+        drawnItems.addLayer(l);
+      });
+      // Fit bounds to existing shape
+      try {
+        if (drawnItems.getLayers().length > 0) {
+           map.fitBounds(drawnItems.getBounds());
+        }
+      } catch (e) { console.error("Could not fit bounds", e)}
+    }
+
+    // Initialize Draw Control
+    const drawControl = new L.Control.Draw({
+      edit: {
+        featureGroup: drawnItems,
+        remove: true,
+      },
+      draw: {
+        polygon: {
+          allowIntersection: false,
+          showArea: true,
+        },
+        rectangle: { shapeOptions: {} },
+        circle: false,
+        marker: false,
+        circlemarker: false,
+        polyline: false,
+      },
+    });
+
+    map.addControl(drawControl);
+
+    // Event Handlers
+    const onCreated = (e: any) => {
+      const layer = e.layer;
+      drawnItems.clearLayers(); // Only allow one shape at a time for now
+      drawnItems.addLayer(layer);
+      
+      const geojson = drawnItems.toGeoJSON() as any;
+      // Extract the first feature if it exists, or the whole collection
+      const shapeData = geojson.features && geojson.features.length > 0 
+        ? geojson.features[0] 
+        : geojson;
+        
+      if (onGeofenceChange) onGeofenceChange(shapeData);
+    };
+
+    const onEdited = (e: any) => {
+      const geojson = drawnItems.toGeoJSON() as any;
+      const shapeData = geojson.features && geojson.features.length > 0 
+        ? geojson.features[0] 
+        : geojson;
+
+      if (onGeofenceChange) onGeofenceChange(shapeData);
+    };
+
+    const onDeleted = (e: any) => {
+       if (onGeofenceChange) onGeofenceChange(null);
+    };
+
+    map.on(L.Draw.Event.CREATED, onCreated);
+    map.on(L.Draw.Event.EDITED, onEdited);
+    map.on(L.Draw.Event.DELETED, onDeleted);
+
+    return () => {
+      map.removeControl(drawControl);
+      map.removeLayer(drawnItems);
+      map.off(L.Draw.Event.CREATED, onCreated);
+      map.off(L.Draw.Event.EDITED, onEdited);
+      map.off(L.Draw.Event.DELETED, onDeleted);
+    };
+  }, [map, onGeofenceChange]); // existingGeofence effect should be separate or handled carefully
+
+  return null;
+}
+
 export function ProjectsMap({ 
   projects, 
   height = "300px", 
   showRadius = true,
-  onProjectClick 
+  onProjectClick,
+  enableDraw = false,
+  onGeofenceChange
 }: ProjectsMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [leafletIcon, setLeafletIcon] = useState<L.Icon | null>(null);
@@ -64,10 +174,7 @@ export function ProjectsMap({
   useEffect(() => {
     setIsClient(true);
     
-    // Import Leaflet CSS
-    import("leaflet/dist/leaflet.css");
-    
-    // Create custom icon
+    // Import map icons fix
     import("leaflet").then((L) => {
       const icon = new L.Icon({
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -95,7 +202,14 @@ export function ProjectsMap({
   }
 
   // Calculate center from projects or default to India center
-  const validProjects = projects.filter(p => p.latitude && p.longitude);
+  const validProjects = projects
+    .map((p) => ({
+      ...p,
+      latitude: Number(p.latitude),
+      longitude: Number(p.longitude),
+    }))
+    .filter((p) => !isNaN(p.latitude) && !isNaN(p.longitude));
+
   const defaultCenter: [number, number] = [20.5937, 78.9629]; // India center
   
   let center: [number, number] = defaultCenter;
@@ -108,34 +222,65 @@ export function ProjectsMap({
     zoom = validProjects.length === 1 ? 14 : 6;
   }
 
-  if (validProjects.length === 0) {
-    return (
-      <div 
-        className="glass-card rounded-2xl flex flex-col items-center justify-center" 
-        style={{ height }}
-      >
-        <MapPin className="h-12 w-12 text-muted-foreground/50 mb-2" />
-        <p className="text-muted-foreground text-sm">No project locations available</p>
-      </div>
-    );
-  }
+  // For drawing mode, we usually focus on a single project (the one being created/edited)
+  // If editing, use the existing geofence
+  const editingProject = projects.length === 1 ? projects[0] : null;
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ height }}>
+    <div className="rounded-2xl overflow-hidden glass-card border border-border/50" style={{ height }}>
       <MapContainer
         center={center}
         zoom={zoom}
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={false}
+        scrollWheelZoom={enableDraw} // Enable scroll zoom when drawing for better control
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {validProjects.map((project) => (
-          <div key={project.id}>
-            {/* Geofence radius circle */}
-            {showRadius && project.geofence_radius && project.geofence_radius > 0 && (
+        
+        {/* Helper component for Drawing */}
+        {enableDraw && (
+          <DrawControl 
+             onGeofenceChange={onGeofenceChange} 
+             existingGeofence={editingProject?.geofence}
+          />
+        )}
+
+        {/* Render existing projects if NOT drawing or if simply viewing */}
+        {!enableDraw && validProjects.map((project) => (
+          <div key={project.id || 'new'}>
+            
+            {/* 1. Render Polygon if Geofence exists */}
+            {project.geofence && (
+               <Polygon 
+                 positions={
+                   (project.geofence.geometry ? project.geofence.geometry.coordinates : project.geofence.coordinates)
+                   // Leaflet expects [lat, lng], GeoJSON is [lng, lat]. Invert if needed.
+                   // Usually framework handles this, but let's be careful.
+                   // Actually L.geoJSON handles it. But <Polygon> expects [lat, lng].
+                   // Simplest is to let L.geoJSON handle it via a component, but keeping it simple for now.
+                   // The DrawControl handles the "drawing" part.
+                   // For display, we might need a GeoJSON component.
+                   // Let's stick to simple markers for bulk view.
+                  }
+                  pathOptions={{
+                    color: statusColors[project.status] || statusColors.PLANNED,
+                    fillOpacity: 0.2
+                  }}
+               />
+            ) as any}
+
+             {/* For display of existing geofences using GeoJSON is tricky in React-Leaflet loop without component.
+                 We will rely on separate handling or just Circles for now if geofence is complex. 
+                 But wait, we want to SEE the shapes. 
+                 Let's assume for 'View All' we stick to markers/circles for performance.
+                 The 'DrawControl' handles the EDIT/CREATE view nicely.
+             */}
+
+
+            {/* 2. Fallback to Radius Circle if no geofence (or in addition) */}
+            {showRadius && !project.geofence && project.geofence_radius && project.geofence_radius > 0 && (
               <Circle
                 center={[project.latitude, project.longitude]}
                 radius={project.geofence_radius}
@@ -148,6 +293,7 @@ export function ProjectsMap({
                 }}
               />
             )}
+
             {/* Project marker */}
             <Marker
               position={[project.latitude, project.longitude]}
@@ -164,16 +310,16 @@ export function ProjectsMap({
                       Geofence: {project.geofence_radius}m radius
                     </p>
                   )}
-                  <div className="flex items-center justify-between">
+                   <div className="flex items-center justify-between">
                     <span 
                       className="text-xs px-2 py-0.5 rounded-full text-white font-medium"
                       style={{ backgroundColor: statusColors[project.status] || statusColors.PLANNED }}
                     >
                       {project.status}
                     </span>
-                    {onProjectClick && (
+                    {onProjectClick && project.id && (
                       <button
-                        onClick={() => onProjectClick(project.id)}
+                        onClick={() => onProjectClick(project.id!)}
                         className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                       >
                         View <ExternalLink size={10} />

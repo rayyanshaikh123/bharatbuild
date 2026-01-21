@@ -72,4 +72,12 @@ export const auth = {
       return null;
     }
   },
+
+  // Forgot password (mock - no backend endpoint exists yet)
+  forgotPassword: async (role: UserRole, email: string): Promise<{ message: string }> => {
+    // TODO: Implement when backend endpoint is available
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return { message: "If an account exists, a reset link has been sent." };
+  },
 };

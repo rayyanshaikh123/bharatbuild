@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { managerOrganization, managerProjects, ManagerOrgRequest, Project } from "@/lib/api/manager";
+import { ProjectsMap } from "@/components/maps/ProjectsMap";
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function EditProjectPage() {
     end_date: "",
     budget: "",
     status: "PLANNED" as Project["status"],
+    geofence: null as any,
   });
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function EditProjectPage() {
               end_date: project.end_date ? project.end_date.split("T")[0] : "",
               budget: project.budget?.toString() || "",
               status: project.status || "PLANNED",
+              geofence: project.geofence || null,
             });
           }
         }
@@ -91,6 +94,7 @@ export default function EditProjectPage() {
         end_date: formData.end_date,
         budget: parseFloat(formData.budget) || 0,
         status: formData.status,
+        geofence: formData.geofence,
       });
 
       router.push("/manager/projects");
@@ -155,7 +159,7 @@ export default function EditProjectPage() {
           {/* Location */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">
-              <MapPin size={14} /> Location
+              <MapPin size={14} /> Location & Boundaries
             </label>
             <Input
               name="location_text"
@@ -163,7 +167,29 @@ export default function EditProjectPage() {
               onChange={handleChange}
               placeholder="Site address"
               required
+              className="mb-2"
             />
+            {/* Map Preview for Drawing */}
+            <div className="h-[400px] w-full rounded-xl overflow-hidden border border-border mt-2">
+              <ProjectsMap 
+                projects={[{
+                  id: projectId,
+                  name: formData.name || "Project",
+                  latitude: parseFloat(formData.latitude) || 20.5937,
+                  longitude: parseFloat(formData.longitude) || 78.9629,
+                  status: formData.status,
+                  geofence_radius: parseInt(formData.geofence_radius) || 100,
+                  geofence: formData.geofence
+                }]}
+                height="100%"
+                showRadius={true}
+                enableDraw={true}
+                onGeofenceChange={(geo) => setFormData(prev => ({ ...prev, geofence: geo }))}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Adjust the site boundary using the edit tools on the map.
+            </p>
           </div>
 
           {/* Coordinates */}

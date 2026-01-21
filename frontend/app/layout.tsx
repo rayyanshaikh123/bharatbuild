@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/AuthContext";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -25,10 +27,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+
       <body
-        suppressHydrationWarning
+        
         className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased`}
       >
+        <head>
+          <script
+            async
+            crossOrigin="anonymous"
+            src="https://tweakcn.com/live-preview.min.js"
+          />
+        </head>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

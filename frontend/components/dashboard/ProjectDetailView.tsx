@@ -68,6 +68,7 @@ export function ProjectDetailView({
   userRole,
 }: ProjectDetailViewProps) {
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (isLoading) {
     return (
@@ -98,8 +99,6 @@ export function ProjectDetailView({
     location_text: project.location_text,
     geofence_radius: project.geofence_radius,
   };
-
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     if (!project || !confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
