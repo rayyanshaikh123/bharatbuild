@@ -160,7 +160,15 @@ export default function CreateProjectPage() {
                 height="100%"
                 showRadius={true}
                 enableDraw={true}
-                onGeofenceChange={(geo) => setFormData(prev => ({ ...prev, geofence: geo }))}
+                onGeofenceChange={(geo, center, radius) => {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    geofence: geo,
+                    latitude: center ? center.lat.toFixed(6) : prev.latitude,
+                    longitude: center ? center.lng.toFixed(6) : prev.longitude,
+                    geofence_radius: radius ? Math.round(radius).toString() : prev.geofence_radius
+                  }));
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">

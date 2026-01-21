@@ -15,6 +15,15 @@ async function fetcher<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      // Clear session and redirect to login if unauthorized
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("bharatbuild_session"); // Hardcoded key to avoid circular import
+        if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/register")) {
+           window.location.href = "/login";
+        }
+      }
+    }
     const error = await res.json().catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || error.message || "Request failed");
   }

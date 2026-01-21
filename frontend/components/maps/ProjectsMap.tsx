@@ -35,10 +35,12 @@ const FeatureGroup = dynamic(
   () => import("react-leaflet").then((mod) => mod.FeatureGroup),
   { ssr: false }
 );
-const Polygon = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Polygon),
+const GeoJSON = dynamic(
+  () => import("react-leaflet").then((mod) => mod.GeoJSON),
   { ssr: false }
 );
+
+
 
 interface ProjectLocation {
   id?: string;
@@ -57,7 +59,7 @@ interface ProjectsMapProps {
   showRadius?: boolean;
   onProjectClick?: (projectId: string) => void;
   enableDraw?: boolean;
-  onGeofenceChange?: (geojson: any) => void;
+  onGeofenceChange?: (geojson: any, center?: { lat: number, lng: number }, radius?: number) => void;
 }
 
 // Status color mapping
@@ -69,7 +71,7 @@ const statusColors: Record<string, string> = {
 };
 
 // Internal component to handle Drawing Logic
-function DrawControl({ onGeofenceChange, existingGeofence }: { onGeofenceChange?: (json: any) => void, existingGeofence?: any }) {
+function DrawControl({ onGeofenceChange, existingGeofence }: { onGeofenceChange?: (json: any, center?: { lat: number, lng: number }, radius?: number) => void, existingGeofence?: any }) {
   const map = useMap();
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
 
@@ -116,28 +118,38 @@ function DrawControl({ onGeofenceChange, existingGeofence }: { onGeofenceChange?
 
     map.addControl(drawControl);
 
-    // Event Handlers
-    const onCreated = (e: any) => {
-      const layer = e.layer;
-      drawnItems.clearLayers(); // Only allow one shape at a time for now
+    const handleLayerUpdate = (layer: any) => {
+      drawnItems.clearLayers(); 
       drawnItems.addLayer(layer);
       
       const geojson = drawnItems.toGeoJSON() as any;
-      // Extract the first feature if it exists, or the whole collection
       const shapeData = geojson.features && geojson.features.length > 0 
         ? geojson.features[0] 
         : geojson;
-        
-      if (onGeofenceChange) onGeofenceChange(shapeData);
+
+      if (onGeofenceChange) {
+        // Calculate center and radius
+        const bounds = layer.getBounds();
+        const center = bounds.getCenter();
+        // Approximate radius as half the diagonal distance or distance from center to a corner
+        const northEast = bounds.getNorthEast();
+        const radius = center.distanceTo(northEast);
+
+        onGeofenceChange(shapeData, center, radius);
+      }
+    };
+
+    // Event Handlers
+    const onCreated = (e: any) => {
+      handleLayerUpdate(e.layer);
     };
 
     const onEdited = (e: any) => {
-      const geojson = drawnItems.toGeoJSON() as any;
-      const shapeData = geojson.features && geojson.features.length > 0 
-        ? geojson.features[0] 
-        : geojson;
-
-      if (onGeofenceChange) onGeofenceChange(shapeData);
+      // For edited layers, we might have multiple, but we only support one main shape for now.
+      // e.layers is a LayerGroup
+      e.layers.eachLayer((layer: any) => {
+         handleLayerUpdate(layer);
+      });
     };
 
     const onDeleted = (e: any) => {
@@ -155,8 +167,21 @@ function DrawControl({ onGeofenceChange, existingGeofence }: { onGeofenceChange?
       map.off(L.Draw.Event.EDITED, onEdited);
       map.off(L.Draw.Event.DELETED, onDeleted);
     };
-  }, [map, onGeofenceChange]); // existingGeofence effect should be separate or handled carefully
+  }, [map, onGeofenceChange]); 
 
+  return null;
+}
+
+// Helper to update map view when props change
+function Recenter({ center, zoom, bounds }: { center: [number, number], zoom: number, bounds?: L.LatLngBoundsExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView(center, zoom);
+    }
+  }, [center, zoom, bounds, map]);
   return null;
 }
 
@@ -214,12 +239,34 @@ export function ProjectsMap({
   
   let center: [number, number] = defaultCenter;
   let zoom = 5;
+  let bounds: L.LatLngBoundsExpression | undefined = undefined;
 
   if (validProjects.length > 0) {
-    const avgLat = validProjects.reduce((sum, p) => sum + p.latitude, 0) / validProjects.length;
-    const avgLng = validProjects.reduce((sum, p) => sum + p.longitude, 0) / validProjects.length;
-    center = [avgLat, avgLng];
-    zoom = validProjects.length === 1 ? 14 : 6;
+    if (validProjects.length === 1) {
+       // Single project
+       const p = validProjects[0];
+       center = [p.latitude, p.longitude];
+       zoom = 15; // Closer zoom for single project
+       
+       // If it has a geofence, try to fit bounds
+       if (p.geofence) {
+          try {
+             const layer = L.geoJSON(p.geofence);
+             const layerBounds = layer.getBounds();
+             if (layerBounds.isValid()) {
+                bounds = layerBounds;
+             }
+          } catch(e) {}
+       }
+    } else {
+       // Multiple projects - calculate bounds
+       const latLngs = validProjects.map(p => [p.latitude, p.longitude] as [number, number]);
+       if (latLngs.length > 0) {
+         bounds = L.latLngBounds(latLngs);
+       }
+       center = [validProjects.reduce((sum, p) => sum + p.latitude, 0) / validProjects.length, validProjects.reduce((sum, p) => sum + p.longitude, 0) / validProjects.length];
+       zoom = 6; 
+    }
   }
 
   // For drawing mode, we usually focus on a single project (the one being created/edited)
@@ -234,6 +281,7 @@ export function ProjectsMap({
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={enableDraw} // Enable scroll zoom when drawing for better control
       >
+        <Recenter center={center} zoom={zoom} bounds={bounds} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -253,23 +301,15 @@ export function ProjectsMap({
             
             {/* 1. Render Polygon if Geofence exists */}
             {project.geofence && (
-               <Polygon 
-                 positions={
-                   (project.geofence.geometry ? project.geofence.geometry.coordinates : project.geofence.coordinates)
-                   // Leaflet expects [lat, lng], GeoJSON is [lng, lat]. Invert if needed.
-                   // Usually framework handles this, but let's be careful.
-                   // Actually L.geoJSON handles it. But <Polygon> expects [lat, lng].
-                   // Simplest is to let L.geoJSON handle it via a component, but keeping it simple for now.
-                   // The DrawControl handles the "drawing" part.
-                   // For display, we might need a GeoJSON component.
-                   // Let's stick to simple markers for bulk view.
-                  }
-                  pathOptions={{
-                    color: statusColors[project.status] || statusColors.PLANNED,
-                    fillOpacity: 0.2
-                  }}
+               <GeoJSON 
+                 key={`${project.id}-geo`}
+                 data={project.geofence}
+                 style={{
+                   color: statusColors[project.status] || statusColors.PLANNED,
+                   fillOpacity: 0.2
+                 }}
                />
-            ) as any}
+            )}
 
              {/* For display of existing geofences using GeoJSON is tricky in React-Leaflet loop without component.
                  We will rely on separate handling or just Circles for now if geofence is complex. 

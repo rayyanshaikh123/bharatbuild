@@ -73,11 +73,9 @@ export const auth = {
     }
   },
 
-  // Forgot password (mock - no backend endpoint exists yet)
+  // Forgot password
   forgotPassword: async (role: UserRole, email: string): Promise<{ message: string }> => {
-    // TODO: Implement when backend endpoint is available
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return { message: "If an account exists, a reset link has been sent." };
+    const endpoint = role === "OWNER" ? "/auth/owner/forgot-password" : "/auth/manager/forgot-password";
+    return api.post<{ message: string }>(endpoint, { email });
   },
 };

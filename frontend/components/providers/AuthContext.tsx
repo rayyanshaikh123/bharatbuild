@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, UserRole, auth } from "@/lib/api/auth";
 
 const STORAGE_KEY = "bharatbuild_session";
-const SESSION_DURATION_DAYS = 16;
+const SESSION_DURATION_DAYS = 1;
 const SESSION_DURATION_MS = SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000; // 16 days in milliseconds
 
 interface StoredSession {

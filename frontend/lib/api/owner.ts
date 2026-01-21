@@ -49,6 +49,7 @@ export interface Project {
   latitude: number;
   longitude: number;
   geofence_radius: number;
+  geofence?: any;
   start_date: string;
   end_date: string;
   budget: number;

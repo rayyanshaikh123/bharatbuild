@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Mail, Loader2, ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
-import { UserRole } from "@/lib/api/auth";
+import { UserRole, auth } from "@/lib/api/auth";
 
 export default function ForgotPasswordPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>("OWNER");
@@ -19,12 +19,14 @@ export default function ForgotPasswordPage() {
     setError("");
     setIsLoading(true);
 
-    // Simulate API call (no backend endpoint exists yet)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Mock success
-    setIsLoading(false);
-    setIsSubmitted(true);
+    try {
+      await auth.forgotPassword(selectedRole, email);
+      setIsSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset link");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

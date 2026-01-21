@@ -20,6 +20,7 @@ interface Project {
   start_date?: string;
   end_date?: string;
   geofence_radius?: number;
+  geofence?: any;
   created_at?: string;
   org_id: string;
 }
@@ -98,6 +99,7 @@ export function ProjectDetailView({
     status: project.status,
     location_text: project.location_text,
     geofence_radius: project.geofence_radius,
+    geofence: project.geofence,
   };
 
   const handleDelete = async () => {

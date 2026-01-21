@@ -86,6 +86,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
     status: p.status,
     location_text: p.location_text,
     geofence_radius: p.geofence_radius,
+    geofence: p.geofence,
   }));
 
   return (
