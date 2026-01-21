@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
+const { logAudit } = require("../../util/auditLogger");
 
 router.post("/create-organization", ownerCheck, async (req, res) => {
   const { name, address, office_phone, org_type } = req.body;
@@ -12,12 +13,10 @@ router.post("/create-organization", ownerCheck, async (req, res) => {
       [ownerId],
     );
     if (parseInt(count.rows[0].count) >= 1) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Organization limit reached. You can create up to 1 organizations.",
-        });
+      return res.status(400).json({
+        error:
+          "Organization limit reached. You can create up to 1 organizations.",
+      });
     }
     const result = await pool.query(
       "INSERT INTO organizations (name, address, office_phone, org_type, owner_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
@@ -47,16 +46,41 @@ router.patch("/organization/:id", ownerCheck, async (req, res) => {
   const { name, address, office_phone, org_type } = req.body;
   const ownerId = req.user.id;
   try {
-    const result = await pool.query(
-      "UPDATE organizations SET name = $1, address = $2, office_phone = $3, org_type = $4 WHERE id = $5 AND owner_id = $6 RETURNING *",
-      [name, address, office_phone, org_type, orgId, ownerId],
+    // Fetch before state
+    const beforeResult = await pool.query(
+      "SELECT * FROM organizations WHERE id = $1 AND owner_id = $2",
+      [orgId, ownerId],
     );
-    if (result.rows.length === 0) {
+
+    if (beforeResult.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Organization not found or unauthorized" });
     }
-    res.json({ organization: result.rows[0] });
+
+    const beforeState = beforeResult.rows[0];
+
+    const result = await pool.query(
+      "UPDATE organizations SET name = $1, address = $2, office_phone = $3, org_type = $4 WHERE id = $5 AND owner_id = $6 RETURNING *",
+      [name, address, office_phone, org_type, orgId, ownerId],
+    );
+
+    const afterState = result.rows[0];
+
+    // Audit log
+    await logAudit({
+      entityType: "ORGANIZATION",
+      entityId: orgId,
+      category: "ORGANIZATION",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: null,
+      organizationId: orgId,
+    });
+
+    res.json({ organization: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -66,15 +90,38 @@ router.delete("/organization/:id", ownerCheck, async (req, res) => {
   const orgId = req.params.id;
   const ownerId = req.user.id;
   try {
-    const result = await pool.query(
-      "DELETE FROM organizations WHERE id = $1 AND owner_id = $2 RETURNING *",
+    // Fetch before state
+    const beforeResult = await pool.query(
+      "SELECT * FROM organizations WHERE id = $1 AND owner_id = $2",
       [orgId, ownerId],
     );
-    if (result.rows.length === 0) {
+
+    if (beforeResult.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Organization not found or unauthorized" });
     }
+
+    const beforeState = beforeResult.rows[0];
+
+    const result = await pool.query(
+      "DELETE FROM organizations WHERE id = $1 AND owner_id = $2 RETURNING *",
+      [orgId, ownerId],
+    );
+
+    // Audit log
+    await logAudit({
+      entityType: "ORGANIZATION",
+      entityId: orgId,
+      category: "ORGANIZATION",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: null,
+      organizationId: orgId,
+    });
+
     res.json({ message: "Organization deleted successfully" });
   } catch (err) {
     console.error(err);

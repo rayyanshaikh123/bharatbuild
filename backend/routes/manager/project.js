@@ -2,6 +2,10 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const managerCheck = require("../../middleware/managerCheck");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 // Check if manager is approved in the organization
 async function managerOrgStatusCheck(managerId, organizationId) {
@@ -237,6 +241,20 @@ router.put("/project/:projectId", managerCheck, async (req, res) => {
       });
     }
 
+    // Fetch before state
+    const beforeResult = await pool.query(
+      `SELECT * FROM projects WHERE id=$1 AND org_id=$2 AND created_by=$3`,
+      [projectId, organizationId, managerId],
+    );
+
+    if (beforeResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Project not found or unauthorized" });
+    }
+
+    const beforeState = beforeResult.rows[0];
+
     const result = await pool.query(
       `UPDATE projects SET name=$1, location_text=$2, latitude=$3, longitude=$4,
        geofence_radius=$5, geofence=$6, start_date=$7, end_date=$8, budget=$9, status=$10
@@ -257,12 +275,24 @@ router.put("/project/:projectId", managerCheck, async (req, res) => {
         managerId,
       ],
     );
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Project not found or unauthorized" });
-    }
-    res.json({ project: result.rows[0] });
+
+    const afterState = result.rows[0];
+
+    // Audit log
+    const organizationIdForAudit = organizationId;
+    await logAudit({
+      entityType: "PROJECT",
+      entityId: projectId,
+      category: "PROJECT",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: projectId,
+      organizationId: organizationIdForAudit,
+    });
+
+    res.json({ project: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -283,15 +313,38 @@ router.delete("/project/:projectId", managerCheck, async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `DELETE FROM projects WHERE id=$1 AND org_id=$2 AND created_by=$3 RETURNING *`,
+    // Fetch before state
+    const beforeResult = await pool.query(
+      `SELECT * FROM projects WHERE id=$1 AND org_id=$2 AND created_by=$3`,
       [projectId, organizationId, managerId],
     );
-    if (result.rows.length === 0) {
+
+    if (beforeResult.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Project not found or unauthorized" });
     }
+
+    const beforeState = beforeResult.rows[0];
+
+    const result = await pool.query(
+      `DELETE FROM projects WHERE id=$1 AND org_id=$2 AND created_by=$3 RETURNING *`,
+      [projectId, organizationId, managerId],
+    );
+
+    // Audit log
+    await logAudit({
+      entityType: "PROJECT",
+      entityId: projectId,
+      category: "PROJECT",
+      action: "DELETE",
+      before: beforeState,
+      after: null,
+      user: req.user,
+      projectId: projectId,
+      organizationId: organizationId,
+    });
+
     res.json({ message: "Project deleted successfully" });
   } catch (err) {
     console.error(err);
@@ -318,16 +371,41 @@ router.put("/project/:projectId/status", managerCheck, async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `UPDATE projects SET status=$1 WHERE id=$2 AND org_id=$3 AND created_by=$4 RETURNING *`,
-      [status, projectId, organizationId, managerId],
+    // Fetch before state
+    const beforeResult = await pool.query(
+      `SELECT * FROM projects WHERE id=$1 AND org_id=$2 AND created_by=$3`,
+      [projectId, organizationId, managerId],
     );
-    if (result.rows.length === 0) {
+
+    if (beforeResult.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Project not found or unauthorized" });
     }
-    res.json({ project: result.rows[0] });
+
+    const beforeState = beforeResult.rows[0];
+
+    const result = await pool.query(
+      `UPDATE projects SET status=$1 WHERE id=$2 AND org_id=$3 AND created_by=$4 RETURNING *`,
+      [status, projectId, organizationId, managerId],
+    );
+
+    const afterState = result.rows[0];
+
+    // Audit log
+    await logAudit({
+      entityType: "PROJECT",
+      entityId: projectId,
+      category: "PROJECT",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: projectId,
+      organizationId: organizationId,
+    });
+
+    res.json({ project: afterState });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
