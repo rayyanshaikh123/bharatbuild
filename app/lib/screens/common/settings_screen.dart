@@ -31,24 +31,17 @@ class SettingsScreen extends ConsumerWidget {
           // Language Setting
           ListTile(
             title: Text('language'.tr()),
-            subtitle: Text(context.locale.languageCode == 'en' ? 'english'.tr() : 'hindi'.tr()),
+            subtitle: Text(_getLanguageName(context.locale.languageCode)),
             trailing: PopupMenuButton<String>(
-              onSelected: (String result) {
-                if (result == 'en') {
-                  context.setLocale(const Locale('en'));
-                } else if (result == 'hi') {
-                  context.setLocale(const Locale('hi'));
-                }
+              onSelected: (String code) {
+                context.setLocale(Locale(code));
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'en',
-                  child: Text('English'),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'hi',
-                  child: Text('हिंदी (Hindi)'),
-                ),
+                const PopupMenuItem<String>(value: 'en', child: Text('English')),
+                const PopupMenuItem<String>(value: 'hi', child: Text('हिंदी (Hindi)')),
+                const PopupMenuItem<String>(value: 'ta', child: Text('தமிழ் (Tamil)')),
+                const PopupMenuItem<String>(value: 'gu', child: Text('ગુજરાતી (Gujarati)')),
+                const PopupMenuItem<String>(value: 'mr', child: Text('मराठी (Marathi)')),
               ],
             ),
           ),
@@ -56,5 +49,16 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _getLanguageName(String code) {
+    switch (code) {
+      case 'en': return 'english'.tr();
+      case 'hi': return 'हिंदी (Hindi)';
+      case 'ta': return 'தமிழ் (Tamil)';
+      case 'gu': return 'ગુજરાતી (Gujarati)';
+      case 'mr': return 'मराठी (Marathi)';
+      default: return code;
+    }
   }
 }

@@ -583,7 +583,7 @@ class ProfileContent extends ConsumerWidget {
             context,
             'notifications'.tr(),
             Icons.notifications_outlined,
-            onTap: () {},
+            onTap: () => Navigator.pushNamed(context, '/notifications'),
           ),
           const SizedBox(height: 32),
           ElevatedButton(

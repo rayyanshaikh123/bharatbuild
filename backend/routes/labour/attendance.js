@@ -30,7 +30,7 @@ router.post("/check-in", labourCheck, async (req, res) => {
         // 2. Check if already checked in today (and not checked out)
         const activeCheck = await pool.query(
             `SELECT id FROM attendance 
-             WHERE labour_id = $1 AND attendance_date = CURRENT_DATE AND check_out IS NULL`,
+             WHERE labour_id = $1 AND attendance_date = CURRENT_DATE AND check_out_time IS NULL`,
             [labourId]
         );
 
@@ -41,9 +41,9 @@ router.post("/check-in", labourCheck, async (req, res) => {
         // 3. Insert attendance record
         // We set status to 'PENDING_APPROVAL' as site engineers might need to verify
         const result = await pool.query(
-            `INSERT INTO attendance (labour_id, project_id, attendance_date, check_in, status)
+            `INSERT INTO attendance (labour_id, project_id, attendance_date, check_in_time, status)
              VALUES ($1, $2, CURRENT_DATE, CURRENT_TIMESTAMP, 'PENDING')
-             RETURNING *`,
+             RETURNING id, labour_id, project_id, attendance_date, check_in_time AS check_in, status`,
             [labourId, project_id]
         );
 
@@ -61,9 +61,9 @@ router.post("/check-out", labourCheck, async (req, res) => {
 
         // Find active attendance
         const activeRes = await pool.query(
-            `SELECT id, check_in FROM attendance 
-             WHERE labour_id = $1 AND check_out IS NULL 
-             ORDER BY check_in DESC LIMIT 1`,
+            `SELECT id, check_in_time FROM attendance 
+             WHERE labour_id = $1 AND check_out_time IS NULL 
+             ORDER BY check_in_time DESC LIMIT 1`,
             [labourId]
         );
 
@@ -76,10 +76,10 @@ router.post("/check-out", labourCheck, async (req, res) => {
         // Update with check-out and calculate hours (simplified)
         const result = await pool.query(
             `UPDATE attendance 
-             SET check_out = CURRENT_TIMESTAMP,
-                 hours = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in)) / 3600
+             SET check_out_time = CURRENT_TIMESTAMP,
+                 work_hours = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in_time)) / 3600
              WHERE id = $1
-             RETURNING *`,
+             RETURNING id, labour_id, project_id, attendance_date, check_in_time AS check_in, check_out_time AS check_out, work_hours AS hours, status`,
             [attendanceId]
         );
 
@@ -95,11 +95,13 @@ router.get("/history", labourCheck, async (req, res) => {
     try {
         const labourId = req.user.id;
         const result = await pool.query(
-            `SELECT a.*, p.name as project_name
+            `SELECT a.id, a.project_id, a.labour_id, a.attendance_date, a.status,
+                    a.check_in_time AS check_in, a.check_out_time AS check_out, a.work_hours AS hours,
+                    p.name as project_name
              FROM attendance a
              JOIN projects p ON a.project_id = p.id
              WHERE a.labour_id = $1
-             ORDER BY a.attendance_date DESC, a.check_in DESC`,
+             ORDER BY a.attendance_date DESC, a.check_in_time DESC`,
             [labourId]
         );
         res.json({ history: result.rows });
@@ -114,11 +116,13 @@ router.get("/today", labourCheck, async (req, res) => {
     try {
         const labourId = req.user.id;
         const result = await pool.query(
-            `SELECT a.*, p.name as project_name
+            `SELECT a.id, a.project_id, a.labour_id, a.attendance_date, a.status,
+                    a.check_in_time AS check_in, a.check_out_time AS check_out, a.work_hours AS hours,
+                    p.name as project_name, p.geofence
              FROM attendance a
              JOIN projects p ON a.project_id = p.id
              WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE
-             ORDER BY a.check_in DESC LIMIT 1`,
+             ORDER BY a.check_in_time DESC LIMIT 1`,
             [labourId]
         );
         res.json({ attendance: result.rows[0] || null });

@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_colors.dart';
 
-class NotificationsScreen extends StatelessWidget {
+import '../../providers/user_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final user = ref.watch(currentUserProvider);
+    final isEngineer = user?['role'] == 'SITE_ENGINEER';
 
-    // Placeholder notifications data
-    final notifications = [
+    // Role-based placeholder notifications
+    final notifications = isEngineer 
+    ? [
       {
         'title': 'Labour Request Approved',
         'message': '5 masons have been approved for Site Alpha',
@@ -27,11 +33,21 @@ class NotificationsScreen extends StatelessWidget {
         'color': Colors.blue,
         'read': true,
       },
+    ]
+    : [
       {
-        'title': 'New Labour Application',
-        'message': '3 new labourers applied to your request',
-        'time': '1 day ago',
-        'icon': Icons.people,
+        'title': 'Job Application Approved',
+        'message': 'You have been approved for Site Phoenix',
+        'time': '1 hour ago',
+        'icon': Icons.check_circle,
+        'color': Colors.green,
+        'read': false,
+      },
+      {
+        'title': 'New Nearby Job',
+        'message': 'Mason job available 2km from your location',
+        'time': '3 hours ago',
+        'icon': Icons.work_outline,
         'color': Colors.orange,
         'read': true,
       },

@@ -50,6 +50,11 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           icon: const Icon(Icons.sync_outlined),
         ),
         IconButton(
+          tooltip: 'Notifications',
+          onPressed: () => Navigator.pushNamed(context, '/notifications'),
+          icon: const Icon(Icons.notifications_outlined),
+        ),
+        IconButton(
           tooltip: 'Toggle Theme',
           onPressed: () => ref.read(themeProvider.notifier).toggleTheme(),
           icon: Icon(

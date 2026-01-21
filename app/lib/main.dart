@@ -26,7 +26,7 @@ import 'screens/common/settings_screen.dart';
 import 'screens/engineer/engineer_flow.dart';
 import 'screens/engineer/edit_profile.dart';
 import 'screens/engineer/account_settings.dart';
-import 'screens/engineer/notifications.dart';
+import 'screens/common/notifications_screen.dart';
 import 'screens/engineer/labour_requests_screen.dart';
 import 'screens/engineer/manual_attendance_screen.dart';
 import 'screens/engineer/material_management_screen.dart';
@@ -92,6 +92,7 @@ class MyApp extends ConsumerWidget {
           '/engineer-edit-profile': (_) => const EditProfileScreen(),
           '/engineer-settings': (_) => const AccountSettingsScreen(),
           '/engineer-notifications': (_) => const NotificationsScreen(),
+          '/notifications': (_) => const NotificationsScreen(),
           '/engineer-labour-requests': (_) => const LabourRequestsScreen(),
           '/engineer-attendance': (_) => const ManualAttendanceScreen(),
           '/engineer-materials': (_) => const MaterialManagementScreen(),

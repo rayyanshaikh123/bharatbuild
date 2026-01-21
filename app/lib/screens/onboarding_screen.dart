@@ -130,6 +130,9 @@ class LanguageOnboard extends StatelessWidget {
             items: const [
               DropdownMenuItem(value: "en", child: Text("English")),
               DropdownMenuItem(value: "hi", child: Text("हिंदी (Hindi)")),
+              DropdownMenuItem(value: "ta", child: Text("தமிழ் (Tamil)")),
+              DropdownMenuItem(value: "gu", child: Text("ગુજરાતી (Gujarati)")),
+              DropdownMenuItem(value: "mr", child: Text("मराठी (Marathi)")),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -229,13 +232,13 @@ List<Map<String, dynamic>> demoData = [
   {
     "type": "info",
     "illustration": "https://i.postimg.cc/CKQF6tZB/construction1.png",
-    "title": "onboard_title_1",
-    "text": "onboard_text_1",
+    "title": "onboard_labour_title",
+    "text": "onboard_labour_text",
   },
   {
     "type": "info",
     "illustration": "https://i.postimg.cc/yYy0L3Jk/construction2.png",
-    "title": "onboard_title_2",
-    "text": "onboard_text_2",
+    "title": "onboard_engineer_title",
+    "text": "onboard_engineer_text",
   },
 ];
