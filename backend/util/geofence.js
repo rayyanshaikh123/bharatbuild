@@ -31,7 +31,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  */
 async function validateGeofence(pool, projectId, latitude, longitude) {
   const result = await pool.query(
-    `SELECT latitude, longitude, geofence_radius FROM projects WHERE id = $1`,
+    `SELECT latitude, longitude, geofence_radius, geofence FROM projects WHERE id = $1`,
     [projectId],
   );
 
@@ -43,29 +43,68 @@ async function validateGeofence(pool, projectId, latitude, longitude) {
     latitude: projLat,
     longitude: projLon,
     geofence_radius,
+    geofence,
   } = result.rows[0];
 
-  // Handle null geofence (no restriction)
+  // PRIORITY 1: Use geofence JSONB if present
+  if (geofence && typeof geofence === "object") {
+    // Support CIRCLE type geofencing
+    if (
+      geofence.type === "CIRCLE" &&
+      geofence.center &&
+      geofence.radius_meters
+    ) {
+      const { center, radius_meters } = geofence;
+
+      // Validate center coordinates
+      if (typeof center.lat === "number" && typeof center.lng === "number") {
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          center.lat,
+          center.lng,
+        );
+
+        return {
+          isValid: distance <= radius_meters,
+          distance: Math.round(distance),
+          allowedRadius: radius_meters,
+          source: "geofence_jsonb",
+          geofenceType: "CIRCLE",
+        };
+      }
+    }
+
+    // Future: Support POLYGON type
+    // if (geofence.type === 'POLYGON') { ... }
+  }
+
+  // PRIORITY 2: Fallback to legacy fields for backward compatibility
   if (
-    projLat === null ||
-    projLon === null ||
-    geofence_radius === null ||
-    geofence_radius === 0
+    projLat !== null &&
+    projLon !== null &&
+    geofence_radius !== null &&
+    geofence_radius > 0
   ) {
+    const distance = calculateDistance(latitude, longitude, projLat, projLon);
+
     return {
-      isValid: true,
-      distance: 0,
-      allowedRadius: 0,
-      message: "No geofence restriction",
+      isValid: distance <= geofence_radius,
+      distance: Math.round(distance),
+      allowedRadius: geofence_radius,
+      source: "legacy_fields",
+      geofenceType: "CIRCLE",
     };
   }
 
-  const distance = calculateDistance(latitude, longitude, projLat, projLon);
-
+  // PRIORITY 3: No geofence restriction (allow any location)
   return {
-    isValid: distance <= geofence_radius,
-    distance: Math.round(distance),
-    allowedRadius: geofence_radius,
+    isValid: true,
+    distance: 0,
+    allowedRadius: 0,
+    message: "No geofence restriction",
+    source: "none",
+    geofenceType: "NONE",
   };
 }
 

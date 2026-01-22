@@ -7,7 +7,7 @@
  * Set corresponding API key: OPENAI_API_KEY | GEMINI_API_KEY | HUGGINGFACE_API_KEY
  */
 
-const pool = require("../config/db");
+const pool = require("../db");
 
 // AI Provider configuration
 const AI_PROVIDER = process.env.AI_PROVIDER || "placeholder";
