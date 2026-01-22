@@ -69,6 +69,7 @@ app.use("/owner/material", require("./routes/owner/material"));
 app.use("/owner/wages", require("./routes/owner/wages"));
 app.use("/owner/analytics", require("./routes/owner/analytics"));
 app.use("/owner/audits", require("./routes/owner/audit"));
+app.use("/owner/reports", require("./routes/owner/reports"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -96,6 +97,7 @@ app.use("/manager/wages", require("./routes/manager/wages"));
 app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
 app.use("/manager/analytics", require("./routes/manager/analytics"));
 app.use("/manager/audits", require("./routes/manager/audit"));
+app.use("/manager/reports", require("./routes/manager/reports"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));

@@ -405,6 +405,10 @@ ADD COLUMN organization_id UUID,
 ADD COLUMN project_id UUID,
 ADD COLUMN category TEXT,
 ADD COLUMN change_summary JSONB;
+ALTER TABLE plan_items
+ADD COLUMN priority INTEGER NOT NULL DEFAULT 0
+CHECK (priority BETWEEN 0 AND 5);
+
 
 CREATE INDEX idx_prt_user ON password_reset_tokens(user_id, user_role);
 CREATE INDEX idx_prt_expires ON password_reset_tokens(expires_at);
