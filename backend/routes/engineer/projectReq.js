@@ -86,7 +86,7 @@ router.get("/my-projects", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
     const result = await pool.query(
-      `SELECT pse.*, p.name, p.location_text, p.latitude, p.longitude, p.status as project_status, p.org_id
+      `SELECT pse.*, p.name, p.location_text, p.latitude, p.longitude, p.geofence, p.status as project_status, p.org_id
        FROM project_site_engineers pse
        JOIN projects p ON pse.project_id = p.id
        WHERE pse.site_engineer_id = $1 AND pse.status = 'ACTIVE'`,

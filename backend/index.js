@@ -67,6 +67,10 @@ app.use("/owner/labour-request", require("./routes/owner/labourRequest"));
 app.use("/owner/dpr", require("./routes/owner/dpr"));
 app.use("/owner/material", require("./routes/owner/material"));
 app.use("/owner/wages", require("./routes/owner/wages"));
+app.use("/owner/analytics", require("./routes/owner/analytics"));
+app.use("/owner/audits", require("./routes/owner/audit"));
+app.use("/owner/reports", require("./routes/owner/reports"));
+app.use("/owner/ai", require("./routes/owner/ai-special"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -92,6 +96,10 @@ app.use("/manager/dpr", require("./routes/manager/dpr"));
 app.use("/manager/material", require("./routes/manager/material"));
 app.use("/manager/wages", require("./routes/manager/wages"));
 app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
+app.use("/manager/analytics", require("./routes/manager/analytics"));
+app.use("/manager/audits", require("./routes/manager/audit"));
+app.use("/manager/reports", require("./routes/manager/reports"));
+app.use("/manager/ai", require("./routes/manager/ai-special"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
@@ -112,6 +120,13 @@ app.use("/engineer/wages", require("./routes/engineer/wages"));
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+
+/* ---------------- PROJECT ROUTES (cross-role) ---------------- */
+app.use("/project", require("./routes/project/ledger"));
+app.use("/project", require("./routes/project/delays"));
+app.use("/project", require("./routes/project/ai"));
+app.use("/project", require("./routes/project/timeline"));
+
 /* ---------------- META (client config) ---------------- */
 
 /* ---------------- HEALTH ---------------- */

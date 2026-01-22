@@ -418,4 +418,87 @@ router.delete("/plans/items/:itemId", managerCheck, async (req, res) => {
   }
 });
 
+/* ---------------- UPDATE PLAN ITEM PRIORITY ---------------- */
+router.patch("/plan-items/:id/priority", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const planItemId = req.params.id;
+    const { priority } = req.body;
+
+    // Validate priority
+    if (priority === undefined || priority === null) {
+      return res.status(400).json({ error: "Priority is required" });
+    }
+
+    if (!Number.isInteger(priority) || priority < 0 || priority > 5) {
+      return res.status(400).json({
+        error: "Priority must be an integer between 0 and 5",
+      });
+    }
+
+    // Get plan item and verify manager access
+    const planItemCheck = await pool.query(
+      `SELECT pi.*, p.project_id 
+       FROM plan_items pi
+       JOIN plans p ON pi.plan_id = p.id
+       WHERE pi.id = $1`,
+      [planItemId],
+    );
+
+    if (planItemCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Plan item not found" });
+    }
+
+    const planItem = planItemCheck.rows[0];
+    const projectId = planItem.project_id;
+
+    // Check if manager is ACTIVE in project or creator
+    const isActive = await managerProjectStatusCheck(managerId, projectId);
+    const isCreator = await isProjectCreator(managerId, projectId);
+
+    if (!isActive && !isCreator) {
+      return res.status(403).json({
+        error: "Access denied. Not an active manager in the project.",
+      });
+    }
+
+    // Get before state for audit
+    const beforeState = planItemCheck.rows[0];
+
+    // Update priority
+    const updateResult = await pool.query(
+      `UPDATE plan_items 
+       SET priority = $1 
+       WHERE id = $2 
+       RETURNING *`,
+      [priority, planItemId],
+    );
+
+    const afterState = updateResult.rows[0];
+
+    // Audit log
+    const orgId = await getOrganizationIdFromProject(pool, projectId);
+    await logAudit(pool, {
+      entity_type: "plan_item",
+      entity_id: planItemId,
+      action: "UPDATE",
+      category: "PLAN_ITEM",
+      before: beforeState,
+      after: afterState,
+      user_id: managerId,
+      user_type: "manager",
+      project_id: projectId,
+      organization_id: orgId,
+    });
+
+    res.json({
+      message: "Priority updated successfully",
+      plan_item: afterState,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
