@@ -123,11 +123,13 @@ app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 app.use("/engineer/attendance", require("./routes/engineer/attendance"));
 app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
+app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+app.use("/labour/fast", require("./routes/labour/fast/graphql"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
 /* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */

@@ -1,0 +1,369 @@
+Alright. I’ll give you a **single, clean, structured “mental model” of your entire backend**, exactly as it exists today after all our discussions and implementations.
+This is **not code**, this is **system context** — something you can hand to *any developer / AI / architect* and they’ll understand your backend immediately.
+
+---
+
+# 🏗️ COMPLETE BACKEND CONTEXT – PROJECT OVERVIEW
+
+This backend is a **construction project management system** designed for **real-world, low-network environments**, with **strict role-based control**, **financial accountability**, **auditability**, and **future AI-driven intelligence**.
+
+It is built around **projects**, **plans**, **daily execution (DPR)**, **materials**, **attendance**, **wages**, **analytics**, **reports**, **audit logs**, and **offline synchronization**.
+
+---
+
+## 1️⃣ CORE ROLES & ACCESS MODEL
+
+### 🔐 Roles in the System
+
+| Role              | Purpose                      | Key Powers                                   |
+| ----------------- | ---------------------------- | -------------------------------------------- |
+| **OWNER**         | Organization-level authority | View everything, analytics, reports, audits  |
+| **MANAGER**       | Project-level authority      | Approvals, planning, budgets, delays         |
+| **SITE_ENGINEER** | Field execution              | DPRs, attendance approval, material requests |
+| **LABOUR**        | On-site workforce            | Check-in / check-out attendance              |
+
+---
+
+## 2️⃣ ORGANIZATION → PROJECT → EXECUTION HIERARCHY
+
+```
+ORGANIZATION
+ └── PROJECT
+      ├── PLANS
+      │    └── PLAN_ITEMS (tasks)
+      ├── DPRs (Daily Progress Reports)
+      ├── MATERIAL_REQUESTS → MATERIAL_BILLS
+      ├── ATTENDANCE → WAGES
+      ├── LEDGER (computed)
+      ├── AUDIT_LOGS
+```
+
+Everything eventually **rolls up to the Project**, and then to the **Organization**.
+
+---
+
+## 3️⃣ AUTHORIZATION PHILOSOPHY (VERY IMPORTANT)
+
+### Authentication
+
+* JWT/session-based
+* User identity + role resolved early
+
+### Authorization (ENFORCED EVERYWHERE)
+
+* `ownerCheck`
+* `managerCheck`
+* `engineerCheck`
+* `labourCheck`
+
+### Contextual Authorization
+
+Even after role check, **context is verified**:
+
+* Engineer must be **ACTIVE in project**
+* Manager must be **ASSIGNED to project**
+* Owner must **own the organization**
+* Labour must be **approved for project**
+
+🚫 No cross-project
+🚫 No cross-organization
+🚫 No role escalation
+
+---
+
+## 4️⃣ PROJECT PLANNING FLOW
+
+### 📅 Plans & Plan Items
+
+* Created by **Manager**
+* Represent *intended project timeline*
+* Each **Plan Item** has:
+
+  * start_date
+  * end_date
+  * status (PENDING / COMPLETED / DELAYED)
+  * priority (0 default, 1–5 scale)
+  * completed_at
+  * delay JSONB (reason + DPR references)
+
+### Progress Tracking
+
+* Progress is **derived**, not manually entered:
+
+  * total plan items
+  * completed plan items
+  * delayed items
+* Used for:
+
+  * timelines
+  * dashboards
+  * reports
+
+---
+
+## 5️⃣ DAILY EXECUTION – DPR (Daily Progress Report)
+
+### DPR Purpose
+
+* Captures **what happened on site today**
+* Written by **Site Engineer**
+* Free-text + structured metadata
+* Can be AI-processed later
+
+### DPR Used For
+
+* Delay root cause analysis
+* Material consumption extraction
+* Audit references
+* Timeline explanations
+
+---
+
+## 6️⃣ MATERIAL MANAGEMENT FLOW
+
+### Material Request
+
+* Created by **Site Engineer**
+* Can be:
+
+  * DPR-linked
+  * Standalone (limited per month)
+* Status: PENDING → APPROVED / REJECTED
+* Approved by **Manager**
+
+### Material Bill
+
+* Uploaded by **Site Engineer**
+* Can be:
+
+  * Linked to approved request
+  * Orphan (owner-controlled)
+* Approved by **Manager**
+
+### Financial Impact
+
+* On approval:
+
+  ```
+  projects.current_invested += bill.total_amount
+  ```
+* Done **inside DB transaction**
+
+---
+
+## 7️⃣ ATTENDANCE SYSTEM (MANUAL VERIFICATION MODEL)
+
+⚠️ **There is NO auto-attendance approval by manager**
+
+### Attendance Rules
+
+* Attendance is **verified / approved by Site Engineer**
+* Labour only performs:
+
+  * Check-in
+  * Check-out
+
+### Geofence
+
+* Stored as `projects.geofence (JSONB)`
+* Used during check-in/out
+* Offline-compatible
+
+### Attendance Structure
+
+* One attendance per labour per day
+* Multiple sessions allowed (breaks)
+* Work hours computed from sessions
+
+---
+
+## 8️⃣ WAGES FLOW
+
+### Wage Rates
+
+* Defined per project
+* **Created / edited ONLY by Manager**
+* Engineers do NOT enter rates
+
+### Wage Creation
+
+* Based on **approved attendance**
+* Status: PENDING → APPROVED / REJECTED
+* Approved by **Manager**
+
+### Financial Impact
+
+* On approval:
+
+  ```
+  projects.current_invested += wage.total_amount
+  ```
+
+---
+
+## 9️⃣ LEDGER (DERIVED, NOT STORED)
+
+Ledger is a **computed view**:
+
+* Material bills
+* Approved wages
+* Manual adjustments
+
+Used for:
+
+* Reports
+* Dashboards
+* Financial traceability
+
+---
+
+## 🔍 10️⃣ AUDIT LOGGING (IMMUTABLE)
+
+### What Is Logged
+
+* ALL UPDATE / DELETE operations
+* Across:
+
+  * Materials
+  * Wages
+  * Plans
+  * Projects
+  * Attendance
+  * Organizations
+
+### Audit Data Captured
+
+* entity_type
+* entity_id
+* action
+* before / after
+* changed_fields
+* user_id + role
+* project_id
+* organization_id
+* timestamp
+
+### Visibility
+
+| Role     | Audit Visibility    |
+| -------- | ------------------- |
+| Owner    | Entire organization |
+| Manager  | Assigned projects   |
+| Engineer | Own actions only    |
+
+---
+
+## 🔄 11️⃣ OFFLINE & SYNCHRONIZATION MODEL
+
+### Client Side (Flutter)
+
+* SQLite stores offline actions
+* No business logic offline
+* Payloads stored as-is
+
+### Server Side
+
+Tables:
+
+* `sync_action_log`
+* `sync_errors`
+* `attendance.source`
+
+### Sync Rules
+
+* Idempotent
+* Validated
+* Authorized
+* Rejected actions logged (never silent)
+
+---
+
+## ⚡ 12️⃣ LOW NETWORK PERFORMANCE LAYER
+
+### Purpose
+
+* Field usage in poor connectivity
+* Faster data transfer
+
+### Technology
+
+* GraphQL
+* HTTP/2
+* Brotli compression
+* Pagination
+* NO caching
+
+### Structure
+
+```
+routes/labour/fast/
+routes/engineer/fast/
+```
+
+Uses:
+
+* Same services
+* Same auth
+* Same validations
+
+---
+
+## 📊 13️⃣ ANALYTICS, DASHBOARD & REPORTING
+
+### Dashboards
+
+* Owner: organization-wide
+* Manager: assigned projects
+* Derived from live data
+
+### Reports
+
+* Date filters
+* Project filters
+* PDF export
+* AI-generated insights
+
+---
+
+## 🤖 14️⃣ AI INTEGRATION PHILOSOPHY
+
+AI is:
+
+* Advisory
+* Analytical
+* Non-authoritative
+
+Used for:
+
+* DPR material extraction
+* Delay root cause summaries
+* Anomaly detection
+* Insight generation for reports
+
+Never:
+
+* Approves
+* Modifies data
+* Bypasses rules
+
+---
+
+## 🧠 FINAL SYSTEM CHARACTERISTICS
+
+✅ Role-safe
+✅ Audit-complete
+✅ Offline-first
+✅ Financially consistent
+✅ AI-ready
+✅ Scalable
+✅ Real-world construction friendly
+
+---
+
+If you want next, I can:
+
+* Turn this into **official architecture documentation**
+* Convert it into a **system diagram**
+* Or generate a **single master prompt** that recreates the entire backend
+
+Just say the word.
