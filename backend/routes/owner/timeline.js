@@ -1,53 +1,30 @@
 const express = require("express");
-const pool = require("../../db");
 const router = express.Router();
 const ownerCheck = require("../../middleware/ownerCheck");
-const managerCheck = require("../../middleware/managerCheck");
+const pool = require("../../db");
+
+// Apply owner middleware to all routes
+router.use(ownerCheck);
 
 /**
- * GET /project/:projectId/timeline
+ * GET /owner/timeline/project/:projectId
  * Get project timeline with plan items ordered by start date and priority
- * Access: Owner (all projects) | Manager (assigned projects)
+ * Authorization: Owner (all org projects)
  */
-router.get("/:projectId/timeline", async (req, res) => {
+router.get("/project/:projectId", async (req, res) => {
   try {
     const { projectId } = req.params;
-    const user = req.user;
+    const ownerId = req.user.id;
 
-    if (!user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    // Verify project belongs to owner's organization
+    const orgCheck = await pool.query(
+      `SELECT p.id FROM projects p
+       JOIN organizations o ON p.org_id = o.id
+       WHERE p.id = $1 AND o.owner_id = $2`,
+      [projectId, ownerId],
+    );
 
-    // Authorization check
-    let hasAccess = false;
-
-    if (user.role === "OWNER") {
-      // Owner: Check if project belongs to their organization
-      const orgCheck = await pool.query(
-        `SELECT p.id FROM projects p
-         JOIN organizations o ON p.org_id = o.id
-         WHERE p.id = $1 AND o.owner_id = $2`,
-        [projectId, user.id],
-      );
-      hasAccess = orgCheck.rows.length > 0;
-    } else if (user.role === "MANAGER") {
-      // Manager: Check if ACTIVE on project or creator
-      const managerCheck = await pool.query(
-        `SELECT COUNT(*) as count FROM project_managers
-         WHERE project_id = $1 AND manager_id = $2 AND status = 'ACTIVE'
-         UNION ALL
-         SELECT COUNT(*) as count FROM projects
-         WHERE id = $1 AND created_by = $2`,
-        [projectId, user.id],
-      );
-      const totalCount = managerCheck.rows.reduce(
-        (sum, row) => sum + parseInt(row.count),
-        0,
-      );
-      hasAccess = totalCount > 0;
-    }
-
-    if (!hasAccess) {
+    if (orgCheck.rows.length === 0) {
       return res.status(403).json({ error: "Access denied to this project" });
     }
 
@@ -147,7 +124,7 @@ router.get("/:projectId/timeline", async (req, res) => {
       timeline,
     });
   } catch (err) {
-    console.error("[Timeline API] Error:", err);
+    console.error("[Owner Timeline API] Error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

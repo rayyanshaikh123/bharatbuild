@@ -386,6 +386,31 @@ CREATE TABLE material_ledger (
 
     created_at TIMESTAMP DEFAULT now()
 );
+CREATE TABLE sync_errors (
+  id UUID PRIMARY KEY,
+  sync_action_id UUID,
+  user_id UUID,
+  reason TEXT,
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT now()
+);
+ALTER TABLE attendance
+ADD COLUMN source TEXT DEFAULT 'ONLINE';
+CREATE TABLE sync_action_log (
+  id UUID PRIMARY KEY,              -- same as offline_actions.id
+  user_id UUID NOT NULL,
+  user_role TEXT NOT NULL,          -- LABOUR | SITE_ENGINEER
+  action_type TEXT NOT NULL,        -- CHECK_IN, CREATE_REQUEST, etc
+  entity_type TEXT NOT NULL,        -- ATTENDANCE, MATERIAL_REQUEST, etc
+  entity_id UUID,                   -- real entity id after sync
+  project_id UUID,
+  organization_id UUID,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'APPLIED', -- APPLIED | REJECTED
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT now()
+);
+
 ALTER TABLE plan_items
 ADD COLUMN status TEXT CHECK (
     status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED')
