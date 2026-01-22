@@ -3,6 +3,10 @@ const pool = require("../../db");
 const router = express.Router();
 const labourCheck = require("../../middleware/labourCheck");
 const { validateGeofence } = require("../../util/geofence");
+const {
+  logAudit,
+  getOrganizationIdFromProject,
+} = require("../../util/auditLogger");
 
 /* ---------------- CHECK-IN ---------------- */
 router.post("/check-in", labourCheck, async (req, res) => {
@@ -101,6 +105,30 @@ router.post("/check-in", labourCheck, async (req, res) => {
       [attendanceId],
     );
 
+    // 7. Fetch final attendance state for audit
+    const finalAttendance = await client.query(
+      `SELECT * FROM attendance WHERE id = $1`,
+      [attendanceId],
+    );
+
+    // 8. Audit log (inside transaction)
+    const organizationId = await getOrganizationIdFromProject(
+      project_id,
+      client,
+    );
+    await logAudit({
+      entityType: "ATTENDANCE",
+      entityId: attendanceId,
+      category: "ATTENDANCE",
+      action: "UPDATE",
+      before: null, // Check-in creates/updates attendance
+      after: finalAttendance.rows[0],
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+      client,
+    });
+
     await client.query("COMMIT");
 
     res.status(201).json({
@@ -190,6 +218,32 @@ router.post("/check-out", labourCheck, async (req, res) => {
       work_hours,
       attendance_id,
     ]);
+
+    // 7. Fetch final attendance state and project_id for audit
+    const finalAttendance = await client.query(
+      `SELECT a.*, a.project_id FROM attendance a WHERE a.id = $1`,
+      [attendance_id],
+    );
+
+    const project_id = finalAttendance.rows[0].project_id;
+
+    // 8. Audit log (inside transaction)
+    const organizationId = await getOrganizationIdFromProject(
+      project_id,
+      client,
+    );
+    await logAudit({
+      entityType: "ATTENDANCE",
+      entityId: attendance_id,
+      category: "ATTENDANCE",
+      action: "UPDATE",
+      before: null, // Could fetch before state if needed
+      after: finalAttendance.rows[0],
+      user: req.user,
+      projectId: project_id,
+      organizationId,
+      client,
+    });
 
     await client.query("COMMIT");
 
