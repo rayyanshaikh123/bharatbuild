@@ -70,6 +70,11 @@ app.use("/owner/wages", require("./routes/owner/wages"));
 app.use("/owner/analytics", require("./routes/owner/analytics"));
 app.use("/owner/audits", require("./routes/owner/audit"));
 app.use("/owner/reports", require("./routes/owner/reports"));
+app.use("/owner/ai", require("./routes/owner/ai-special"));
+app.use("/owner/ai", require("./routes/owner/ai"));
+app.use("/owner/ledger", require("./routes/owner/ledger"));
+app.use("/owner/delays", require("./routes/owner/delays"));
+app.use("/owner/timeline", require("./routes/owner/timeline"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -98,6 +103,11 @@ app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
 app.use("/manager/analytics", require("./routes/manager/analytics"));
 app.use("/manager/audits", require("./routes/manager/audit"));
 app.use("/manager/reports", require("./routes/manager/reports"));
+app.use("/manager/ai", require("./routes/manager/ai-special"));
+app.use("/manager/ai", require("./routes/manager/ai"));
+app.use("/manager/ledger", require("./routes/manager/ledger"));
+app.use("/manager/delays", require("./routes/manager/delays"));
+app.use("/manager/timeline", require("./routes/manager/timeline"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
@@ -113,17 +123,21 @@ app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 app.use("/engineer/attendance", require("./routes/engineer/attendance"));
 app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
+app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+app.use("/labour/fast", require("./routes/labour/fast/graphql"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
-app.use("/project", require("./routes/project/ledger"));
-app.use("/project", require("./routes/project/delays"));
-app.use("/project", require("./routes/project/ai"));
-app.use("/project", require("./routes/project/timeline"));
+/* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */
+
+/* ---------------- SYNC ROUTES (offline synchronization) ---------------- */
+app.use("/sync/batch", require("./routes/sync/batch"));
+app.use("/sync/labour", require("./routes/sync/labour"));
+app.use("/sync/engineer", require("./routes/sync/engineer"));
 
 /* ---------------- META (client config) ---------------- */
 
