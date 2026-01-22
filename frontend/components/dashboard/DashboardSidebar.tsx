@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Menu,
   X,
+  Receipt,
+  History,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +30,8 @@ interface NavItem {
 const ownerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
   { label: "Managers", href: "/owner/managers", icon: Users },
+  { label: "Ledger", href: "/owner/ledger", icon: Receipt },
+  { label: "Audit Logs", href: "/owner/audit", icon: History },
   { label: "Reports", href: "/owner/reports", icon: FileText },
 ];
 
@@ -35,6 +39,8 @@ const managerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/manager", icon: LayoutDashboard },
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
+  { label: "Ledger", href: "/manager/ledger", icon: Receipt },
+  { label: "Audit Logs", href: "/manager/audit", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
 ];
 

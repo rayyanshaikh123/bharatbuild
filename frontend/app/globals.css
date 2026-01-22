@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 @import "tw-animate-css";
@@ -6,115 +9,116 @@
 @custom-variant dark (&:is(.dark *));
 
 /* =============================================================================
-   THEME CONFIGURATION - Industrial Muted Glass Theme
+   THEME CONFIGURATION - Refined Orange & Slate Theme
+   Complements landing.css with consistent color story
    ============================================================================= */
 
 :root {
   --background: rgb(255, 255, 255);
-  --foreground: rgb(17, 24, 39);
-  --card: rgb(255, 255, 255);
-  --card-foreground: rgb(17, 24, 39);
+  --foreground: rgb(15, 23, 42);
+  --card: rgb(248, 250, 252);
+  --card-foreground: rgb(15, 23, 42);
   --popover: rgb(255, 255, 255);
-  --popover-foreground: rgb(17, 24, 39);
-  --primary: rgb(216, 121, 67);
+  --popover-foreground: rgb(15, 23, 42);
+  --primary: rgb(249, 115, 22);
   --primary-foreground: rgb(255, 255, 255);
-  --secondary: rgb(82, 117, 117);
-  --secondary-foreground: rgb(255, 255, 255);
-  --muted: rgb(243, 244, 246);
-  --muted-foreground: rgb(107, 114, 128);
-  --accent: rgb(238, 238, 238);
-  --accent-foreground: rgb(17, 24, 39);
+  --secondary: rgb(241, 245, 249);
+  --secondary-foreground: rgb(15, 23, 42);
+  --muted: rgb(241, 245, 249);
+  --muted-foreground: rgb(100, 116, 139);
+  --accent: rgb(252, 234, 214);
+  --accent-foreground: rgb(15, 23, 42);
   --destructive: rgb(239, 68, 68);
-  --destructive-foreground: rgb(250, 250, 250);
-  --border: rgb(229, 231, 235);
-  --input: rgb(229, 231, 235);
-  --ring: rgb(216, 121, 67);
-  --chart-1: rgb(95, 135, 135);
-  --chart-2: rgb(231, 138, 83);
-  --chart-3: rgb(251, 203, 151);
-  --chart-4: rgb(136, 136, 136);
-  --chart-5: rgb(153, 153, 153);
-  --sidebar: rgb(243, 244, 246);
-  --sidebar-foreground: rgb(17, 24, 39);
-  --sidebar-primary: rgb(216, 121, 67);
+  --destructive-foreground: rgb(255, 255, 255);
+  --border: rgb(226, 232, 240);
+  --input: rgb(226, 232, 240);
+  --ring: rgb(249, 115, 22);
+  --chart-1: rgb(249, 115, 22);
+  --chart-2: rgb(251, 146, 60);
+  --chart-3: rgb(253, 186, 116);
+  --chart-4: rgb(100, 116, 139);
+  --chart-5: rgb(148, 163, 184);
+  --sidebar: rgb(248, 250, 252);
+  --sidebar-foreground: rgb(15, 23, 42);
+  --sidebar-primary: rgb(249, 115, 22);
   --sidebar-primary-foreground: rgb(255, 255, 255);
-  --sidebar-accent: rgb(255, 255, 255);
-  --sidebar-accent-foreground: rgb(17, 24, 39);
-  --sidebar-border: rgb(229, 231, 235);
-  --sidebar-ring: rgb(216, 121, 67);
-  --font-sans: Geist Mono, ui-monospace, monospace;
-  --font-serif: serif;
-  --font-mono: JetBrains Mono, monospace;
-  --radius: 0.75rem;
+  --sidebar-accent: rgb(241, 245, 249);
+  --sidebar-accent-foreground: rgb(15, 23, 42);
+  --sidebar-border: rgb(226, 232, 240);
+  --sidebar-ring: rgb(249, 115, 22);
+  --font-sans: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  --font-serif: Merriweather, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 0.5rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
-  --shadow-blur: 4px;
+  --shadow-blur: 3px;
   --shadow-spread: 0px;
   --shadow-opacity: 0.05;
   --shadow-color: #000000;
-  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
-  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
-  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
-  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
-  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
-  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
-  --tracking-normal: 0rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.06), 0px 1px 2px -1px hsl(0 0% 0% / 0.06);
+  --shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.06), 0px 1px 2px -1px hsl(0 0% 0% / 0.06);
+  --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.07), 0px 2px 4px -2px hsl(0 0% 0% / 0.07);
+  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.08), 0px 4px 6px -4px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.09), 0px 8px 10px -6px hsl(0 0% 0% / 0.09);
+  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.15);
+  --tracking-normal: -0.01em;
   --spacing: 0.25rem;
 }
 
 .dark {
-  --background: rgb(18, 17, 19);
-  --foreground: rgb(193, 193, 193);
-  --card: rgb(18, 18, 18);
-  --card-foreground: rgb(193, 193, 193);
-  --popover: rgb(18, 17, 19);
-  --popover-foreground: rgb(193, 193, 193);
-  --primary: rgb(231, 138, 83);
-  --primary-foreground: rgb(18, 17, 19);
-  --secondary: rgb(95, 135, 135);
-  --secondary-foreground: rgb(18, 17, 19);
-  --muted: rgb(34, 34, 34);
-  --muted-foreground: rgb(136, 136, 136);
-  --accent: rgb(51, 51, 51);
-  --accent-foreground: rgb(193, 193, 193);
-  --destructive: rgb(95, 135, 135);
-  --destructive-foreground: rgb(18, 17, 19);
-  --border: rgb(34, 34, 34);
-  --input: rgb(34, 34, 34);
-  --ring: rgb(231, 138, 83);
-  --chart-1: rgb(95, 135, 135);
-  --chart-2: rgb(231, 138, 83);
-  --chart-3: rgb(251, 203, 151);
-  --chart-4: rgb(136, 136, 136);
-  --chart-5: rgb(153, 153, 153);
-  --sidebar: rgb(18, 18, 18);
-  --sidebar-foreground: rgb(193, 193, 193);
-  --sidebar-primary: rgb(231, 138, 83);
-  --sidebar-primary-foreground: rgb(18, 17, 19);
-  --sidebar-accent: rgb(51, 51, 51);
-  --sidebar-accent-foreground: rgb(193, 193, 193);
-  --sidebar-border: rgb(34, 34, 34);
-  --sidebar-ring: rgb(231, 138, 83);
-  --font-sans: Geist Mono, ui-monospace, monospace;
-  --font-serif: serif;
-  --font-mono: JetBrains Mono, monospace;
-  --radius: 0.75rem;
+  --background: rgb(15, 23, 42);
+  --foreground: rgb(226, 232, 240);
+  --card: rgb(30, 41, 59);
+  --card-foreground: rgb(226, 232, 240);
+  --popover: rgb(30, 41, 59);
+  --popover-foreground: rgb(226, 232, 240);
+  --primary: rgb(251, 146, 60);
+  --primary-foreground: rgb(15, 23, 42);
+  --secondary: rgb(51, 65, 85);
+  --secondary-foreground: rgb(226, 232, 240);
+  --muted: rgb(51, 65, 85);
+  --muted-foreground: rgb(148, 163, 184);
+  --accent: rgb(71, 85, 105);
+  --accent-foreground: rgb(226, 232, 240);
+  --destructive: rgb(239, 68, 68);
+  --destructive-foreground: rgb(226, 232, 240);
+  --border: rgb(51, 65, 85);
+  --input: rgb(51, 65, 85);
+  --ring: rgb(251, 146, 60);
+  --chart-1: rgb(251, 146, 60);
+  --chart-2: rgb(253, 186, 116);
+  --chart-3: rgb(254, 215, 170);
+  --chart-4: rgb(148, 163, 184);
+  --chart-5: rgb(100, 116, 139);
+  --sidebar: rgb(30, 41, 59);
+  --sidebar-foreground: rgb(226, 232, 240);
+  --sidebar-primary: rgb(251, 146, 60);
+  --sidebar-primary-foreground: rgb(15, 23, 42);
+  --sidebar-accent: rgb(51, 65, 85);
+  --sidebar-accent-foreground: rgb(226, 232, 240);
+  --sidebar-border: rgb(51, 65, 85);
+  --sidebar-ring: rgb(251, 146, 60);
+  --font-sans: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  --font-serif: Merriweather, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 0.5rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
-  --shadow-blur: 4px;
+  --shadow-blur: 3px;
   --shadow-spread: 0px;
-  --shadow-opacity: 0.05;
+  --shadow-opacity: 0.2;
   --shadow-color: #000000;
-  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
-  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
-  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
-  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
-  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
-  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.2);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.3), 0px 1px 2px -1px hsl(0 0% 0% / 0.3);
+  --shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.3), 0px 1px 2px -1px hsl(0 0% 0% / 0.3);
+  --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.35), 0px 2px 4px -2px hsl(0 0% 0% / 0.35);
+  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.4), 0px 4px 6px -4px hsl(0 0% 0% / 0.4);
+  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.45), 0px 8px 10px -6px hsl(0 0% 0% / 0.45);
+  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.5);
 }
 
 @theme inline {
@@ -181,72 +185,69 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
 /* =============================================================================
-   GLASS CARD COMPONENT & UTILS (Muted Industrial)
+   GLASS CARD COMPONENT & UTILS
    ============================================================================= */
 
 @layer components {
   .glass-card {
-    /* Low opacity, light blur, no border in dark mode usually but keeps structure. 
-       User asked for "no visible borders" and "soft, natural shadows" */
-    @apply bg-card backdrop-blur-md border-0 shadow-lg transition-all duration-300;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1);
+    @apply bg-card/60 backdrop-blur-xl border border-border/50 shadow-lg transition-all duration-300;
   }
 
   .glass-card:hover {
-    @apply bg-card/80;
+    @apply bg-card/70 shadow-xl;
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-minimal {
+    @apply bg-card/40 backdrop-blur-md border-0 shadow-sm;
   }
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 }
 
-/* Background Texture - optional, minimal noise for industrial feel */
-.industrial-grid {
-  background-size: 40px 40px;
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+/* Subtle dot grid background - matches landing page aesthetic */
+.dot-grid-subtle {
+  position: relative;
+}
+
+.dot-grid-subtle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgb(100 116 139 / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .dot-grid-subtle::before {
+  background-image: radial-gradient(circle, rgb(148 163 184 / 0.1) 1px, transparent 1px);
+}
+
+/* Orange gradient accent */
+.orange-gradient {
+  background: linear-gradient(135deg, rgb(249 115 22) 0%, rgb(251 146 60) 100%);
+}
+
+.orange-gradient-text {
+  background: linear-gradient(135deg, rgb(249 115 22) 0%, rgb(251 146 60) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
 }

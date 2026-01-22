@@ -1,5 +1,9 @@
+"use client";
+
 import "@/app/globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { BlueprintBackground } from "@/components/shared/BlueprintBackground";
+import DotGrid from "@/components/DotGrid";
 import ThemeToggle from "@/components/shared/theme-toggle";
 import { Construction } from "lucide-react";
 import Link from "next/link";
@@ -17,29 +21,25 @@ export default function AuthLayout({
       disableTransitionOnChange={false}
     >
       <div className="min-h-screen bg-background relative overflow-hidden">
-        {/* Blueprint grid background */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--grid-accent) 1px, transparent 1px), linear-gradient(90deg, var(--grid-accent) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-            opacity: 0.08,
-          }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--grid-accent-weak) 1px, transparent 1px), linear-gradient(90deg, var(--grid-accent-weak) 1px, transparent 1px)",
-            backgroundSize: "200px 200px",
-            opacity: 0.15,
-          }}
-        />
+        {/* Blueprint Background for grid pattern */}
+        <BlueprintBackground variant="auth" />
 
-        {/* Ambient glow orbs */}
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/[0.06] blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-primary/[0.08] blur-[120px] rounded-full" />
+        {/* Interactive DotGrid Background */}
+        <div className="fixed inset-0 z-0 opacity-60 pointer-events-auto">
+          <DotGrid
+            dotSize={5}
+            gap={15}
+            baseColor="#271E37"
+            activeColor="#f97316"
+            proximity={120}
+            speedTrigger={100}
+            shockRadius={250}
+            shockStrength={5}
+            maxSpeed={5000}
+            resistance={750}
+            returnDuration={1.5}
+          />
+        </div>
 
         {/* Header */}
         <header className="relative z-50 p-6 flex justify-between items-center">
