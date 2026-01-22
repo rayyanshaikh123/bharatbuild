@@ -27,11 +27,7 @@ router.get("/overview", ownerCheck, async (req, res) => {
 router.get("/project/:projectId", ownerCheck, async (req, res) => {
   try {
     const ownerId = req.user.id;
-    const projectId = parseInt(req.params.projectId);
-
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
+    const projectId = req.params.projectId;
 
     const analytics = await analyticsService.getOwnerProjectAnalytics(
       ownerId,

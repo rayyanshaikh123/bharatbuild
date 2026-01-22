@@ -41,7 +41,7 @@ const ownerNavItems: NavItem[] = [
   { label: "Materials", href: "/owner/materials", icon: Package },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
-  { label: "Audit Logs", href: "/owner/audit", icon: History },
+  { label: "Audit Logs", href: "/owner/audits", icon: History },
   { label: "Analytics", href: "/owner/analytics", icon: TrendingUp },
   { label: "Reports", href: "/owner/reports", icon: BarChart },
 ];
@@ -51,7 +51,7 @@ const managerNavItems: NavItem[] = [
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "Ledger", href: "/manager/ledger", icon: Receipt },
-  { label: "Audit Logs", href: "/manager/audit", icon: History },
+  { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
 ];
 

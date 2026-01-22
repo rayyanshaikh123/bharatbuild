@@ -67,13 +67,13 @@ function ProjectFilter({
   onSelect,
 }: {
   projects: Project[];
-  selected: number | null;
-  onSelect: (id: number | null) => void;
+  selected: string | null;
+  onSelect: (id: string | null) => void;
 }) {
   return (
     <select
-      value={selected !== null ? String(selected) : ""}
-      onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+      value={selected ?? ""}
+      onChange={(e) => onSelect(e.target.value || null)}
       className="h-10 px-3 bg-background/50 border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
     >
       <option value="">All Projects</option>
@@ -132,7 +132,7 @@ export default function OwnerAuditPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAudits, setIsLoadingAudits] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [projectFilter, setProjectFilter] = useState<number | null>(null);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<AuditCategory | null>(null);
 
   // Fetch organization and projects

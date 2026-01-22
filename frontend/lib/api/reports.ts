@@ -50,7 +50,7 @@ export const ownerReports = {
 
   // Get audit & compliance report
   getAudit: (filters: ReportFilters = {}) =>
-    api.get<ReportData>(`/owner/reports/audit?${buildQueryString(filters)}`),
+    api.get<ReportData>(`/owner/reports/audits?${buildQueryString(filters)}`),
 
   // Download PDF reports
   downloadFinancialPDF: async (filters: ReportFilters = {}) => {
@@ -126,7 +126,7 @@ export const ownerReports = {
   },
 
   downloadAuditPDF: async (filters: ReportFilters = {}) => {
-    const response = await fetch(`${API_URL}/owner/reports/audit/pdf?${buildQueryString(filters)}`, {
+    const response = await fetch(`${API_URL}/owner/reports/audits/pdf?${buildQueryString(filters)}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },

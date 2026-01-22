@@ -4,7 +4,7 @@ const passport = require("passport");
 const analyticsService = require("../../services/analytics.service");
 
 // Middleware to ensure user is authenticated as manager
-const ensureManager = passport.authenticate("jwt", { session: false });
+const ensureManager = require("../../middleware/managerCheck");
 
 /**
  * GET /manager/analytics/overview
@@ -28,9 +28,9 @@ router.get("/overview", ensureManager, async (req, res) => {
 router.get("/project/:projectId", ensureManager, async (req, res) => {
   try {
     const managerId = req.user.id;
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
 
-    if (isNaN(projectId)) {
+    if (!projectId) {
       return res.status(400).json({ error: "Invalid project ID" });
     }
 

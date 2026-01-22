@@ -30,7 +30,8 @@ async function getProjectDelays(projectId) {
           ELSE 0
         END as delay_days
       FROM plan_items pi
-      WHERE pi.project_id = $1 AND pi.status = 'DELAYED'
+      JOIN plans p ON pi.plan_id = p.id
+      WHERE p.project_id = $1 AND pi.status = 'DELAYED'
       ORDER BY pi.period_end DESC
     `,
       [projectId],
