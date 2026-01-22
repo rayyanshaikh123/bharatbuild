@@ -78,6 +78,7 @@ class MyApp extends ConsumerWidget {
         themeMode: themeMode,
         home: const SessionGate(),
         routes: {
+          '/onboarding': (_) => const OnboardingScreen(),
           '/login': (_) => LoginScreen(),
           '/signup': (_) => SignupScreen(),
           '/forgot-password': (_) => ForgotPasswordScreen(),

@@ -20,7 +20,10 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     return AppBar(
       title: Row(
         children: [
-          Image.asset('assets/images/bharatbuild_logo.png', height: 32),
+          Image.asset(
+            themeMode == ThemeMode.dark ? 'assets/images/logo_dark.png' : 'assets/images/bharatbuild_logo.png',
+            height: 32,
+          ),
         ],
       ),
       elevation: 0,

@@ -671,7 +671,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
             onPressed: () {
               ref.read(currentUserProvider.notifier).state = null;
               ref.read(bottomNavIndexProvider.notifier).state = 0;
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/onboarding', (route) => false);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.withOpacity(0.1),

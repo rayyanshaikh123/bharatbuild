@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../providers/auth_providers.dart';
+import '../providers/user_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final String? initialRole;
@@ -71,9 +72,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       try {
-        await ref.read(labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future);
+        final res = await ref.read(labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future);
+        if (res['user'] != null) {
+          ref.read(currentUserProvider.notifier).state = res['user'] as Map<String, dynamic>;
+        }
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/labour-dashboard');
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
       }
       return;
@@ -84,9 +90,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     try {
-      await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
+      final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
+      if (res['user'] != null) {
+        ref.read(currentUserProvider.notifier).state = res['user'] as Map<String, dynamic>;
+      }
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/engineer-dashboard');
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
     }
   }
@@ -106,7 +117,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Hero(
                     tag: 'logo',
                     child: Image.asset(
-                      'assets/images/bharatbuild_logo.png',
+                      theme.brightness == Brightness.dark 
+                          ? 'assets/images/logo_dark.png' 
+                          : 'assets/images/bharatbuild_logo.png',
                       height: 100,
                     ),
                   ),
