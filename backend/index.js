@@ -123,6 +123,7 @@ app.use("/labour/attendance", require("./routes/labour/attendance"));
 app.use("/project", require("./routes/project/ledger"));
 app.use("/project", require("./routes/project/delays"));
 app.use("/project", require("./routes/project/ai"));
+app.use("/project", require("./routes/project/timeline"));
 
 /* ---------------- META (client config) ---------------- */
 

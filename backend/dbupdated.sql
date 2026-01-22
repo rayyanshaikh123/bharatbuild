@@ -352,7 +352,7 @@ ADD COLUMN updated_by_role TEXT CHECK (
 ),
 ALTER TABLE plan_items
 ADD COLUMN priority INTEGER NOT NULL DEFAULT 0
-CHECK (priority BETWEEN 0 AND 5);
+CHECK (priority BETWEEN 0 AND 5)
 
 ADD COLUMN delay_info JSONB;
 ALTER TABLE audit_logs
