@@ -5,7 +5,7 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { managerOrganization, managerProjects, Project } from "@/lib/api/manager";
-import { projectLedger } from "@/lib/api/ledger";
+import { managerLedger } from "@/lib/api/ledger";
 import type { LedgerEntry, LedgerEntryType, LedgerAdjustmentData } from "@/types/ledger";
 import {
   Loader2,
@@ -236,9 +236,18 @@ export default function ManagerLedgerPage() {
         const orgsRes = await managerOrganization.getMyOrganizations();
         if (orgsRes.organizations && orgsRes.organizations.length > 0) {
           const orgId = orgsRes.organizations[0].org_id;
+          if (!orgId) {
+             console.error("Organization ID missing in response", orgsRes.organizations[0]);
+             setError("Invalid organization data");
+             return;
+          }
           setOrganizationId(orgId);
+          // Only fetch projects if we have a valid orgId
           const projectsRes = await managerProjects.getMyProjects(orgId);
           setProjects(projectsRes.projects || []);
+        } else {
+            // No organizations found
+            setProjects([]);
         }
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
@@ -260,7 +269,7 @@ export default function ManagerLedgerPage() {
 
     try {
       setIsLoadingLedger(true);
-      const res = await projectLedger.get(selectedProjectId, {
+      const res = await managerLedger.get(selectedProjectId, {
         type: typeFilter ?? undefined,
         limit: 200,
       });
@@ -283,7 +292,7 @@ export default function ManagerLedgerPage() {
 
     try {
       setIsSubmitting(true);
-      await projectLedger.addAdjustment(selectedProjectId, data);
+      await managerLedger.addAdjustment(selectedProjectId, data);
       setShowAddModal(false);
       // Refresh ledger
       await fetchLedger();

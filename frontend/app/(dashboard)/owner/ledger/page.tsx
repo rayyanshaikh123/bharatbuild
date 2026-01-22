@@ -5,7 +5,7 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { ownerOrganization, ownerProjects, Project } from "@/lib/api/owner";
-import { projectLedger } from "@/lib/api/ledger";
+import { ownerLedger } from "@/lib/api/ledger";
 import type { LedgerEntry, LedgerEntryType } from "@/types/ledger";
 import {
   Loader2,
@@ -142,7 +142,7 @@ export default function OwnerLedgerPage() {
     const fetchLedger = async () => {
       try {
         setIsLoadingLedger(true);
-        const res = await projectLedger.get(selectedProjectId, {
+        const res = await ownerLedger.get(selectedProjectId, {
           type: typeFilter ?? undefined,
           limit: 200,
         });

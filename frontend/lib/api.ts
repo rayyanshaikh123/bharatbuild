@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // Generic fetch wrapper with credentials (for cookies/sessions)
 async function fetcher<T>(

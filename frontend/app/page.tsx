@@ -94,9 +94,6 @@ const LandingPage = () => {
         <div className="fixed top-0 left-0 right-0 p-8 flex justify-between items-center z-[100]  " >
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-0 bg-white rounded-2xl shadow-2xl border border-white/20" style={{ boxShadow: '0 16px 32px rgba(249, 116, 22, 0)' }}>
-              <div className="w-10 h-10 flex items-center justify-center rounded-l-xl">
-                <Construction size={22} style={{ color: '#F97316' }} />
-              </div>
               <div className="px-4 py-2">
                 <span className="text-xl font-black tracking-tighter uppercase italic" style={{ color: '#0F172A' }}>Bharat<span style={{ color: '#F97316' }}>Build</span></span>
               </div>

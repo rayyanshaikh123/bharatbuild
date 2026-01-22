@@ -4,13 +4,12 @@ const passport = require("passport");
 const analyticsService = require("../../services/analytics.service");
 
 // Middleware to ensure user is authenticated as owner
-const ensureOwner = passport.authenticate("jwt", { session: false });
-
+const ownerCheck = require('../../middleware/ownerCheck');
 /**
  * GET /owner/analytics/overview
  * Get organization-wide analytics dashboard
  */
-router.get("/overview", ensureOwner, async (req, res) => {
+router.get("/overview", ownerCheck, async (req, res) => {
   try {
     const ownerId = req.user.id;
     const overview = await analyticsService.getOwnerOverview(ownerId);
@@ -25,7 +24,7 @@ router.get("/overview", ensureOwner, async (req, res) => {
  * GET /owner/analytics/project/:projectId
  * Get detailed analytics for a specific project
  */
-router.get("/project/:projectId", ensureOwner, async (req, res) => {
+router.get("/project/:projectId", ownerCheck, async (req, res) => {
   try {
     const ownerId = req.user.id;
     const projectId = parseInt(req.params.projectId);

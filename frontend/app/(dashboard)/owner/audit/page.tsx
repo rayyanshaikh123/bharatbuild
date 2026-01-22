@@ -72,7 +72,7 @@ function ProjectFilter({
 }) {
   return (
     <select
-      value={selected ?? ""}
+      value={selected !== null ? String(selected) : ""}
       onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
       className="h-10 px-3 bg-background/50 border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
     >

@@ -68,7 +68,7 @@ app.use("/owner/dpr", require("./routes/owner/dpr"));
 app.use("/owner/material", require("./routes/owner/material"));
 app.use("/owner/wages", require("./routes/owner/wages"));
 app.use("/owner/analytics", require("./routes/owner/analytics"));
-app.use("/owner/audits", require("./routes/owner/audit"));
+app.use("/owner/audit", require("./routes/owner/audit"));
 app.use("/owner/reports", require("./routes/owner/reports"));
 app.use("/owner/ai", require("./routes/owner/ai-special"));
 app.use("/owner/ai", require("./routes/owner/ai"));

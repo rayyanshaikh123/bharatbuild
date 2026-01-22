@@ -142,9 +142,16 @@ export default function ManagerAuditPage() {
         const orgsRes = await managerOrganization.getMyOrganizations();
         if (orgsRes.organizations && orgsRes.organizations.length > 0) {
           const orgId = orgsRes.organizations[0].org_id;
+           if (!orgId) {
+             console.error("Organization ID missing in response", orgsRes.organizations[0]);
+             setError("Invalid organization data");
+             return;
+          }
           setOrganizationId(orgId);
           const projectsRes = await managerProjects.getMyProjects(orgId);
           setProjects(projectsRes.projects || []);
+        } else {
+            setProjects([]);
         }
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
