@@ -8,6 +8,31 @@ const {
 } = require("../../util/auditLogger");
 const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
+// Check if engineer is APPROVED in organization
+async function engineerOrgStatusCheck(engineerId, projectId) {
+  const result = await pool.query(
+    `SELECT COUNT(*) FROM organization_site_engineers ose
+     JOIN projects p ON ose.org_id = p.org_id
+     WHERE ose.site_engineer_id = $1 
+       AND p.id = $2 
+       AND ose.status = 'APPROVED'`,
+    [engineerId, projectId],
+  );
+  return parseInt(result.rows[0].count) > 0;
+}
+
+// Check if engineer is ACTIVE in project
+async function engineerProjectStatusCheck(engineerId, projectId) {
+  const result = await pool.query(
+    `SELECT COUNT(*) FROM project_site_engineers
+     WHERE site_engineer_id = $1 
+       AND project_id = $2 
+       AND status = 'APPROVED'`,
+    [engineerId, projectId],
+  );
+  return parseInt(result.rows[0].count) > 0;
+}
+
 /* ---------------- CREATE LABOUR REQUEST ---------------- */
 router.post("/", engineerCheck, async (req, res) => {
   try {
@@ -25,7 +50,7 @@ router.post("/", engineerCheck, async (req, res) => {
     if (!project_id) {
       const activeProject = await pool.query(
         `SELECT project_id FROM project_site_engineers 
-         WHERE site_engineer_id = $1 AND status = 'ACTIVE' LIMIT 1`,
+         WHERE site_engineer_id = $1 AND status = 'APPROVED' LIMIT 1`,
         [engineerId],
       );
       if (activeProject.rows.length === 0) {
@@ -76,7 +101,7 @@ router.get("/", engineerCheck, async (req, res) => {
     if (!projectId) {
       const activeProject = await pool.query(
         `SELECT project_id FROM project_site_engineers 
-         WHERE site_engineer_id = $1 AND status = 'ACTIVE' LIMIT 1`,
+         WHERE site_engineer_id = $1 AND status = 'APPROVED' LIMIT 1`,
         [engineerId],
       );
       if (activeProject.rows.length > 0) {

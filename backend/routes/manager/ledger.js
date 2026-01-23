@@ -18,10 +18,6 @@ router.get("/project/:projectId", async (req, res) => {
     const projectId = req.params.projectId;
     const managerId = req.user.id;
 
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
-
     // Verify manager is ACTIVE on project
     const managerCheck = await pool.query(
       `SELECT 1 FROM project_managers
@@ -65,10 +61,6 @@ router.post("/project/:projectId/adjust", async (req, res) => {
   try {
     const projectId = req.params.projectId;
     const managerId = req.user.id;
-
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
 
     // Verify manager is ACTIVE on project
     const managerCheck = await pool.query(

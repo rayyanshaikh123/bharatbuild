@@ -4,6 +4,18 @@ const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
+// Check if engineer is ACTIVE in project
+async function engineerProjectStatusCheck(engineerId, projectId) {
+  const result = await pool.query(
+    `SELECT COUNT(*) FROM project_site_engineers
+     WHERE site_engineer_id = $1 
+       AND project_id = $2 
+       AND status = 'APPROVED'`,
+    [engineerId, projectId],
+  );
+  return parseInt(result.rows[0].count) > 0;
+}
+
 /* ---------------- GET TODAY'S ATTENDANCE ---------------- */
 router.get("/today", engineerCheck, async (req, res) => {
   try {

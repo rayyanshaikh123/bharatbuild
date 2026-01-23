@@ -27,11 +27,18 @@ async function getProjectDelays(projectId) {
         CASE 
           WHEN pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end
           THEN (pi.completed_at::date - pi.period_end::date)
+          WHEN pi.status IN ('IN_PROGRESS', 'PENDING') AND CURRENT_DATE > pi.period_end
+          THEN (CURRENT_DATE - pi.period_end::date)
           ELSE 0
         END as delay_days
       FROM plan_items pi
       JOIN plans pl ON pi.plan_id = pl.id
-      WHERE pl.project_id = $1::uuid AND pi.status = 'DELAYED'
+      WHERE pl.project_id = $1::uuid 
+        AND (
+          (pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end)
+          OR
+          (pi.status IN ('IN_PROGRESS', 'PENDING') AND CURRENT_DATE > pi.period_end)
+        )
       ORDER BY pi.period_end DESC
     `,
       [projectId],
@@ -45,7 +52,7 @@ async function getProjectDelays(projectId) {
       actual_end: item.completed_at,
       delay_days: parseFloat(item.delay_days.toFixed(2)),
       status: item.status,
-      delay_info: item.delay || null,
+      delay_info: item.delay_info || null,
     }));
   } finally {
     client.release();
@@ -101,12 +108,9 @@ async function updatePlanItemStatus(itemId, managerId, data, req) {
       finalCompletedAt = new Date().toISOString();
     }
 
-    // Validate delay info if status is DELAYED
+    // Store delay info if provided
     let delayInfo = null;
-    if (status === "DELAYED") {
-      if (!delay || !delay.delay_reason) {
-        throw new Error("Delay reason is required for DELAYED status");
-      }
+    if (delay && delay.delay_reason) {
       delayInfo = {
         referenced_dprs: delay.referenced_dprs || [],
         delay_reason: delay.delay_reason,
@@ -122,7 +126,7 @@ async function updatePlanItemStatus(itemId, managerId, data, req) {
       SET 
         status = $1,
         completed_at = $2,
-        delay = $3
+        delay_info = $3
       WHERE id = $4
       RETURNING *
     `,
@@ -170,7 +174,7 @@ async function updatePlanItemStatus(itemId, managerId, data, req) {
       period_end: afterState.period_end,
       completed_at: afterState.completed_at,
       delay_days: parseFloat(delayDays.toFixed(2)),
-      delay_info: afterState.delay,
+      delay_info: afterState.delay_info,
     };
   } catch (error) {
     await client.query("ROLLBACK");
