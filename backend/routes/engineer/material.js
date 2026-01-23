@@ -13,7 +13,7 @@ async function engineerProjectStatusCheck(engineerId, projectId) {
     `SELECT COUNT(*) FROM project_site_engineers
      WHERE site_engineer_id = $1 
        AND project_id = $2 
-       AND status = 'ACTIVE'`,
+       AND status = 'APPROVED'`,
     [engineerId, projectId],
   );
   return parseInt(result.rows[0].count) > 0;

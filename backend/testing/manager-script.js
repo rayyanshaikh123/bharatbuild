@@ -481,7 +481,7 @@ async function approveEngineerRequest() {
     "PUT",
     `/manager/projects/project-requests/${requestId}/decision`,
     {
-      decision: "ACTIVE",
+      decision: "APPROVED",
       projectId,
       organizationId,
     },
