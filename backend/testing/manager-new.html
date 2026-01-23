@@ -826,26 +826,253 @@
           <button onclick="getProjectAudits()">Get Audit Logs</button>
         </div>
 
+        <!-- PLAN MANAGEMENT SECTION -->
+        <div class="section full-width">
+          <h2>📋 Plan Management</h2>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+            <div>
+              <h3>Create Plan (Creator Only)</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="planProjectId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>Start Date:</label>
+                <input type="date" id="planStartDate" />
+              </div>
+              <div class="input-group">
+                <label>End Date:</label>
+                <input type="date" id="planEndDate" />
+              </div>
+              <button class="success" onclick="createPlan()">
+                Create Plan
+              </button>
+
+              <div class="divider"></div>
+
+              <h3>View Plan</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="getPlanProjectId" placeholder="UUID" />
+              </div>
+              <button onclick="getPlan()">Get Plan with Items</button>
+            </div>
+
+            <div>
+              <h3>Update Plan (Creator Only)</h3>
+              <div class="input-group">
+                <label>Plan ID:</label>
+                <input type="text" id="updatePlanId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>New Start Date:</label>
+                <input type="date" id="updatePlanStartDate" />
+              </div>
+              <div class="input-group">
+                <label>New End Date:</label>
+                <input type="date" id="updatePlanEndDate" />
+              </div>
+              <button class="warning" onclick="updatePlan()">
+                Update Plan
+              </button>
+
+              <div class="divider"></div>
+
+              <h3>Delete Plan (Creator Only)</h3>
+              <div class="input-group">
+                <label>Plan ID:</label>
+                <input type="text" id="deletePlanId" placeholder="UUID" />
+              </div>
+              <button class="danger" onclick="deletePlan()">Delete Plan</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Add Plan Item</h3>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 15px;
+            "
+          >
+            <div class="input-group">
+              <label>Plan ID:</label>
+              <input type="text" id="planItemPlanId" placeholder="UUID" />
+            </div>
+            <div class="input-group">
+              <label>Period Type:</label>
+              <select id="planItemPeriodType">
+                <option value="">Select Type</option>
+                <option value="WEEK">WEEK</option>
+                <option value="MONTH">MONTH</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Period Start:</label>
+              <input type="date" id="planItemPeriodStart" />
+            </div>
+            <div class="input-group">
+              <label>Period End:</label>
+              <input type="date" id="planItemPeriodEnd" />
+            </div>
+            <div class="input-group">
+              <label>Task Name:</label>
+              <input
+                type="text"
+                id="planItemTaskName"
+                placeholder="e.g., Foundation Work"
+              />
+            </div>
+            <div class="input-group">
+              <label>Description:</label>
+              <input
+                type="text"
+                id="planItemDescription"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Quantity:</label>
+              <input
+                type="number"
+                id="planItemQuantity"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Manpower:</label>
+              <input
+                type="number"
+                id="planItemManpower"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Cost:</label>
+              <input type="number" id="planItemCost" placeholder="Optional" />
+            </div>
+          </div>
+          <button class="success" onclick="addPlanItem()">Add Plan Item</button>
+
+          <div class="divider"></div>
+
+          <h3>Update Plan Item</h3>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 15px;
+            "
+          >
+            <div class="input-group">
+              <label>Plan Item ID:</label>
+              <input type="text" id="updatePlanItemId" placeholder="UUID" />
+            </div>
+            <div class="input-group">
+              <label>Period Type:</label>
+              <select id="updatePlanItemPeriodType">
+                <option value="">No Change</option>
+                <option value="WEEK">WEEK</option>
+                <option value="MONTH">MONTH</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Period Start:</label>
+              <input type="date" id="updatePlanItemPeriodStart" />
+            </div>
+            <div class="input-group">
+              <label>Period End:</label>
+              <input type="date" id="updatePlanItemPeriodEnd" />
+            </div>
+            <div class="input-group">
+              <label>Task Name:</label>
+              <input
+                type="text"
+                id="updatePlanItemTaskName"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Description:</label>
+              <input
+                type="text"
+                id="updatePlanItemDescription"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Quantity:</label>
+              <input
+                type="number"
+                id="updatePlanItemQuantity"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Manpower:</label>
+              <input
+                type="number"
+                id="updatePlanItemManpower"
+                placeholder="Optional"
+              />
+            </div>
+            <div class="input-group">
+              <label>Planned Cost:</label>
+              <input
+                type="number"
+                id="updatePlanItemCost"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+          <button class="warning" onclick="updatePlanItem()">
+            Update Plan Item
+          </button>
+
+          <div class="divider"></div>
+
+          <h3>Delete Plan Item</h3>
+          <div class="input-group">
+            <label>Plan Item ID:</label>
+            <input type="text" id="deletePlanItemId" placeholder="UUID" />
+          </div>
+          <button class="danger" onclick="deletePlanItem()">
+            Delete Plan Item
+          </button>
+        </div>
+
         <!-- WAGE RATES SECTION -->
         <div class="section">
-          <h2>💰 Wage Rates</h2>
+          <h2>💰 Wage Rates (Project-Specific)</h2>
 
           <h3>Create Wage Rate</h3>
           <div class="input-group">
-            <label>Organization ID:</label>
-            <input type="text" id="wageRateOrgId" placeholder="UUID" />
+            <label>Project ID:</label>
+            <input type="text" id="wageRateProjectId" placeholder="UUID" />
           </div>
           <div class="input-group">
             <label>Skill Type:</label>
+            <select id="wageRateSkillType">
+              <option value="">Select Skill Type</option>
+              <option value="SKILLED">SKILLED</option>
+              <option value="SEMI_SKILLED">SEMI_SKILLED</option>
+              <option value="UNSKILLED">UNSKILLED</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Category:</label>
             <input
               type="text"
-              id="wageRateSkillType"
-              placeholder="e.g., MASON"
+              id="wageRateCategory"
+              placeholder="e.g., MASON, CARPENTER"
             />
           </div>
           <div class="input-group">
-            <label>Rate:</label>
-            <input type="number" id="wageRateAmount" placeholder="e.g., 500" />
+            <label>Hourly Rate:</label>
+            <input type="number" id="wageRateAmount" placeholder="e.g., 150" />
           </div>
           <button class="success" onclick="createWageRate()">Create</button>
 
@@ -853,8 +1080,8 @@
 
           <h3>View Wage Rates</h3>
           <div class="input-group">
-            <label>Organization ID:</label>
-            <input type="text" id="getWageRatesOrgId" placeholder="UUID" />
+            <label>Project ID:</label>
+            <input type="text" id="getWageRatesProjectId" placeholder="UUID" />
           </div>
           <button onclick="getWageRates()">Get Wage Rates</button>
 
@@ -866,11 +1093,11 @@
             <input type="text" id="updateWageRateId" placeholder="UUID" />
           </div>
           <div class="input-group">
-            <label>New Rate:</label>
+            <label>New Hourly Rate:</label>
             <input
               type="number"
               id="updateWageRateAmount"
-              placeholder="e.g., 550"
+              placeholder="e.g., 175"
             />
           </div>
           <button class="warning" onclick="updateWageRate()">Update</button>
