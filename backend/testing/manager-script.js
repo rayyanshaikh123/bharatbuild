@@ -43,16 +43,27 @@ async function fetchWithSession(method, endpoint, body = null, options = {}) {
 
     if (!response.ok) {
       showResponse(
-        { error: data.error || "Request failed", status: response.status },
+        {
+          route: `${method} ${endpoint}`,
+          error: data.error || "Request failed",
+          status: response.status,
+        },
         true,
       );
       return { error: data.error, status: response.status };
     }
 
-    showResponse(data, false);
+    showResponse({ route: `${method} ${endpoint}`, ...data }, false);
     return data;
   } catch (error) {
-    showResponse({ error: error.message, type: "Network Error" }, true);
+    showResponse(
+      {
+        route: `${method} ${endpoint}`,
+        error: error.message,
+        type: "Network Error",
+      },
+      true,
+    );
     return { error: error.message };
   }
 }
@@ -241,7 +252,14 @@ async function createProject() {
 }
 
 async function getMyProjects() {
-  await fetchWithSession("GET", "/manager/project/my-projects");
+  const organizationId = getInputValue("myProjectsOrgId");
+
+  let url = "/manager/project/my-projects";
+  if (organizationId) {
+    url += `?organizationId=${organizationId}`;
+  }
+
+  await fetchWithSession("GET", url);
 }
 
 async function getAllProjects() {
@@ -737,53 +755,220 @@ async function getDashboard() {
   await fetchWithSession("GET", "/manager/dashboard");
 }
 
+// ============ PLAN MANAGEMENT FUNCTIONS ============
+
+async function createPlan() {
+  const projectId = getInputValue("planProjectId");
+  const startDate = getInputValue("planStartDate");
+  const endDate = getInputValue("planEndDate");
+
+  if (!projectId || !startDate || !endDate) {
+    showResponse(
+      { error: "Project ID, start date, and end date are required" },
+      true,
+    );
+    return;
+  }
+
+  await fetchWithSession("POST", "/manager/plan/plans", {
+    project_id: projectId,
+    start_date: startDate,
+    end_date: endDate,
+  });
+}
+
+async function getPlan() {
+  const projectId = getInputValue("getPlanProjectId");
+
+  if (!projectId) {
+    showResponse({ error: "Project ID is required" }, true);
+    return;
+  }
+
+  await fetchWithSession("GET", `/manager/plan/plans/${projectId}`);
+}
+
+async function updatePlan() {
+  const planId = getInputValue("updatePlanId");
+  const startDate = getInputValue("updatePlanStartDate");
+  const endDate = getInputValue("updatePlanEndDate");
+
+  if (!planId) {
+    showResponse({ error: "Plan ID is required" }, true);
+    return;
+  }
+
+  const body = {};
+  if (startDate) body.start_date = startDate;
+  if (endDate) body.end_date = endDate;
+
+  if (Object.keys(body).length === 0) {
+    showResponse(
+      { error: "At least one field must be provided to update" },
+      true,
+    );
+    return;
+  }
+
+  await fetchWithSession("PUT", `/manager/plan/plans/${planId}`, body);
+}
+
+async function deletePlan() {
+  const planId = getInputValue("deletePlanId");
+
+  if (!planId) {
+    showResponse({ error: "Plan ID is required" }, true);
+    return;
+  }
+
+  if (
+    !confirm(
+      "Are you sure you want to delete this plan? This will delete all plan items.",
+    )
+  ) {
+    return;
+  }
+
+  await fetchWithSession("DELETE", `/manager/plan/plans/${planId}`);
+}
+
+async function addPlanItem() {
+  const planId = getInputValue("planItemPlanId");
+  const periodType = getInputValue("planItemPeriodType");
+  const periodStart = getInputValue("planItemPeriodStart");
+  const periodEnd = getInputValue("planItemPeriodEnd");
+  const taskName = getInputValue("planItemTaskName");
+  const description = getInputValue("planItemDescription");
+  const plannedQuantity = getInputValue("planItemQuantity");
+  const plannedManpower = getInputValue("planItemManpower");
+  const plannedCost = getInputValue("planItemCost");
+
+  if (!planId || !periodType || !periodStart || !periodEnd || !taskName) {
+    showResponse(
+      { error: "Plan ID, period type, dates, and task name are required" },
+      true,
+    );
+    return;
+  }
+
+  const body = {
+    period_type: periodType,
+    period_start: periodStart,
+    period_end: periodEnd,
+    task_name: taskName,
+  };
+
+  if (description) body.description = description;
+  if (plannedQuantity) body.planned_quantity = parseFloat(plannedQuantity);
+  if (plannedManpower) body.planned_manpower = parseInt(plannedManpower);
+  if (plannedCost) body.planned_cost = parseFloat(plannedCost);
+
+  await fetchWithSession("POST", `/manager/plan/plans/${planId}/items`, body);
+}
+
+async function updatePlanItem() {
+  const itemId = getInputValue("updatePlanItemId");
+  const periodType = getInputValue("updatePlanItemPeriodType");
+  const periodStart = getInputValue("updatePlanItemPeriodStart");
+  const periodEnd = getInputValue("updatePlanItemPeriodEnd");
+  const taskName = getInputValue("updatePlanItemTaskName");
+  const description = getInputValue("updatePlanItemDescription");
+  const plannedQuantity = getInputValue("updatePlanItemQuantity");
+  const plannedManpower = getInputValue("updatePlanItemManpower");
+  const plannedCost = getInputValue("updatePlanItemCost");
+
+  if (!itemId) {
+    showResponse({ error: "Plan item ID is required" }, true);
+    return;
+  }
+
+  const body = {};
+  if (periodType) body.period_type = periodType;
+  if (periodStart) body.period_start = periodStart;
+  if (periodEnd) body.period_end = periodEnd;
+  if (taskName) body.task_name = taskName;
+  if (description) body.description = description;
+  if (plannedQuantity) body.planned_quantity = parseFloat(plannedQuantity);
+  if (plannedManpower) body.planned_manpower = parseInt(plannedManpower);
+  if (plannedCost) body.planned_cost = parseFloat(plannedCost);
+
+  if (Object.keys(body).length === 0) {
+    showResponse(
+      { error: "At least one field must be provided to update" },
+      true,
+    );
+    return;
+  }
+
+  await fetchWithSession("PUT", `/manager/plan/plans/items/${itemId}`, body);
+}
+
+async function deletePlanItem() {
+  const itemId = getInputValue("deletePlanItemId");
+
+  if (!itemId) {
+    showResponse({ error: "Plan item ID is required" }, true);
+    return;
+  }
+
+  if (!confirm("Are you sure you want to delete this plan item?")) {
+    return;
+  }
+
+  await fetchWithSession("DELETE", `/manager/plan/plans/items/${itemId}`);
+}
+
 // ============ WAGE RATES FUNCTIONS ============
 
 async function createWageRate() {
-  const organizationId = getInputValue("wageRateOrgId");
+  const projectId = getInputValue("wageRateProjectId");
   const skillType = getInputValue("wageRateSkillType");
-  const rate = getInputValue("wageRateAmount");
+  const category = getInputValue("wageRateCategory");
+  const hourlyRate = getInputValue("wageRateAmount");
 
-  if (!organizationId || !skillType || !rate) {
+  if (!projectId || !skillType || !category || !hourlyRate) {
     showResponse(
-      { error: "Organization ID, skill type, and rate are required" },
+      {
+        error: "Project ID, skill type, category, and hourly rate are required",
+      },
       true,
     );
     return;
   }
 
   await fetchWithSession("POST", "/manager/wage-rates", {
-    organizationId,
-    skillType,
-    rate: parseFloat(rate),
+    project_id: projectId,
+    skill_type: skillType,
+    category: category,
+    hourly_rate: parseFloat(hourlyRate),
   });
 }
 
 async function getWageRates() {
-  const organizationId = getInputValue("getWageRatesOrgId");
+  const projectId = getInputValue("getWageRatesProjectId");
 
-  if (!organizationId) {
-    showResponse({ error: "Organization ID is required" }, true);
+  if (!projectId) {
+    showResponse({ error: "Project ID is required" }, true);
     return;
   }
 
-  await fetchWithSession(
-    "GET",
-    `/manager/wage-rates?organizationId=${organizationId}`,
-  );
+  await fetchWithSession("GET", `/manager/wage-rates?project_id=${projectId}`);
 }
 
 async function updateWageRate() {
   const id = getInputValue("updateWageRateId");
-  const rate = getInputValue("updateWageRateAmount");
+  const hourlyRate = getInputValue("updateWageRateAmount");
 
-  if (!id || !rate) {
-    showResponse({ error: "Wage rate ID and new rate are required" }, true);
+  if (!id || !hourlyRate) {
+    showResponse(
+      { error: "Wage rate ID and new hourly rate are required" },
+      true,
+    );
     return;
   }
 
   await fetchWithSession("PATCH", `/manager/wage-rates/${id}`, {
-    rate: parseFloat(rate),
+    hourly_rate: parseFloat(hourlyRate),
   });
 }
 

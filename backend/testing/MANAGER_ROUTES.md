@@ -356,36 +356,118 @@
 
 ---
 
+## Plan Routes
+
+### POST `/manager/plan/plans`
+
+- **Auth**: managerCheck (project creator only)
+- **Body**:
+  - `project_id` (UUID, required)
+  - `start_date` (date, required)
+  - `end_date` (date, required)
+- **Response**: `{ plan: {...} }`
+- **Note**: One plan per project
+
+### GET `/manager/plan/plans/:projectId`
+
+- **Auth**: managerCheck (ACTIVE manager or creator)
+- **Params**:
+  - `projectId` (UUID, in URL)
+- **Response**: `{ plan: {...}, items: [...] }`
+
+### PUT `/manager/plan/plans/:planId`
+
+- **Auth**: managerCheck (project creator only)
+- **Params**:
+  - `planId` (UUID, in URL)
+- **Body**:
+  - `start_date` (date, optional)
+  - `end_date` (date, optional)
+- **Response**: `{ plan: {...} }`
+
+### DELETE `/manager/plan/plans/:planId`
+
+- **Auth**: managerCheck (project creator only)
+- **Params**:
+  - `planId` (UUID, in URL)
+- **Response**: `{ message: "Plan deleted successfully" }`
+
+---
+
+## Plan Items Routes
+
+### POST `/manager/plan/plans/:planId/items`
+
+- **Auth**: managerCheck (ACTIVE manager or creator)
+- **Params**:
+  - `planId` (UUID, in URL)
+- **Body**:
+  - `period_type` (string, required: WEEK/MONTH)
+  - `period_start` (date, required)
+  - `period_end` (date, required)
+  - `task_name` (string, required)
+  - `description` (string, optional)
+  - `planned_quantity` (number, optional)
+  - `planned_manpower` (integer, optional)
+  - `planned_cost` (number, optional)
+- **Response**: `{ item: {...} }`
+
+### PUT `/manager/plan/plans/items/:itemId`
+
+- **Auth**: managerCheck (ACTIVE manager or creator)
+- **Params**:
+  - `itemId` (UUID, in URL)
+- **Body**:
+  - `period_type` (string, optional)
+  - `period_start` (date, optional)
+  - `period_end` (date, optional)
+  - `task_name` (string, optional)
+  - `description` (string, optional)
+  - `planned_quantity` (number, optional)
+  - `planned_manpower` (integer, optional)
+  - `planned_cost` (number, optional)
+- **Response**: `{ item: {...} }`
+
+### DELETE `/manager/plan/plans/items/:itemId`
+
+- **Auth**: managerCheck (ACTIVE manager or creator)
+- **Params**:
+  - `itemId` (UUID, in URL)
+- **Response**: `{ message: "Plan item deleted successfully" }`
+
+---
+
 ## Wage Rates Routes
 
 ### POST `/manager/wage-rates`
 
-- **Auth**: managerCheck
+- **Auth**: managerCheck (ACTIVE in project)
 - **Body**:
-  - `organizationId` (UUID, required)
-  - `skillType` (string, required)
-  - `rate` (number, required)
-- **Response**: `{ message: "Wage rate created successfully", wageRate: {...} }`
+  - `project_id` (UUID, required)
+  - `skill_type` (string, required: SKILLED/SEMI_SKILLED/UNSKILLED)
+  - `category` (string, required)
+  - `hourly_rate` (number, required)
+- **Response**: `{ wage_rate: {...} }`
 
 ### GET `/manager/wage-rates`
 
-- **Auth**: managerCheck
+- **Auth**: managerCheck (ACTIVE in project)
 - **Query**:
-  - `organizationId` (UUID, required)
-- **Response**: `{ wageRates: [...] }`
+  - `project_id` (UUID, required)
+- **Response**: `{ wage_rates: [...] }`
 
 ### PATCH `/manager/wage-rates/:id`
 
-- **Auth**: managerCheck
+- **Auth**: managerCheck (ACTIVE in project)
 - **Params**:
   - `id` (UUID, in URL)
 - **Body**:
-  - `rate` (number, required)
-- **Response**: `{ message: "Wage rate updated successfully" }`
+  - `hourly_rate` (number, required)
+- **Response**: `{ wage_rate: {...} }`
 
 ### DELETE `/manager/wage-rates/:id`
 
-- **Auth**: managerCheck
+- **Auth**: managerCheck (ACTIVE in project)
 - **Params**:
   - `id` (UUID, in URL)
 - **Response**: `{ message: "Wage rate deleted successfully" }`
