@@ -16,7 +16,7 @@ router.get("/", ownerCheck, async (req, res) => {
 
     // Parse query parameters
     const filters = {
-      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      project_id: req.query.project_id || null,
       category: req.query.category || null,
       start_date: req.query.start_date || undefined,
       end_date: req.query.end_date || undefined,
