@@ -133,8 +133,8 @@ async function registerManager() {
       credentials: "include", // REQUIRED for session cookies
       body: JSON.stringify({
         name: "Test Manager",
-        email: "userManager@gmail.com",
-        phone: "9876543221", // Unique phone for Manager
+        email: "userManager2@gmail.com",
+        phone: "9876543222", // Unique phone for Manager
         password: "Test@123",
       }),
     });
