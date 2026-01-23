@@ -21,7 +21,7 @@ async function engineerProjectAccessCheck(engineerId, projectId) {
     `SELECT COUNT(*) FROM project_site_engineers
      WHERE site_engineer_id = $1 
        AND project_id = $2 
-       AND status IN ('ACTIVE', 'PENDING')`,
+       AND status IN ('APPROVED', 'PENDING')`,
     [engineerId, projectId],
   );
   return parseInt(result.rows[0].count) > 0;

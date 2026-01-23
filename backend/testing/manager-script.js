@@ -43,16 +43,27 @@ async function fetchWithSession(method, endpoint, body = null, options = {}) {
 
     if (!response.ok) {
       showResponse(
-        { error: data.error || "Request failed", status: response.status },
+        {
+          route: `${method} ${endpoint}`,
+          error: data.error || "Request failed",
+          status: response.status,
+        },
         true,
       );
       return { error: data.error, status: response.status };
     }
 
-    showResponse(data, false);
+    showResponse({ route: `${method} ${endpoint}`, ...data }, false);
     return data;
   } catch (error) {
-    showResponse({ error: error.message, type: "Network Error" }, true);
+    showResponse(
+      {
+        route: `${method} ${endpoint}`,
+        error: error.message,
+        type: "Network Error",
+      },
+      true,
+    );
     return { error: error.message };
   }
 }
@@ -241,7 +252,14 @@ async function createProject() {
 }
 
 async function getMyProjects() {
-  await fetchWithSession("GET", "/manager/project/my-projects");
+  const organizationId = getInputValue("myProjectsOrgId");
+
+  let url = "/manager/project/my-projects";
+  if (organizationId) {
+    url += `?organizationId=${organizationId}`;
+  }
+
+  await fetchWithSession("GET", url);
 }
 
 async function getAllProjects() {
