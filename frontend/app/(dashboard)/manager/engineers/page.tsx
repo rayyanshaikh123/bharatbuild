@@ -1,8 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Loader2, ArrowLeft, Mail, Phone, Check, X, Clock, CheckCircle2 } from "lucide-react";
+import { Users, Loader2, ArrowLeft, Mail, Phone, Check, X, Clock, CheckCircle2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Link from "next/link";
 import { managerOrganization, managerOrgEngineerRequests, ManagerOrgRequest, EngineerRequest } from "@/lib/api/manager";
 
@@ -12,6 +27,7 @@ export default function ManagerEngineersPage() {
   const [approvedEngineers, setApprovedEngineers] = useState<EngineerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const fetchData = async () => {
     try {
@@ -56,6 +72,17 @@ export default function ManagerEngineersPage() {
     }
   };
 
+  // Combine and filter data
+  const allEngineers = [
+    ...pendingRequests.map(req => ({ ...req, status: "PENDING" })),
+    ...approvedEngineers.map(req => ({ ...req, status: "APPROVED" }))
+  ];
+
+  const filteredEngineers = allEngineers.filter(engineer => {
+    if (statusFilter === "all") return true;
+    return engineer.status === statusFilter;
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
@@ -96,115 +123,171 @@ export default function ManagerEngineersPage() {
         </div>
       </div>
 
-      {/* Pending Requests */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-600">
-            <Clock size={20} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-600">
+              <Users size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Engineers</p>
+              <p className="text-2xl font-bold text-foreground">{allEngineers.length}</p>
+            </div>
           </div>
-          <h3 className="text-lg font-bold text-foreground uppercase tracking-wide">
-            Pending Requests ({pendingRequests.length})
-          </h3>
         </div>
-
-        {pendingRequests.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No pending engineer requests.</p>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-600">
+              <Clock size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-2xl font-bold text-foreground">{pendingRequests.length}</p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {pendingRequests.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl"
-              >
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                  <Users size={24} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-foreground">{request.engineer_name || "Unknown Engineer"}</h4>
-                  <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                    {request.engineer_email && (
-                      <span className="flex items-center gap-1">
-                        <Mail size={12} /> {request.engineer_email}
-                      </span>
-                    )}
-                    {request.engineer_phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone size={12} /> {request.engineer_phone}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={processingId === request.id}
-                    onClick={() => handleDecision(request.id, "REJECTED")}
-                    className="border-red-500/30 text-red-600 hover:bg-red-500/10"
-                  >
-                    {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X size={16} />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={processingId === request.id}
-                    onClick={() => handleDecision(request.id, "APPROVED")}
-                  >
-                    {processingId === request.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Check size={16} className="mr-1" /> Approve
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ))}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center text-green-600">
+              <CheckCircle2 size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-2xl font-bold text-foreground">{approvedEngineers.length}</p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Approved Engineers */}
+      {/* Filter and Table */}
       <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
-            <CheckCircle2 size={20} />
-          </div>
+        <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-foreground uppercase tracking-wide">
-            Active Engineers ({approvedEngineers.length})
+            Engineers List
           </h3>
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-muted-foreground" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {approvedEngineers.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No approved engineers yet.</p>
+        {filteredEngineers.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No engineers found for the selected filter.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-3">
-            {approvedEngineers.map((engineer) => (
-              <div
-                key={engineer.id}
-                className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl"
-              >
-                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
-                  <Users size={24} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-foreground">{engineer.engineer_name || "Unknown"}</h4>
-                  <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                    {engineer.engineer_email && (
-                      <span className="flex items-center gap-1">
-                        <Mail size={12} /> {engineer.engineer_email}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[250px]">Engineer Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEngineers.map((engineer) => (
+                  <TableRow key={engineer.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          engineer.status === "APPROVED" 
+                            ? "bg-green-500/10 text-green-600" 
+                            : "bg-yellow-500/10 text-yellow-600"
+                        }`}>
+                          <Users size={20} />
+                        </div>
+                        <span>{engineer.engineer_name || "Unknown Engineer"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {engineer.engineer_email ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail size={14} className="text-muted-foreground" />
+                          <span>{engineer.engineer_email}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {engineer.engineer_phone ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone size={14} className="text-muted-foreground" />
+                          <span>{engineer.engineer_phone}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {engineer.status === "APPROVED" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium">
+                          <CheckCircle2 size={14} />
+                          Approved
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-600 text-xs font-medium">
+                          <Clock size={14} />
+                          Pending
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {engineer.status === "PENDING" ? (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={processingId === engineer.id}
+                            onClick={() => handleDecision(engineer.id, "REJECTED")}
+                            className="border-red-500/30 text-red-600 hover:bg-red-500/10"
+                          >
+                            {processingId === engineer.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <X size={16} className="mr-1" />
+                                Reject
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={processingId === engineer.id}
+                            onClick={() => handleDecision(engineer.id, "APPROVED")}
+                          >
+                            {processingId === engineer.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={16} className="mr-1" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { ProjectDetailMap } from "@/components/maps/ProjectsMap";
 import { ProjectManagerApprovalList } from "@/components/dashboard/ProjectManagerApprovalList";
 import { TasksSection } from "@/components/dashboard/TasksSection";
+import { ProjectEngineerRequestsList } from "@/components/dashboard/ProjectEngineerRequestsList";
+import { ProjectManagerRequestsList } from "@/components/dashboard/ProjectManagerRequestsList";
 
 interface Project {
   id: string;
@@ -233,6 +235,59 @@ export function ProjectDetailView({
       {/* Tasks Section for Manager */}
       {userRole === "manager" && (
         <TasksSection projectId={project.id} />
+      )}
+
+      {/* Manager Actions Section */}
+      {userRole === "manager" && (
+        <div className="space-y-6">
+          {/* Request Sections Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Site Engineer Requests */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                <Users size={20} className="text-primary" />
+                Site Engineer Requests
+              </h3>
+              <ProjectEngineerRequestsList projectId={project.id} />
+            </div>
+
+            {/* Manager Join Requests (only for project creator) */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                <Users size={20} className="text-amber-500" />
+                Manager Join Requests
+              </h3>
+              <ProjectManagerRequestsList projectId={project.id} organizationId={project.org_id} />
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div className="glass-card rounded-2xl p-6">
+             <h3 className="font-bold text-foreground mb-4">Project Management</h3>
+             
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <Link href={`/manager/materials?projectId=${project.id}`} className="block">
+                  <div className="p-4 bg-muted/40 hover:bg-muted rounded-xl border border-border transition-all cursor-pointer h-full">
+                    <div className="mb-2 w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center">
+                      <IndianRupeeIcon size={20} />
+                    </div>
+                    <div className="font-semibold">Materials</div>
+                    <p className="text-xs text-muted-foreground mt-1">Requests & Bills</p>
+                  </div>
+               </Link>
+
+               <Link href={`/manager/dprs?projectId=${project.id}`} className="block">
+                  <div className="p-4 bg-muted/40 hover:bg-muted rounded-xl border border-border transition-all cursor-pointer h-full">
+                    <div className="mb-2 w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center">
+                      <Calendar size={20} />
+                    </div>
+                    <div className="font-semibold">DPRs</div>
+                    <p className="text-xs text-muted-foreground mt-1">Daily Reports</p>
+                  </div>
+               </Link>
+             </div>
+          </div>
+        </div>
       )}
 
       {/* Owner Approvals Section */}

@@ -51,6 +51,8 @@ const managerNavItems: NavItem[] = [
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "Ledger", href: "/manager/ledger", icon: Receipt },
+  { label: "Materials", href: "/manager/materials", icon: Package },
+  { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
   { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
 ];

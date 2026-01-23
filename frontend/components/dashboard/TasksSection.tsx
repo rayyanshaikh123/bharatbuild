@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   CheckCircle2, 
   Circle, 
@@ -13,7 +14,7 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Sortable, SortableItem, SortableItemHandle } from "@/components/ui/sortable";
+import { Sortable, SortableContent, SortableItem, SortableItemHandle } from "@/components/ui/sortable";
 import { managerPlans, Plan, PlanItem } from "@/lib/api/manager";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +77,14 @@ export function TasksSection({ projectId }: TasksSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newPriority, setNewPriority] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
+  
+  // New task form fields
+  const [newPeriodType, setNewPeriodType] = useState<"WEEK" | "MONTH">("WEEK");
+  const [newPeriodStart, setNewPeriodStart] = useState(new Date().toISOString().split('T')[0]);
+  const [newPeriodEnd, setNewPeriodEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [newPlannedQuantity, setNewPlannedQuantity] = useState(1);
+  const [newPlannedManpower, setNewPlannedManpower] = useState(1);
+  const [newPlannedCost, setNewPlannedCost] = useState(0);
 
   // Fetch plan and tasks
   const fetchTasks = async () => {
@@ -120,28 +129,37 @@ export function TasksSection({ projectId }: TasksSectionProps) {
       }
 
       // Add the task
-      const today = new Date().toISOString().split('T')[0];
       await managerPlans.addItem(currentPlanId, {
         task_name: newTaskName,
         description: newTaskDescription || undefined,
-        period_type: "WEEK", // Valid values: WEEK or MONTH
-        period_start: today,
-        period_end: today,
-        planned_quantity: 1,
-        planned_manpower: 1,
-        planned_cost: 0
+        period_type: newPeriodType,
+        period_start: newPeriodStart,
+        period_end: newPeriodEnd,
+        planned_quantity: newPlannedQuantity,
+        planned_manpower: newPlannedManpower,
+        planned_cost: newPlannedCost
       });
       
       setShowAddModal(false);
-      setNewTaskName("");
-      setNewTaskDescription("");
-      setNewPriority(0);
+      resetForm();
       await fetchTasks();
     } catch (err) {
       console.error("Failed to add task:", err);
     } finally {
       setIsAdding(false);
     }
+  };
+
+  const resetForm = () => {
+    setNewTaskName("");
+    setNewTaskDescription("");
+    setNewPriority(0);
+    setNewPeriodType("WEEK");
+    setNewPeriodStart(new Date().toISOString().split('T')[0]);
+    setNewPeriodEnd(new Date().toISOString().split('T')[0]);
+    setNewPlannedQuantity(1);
+    setNewPlannedManpower(1);
+    setNewPlannedCost(0);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -157,7 +175,7 @@ export function TasksSection({ projectId }: TasksSectionProps) {
   const handlePriorityChange = async (taskId: string, newPriority: number) => {
     try {
       // Optimistic update
-      setTasks(tasks.map(t => t.id === taskId ? { ...t, priority: newPriority } as any : t));
+      setTasks(tasks.map(t => t.id === taskId ? { ...t, priority: newPriority } : t));
       await managerPlans.updatePriority(taskId, newPriority);
     } catch (err) {
       console.error("Failed to update priority:", err);
@@ -167,7 +185,7 @@ export function TasksSection({ projectId }: TasksSectionProps) {
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6 mt-6">
+    <div className="glass-card rounded-2xl  p-6 mt-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-bold text-lg flex items-center gap-2">
           <CheckCircle2 className="text-primary" size={20} />
@@ -192,58 +210,60 @@ export function TasksSection({ projectId }: TasksSectionProps) {
           getItemValue={(item) => item.id}
           orientation="vertical"
         >
-          {tasks.map((task) => (
-             <SortableItem key={task.id} value={task.id} asChild>
-              <div className="group flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl hover:border-primary/30 transition-all shadow-sm">
-                <SortableItemHandle className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1">
-                  <GripVertical size={16} />
-                </SortableItemHandle>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{task.task_name}</span>
-                    <PriorityBadge priority={(task as any).priority || 0} />
+          <SortableContent>
+            {tasks.map((task) => (
+               <SortableItem key={task.id} value={task.id} asChild>
+                <div className="group flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl hover:border-primary/30 transition-all shadow-sm">
+                  <SortableItemHandle className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1">
+                    <GripVertical size={16} />
+                  </SortableItemHandle>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{task.task_name}</span>
+                      <PriorityBadge priority={task.priority || 0} />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <span>{task.period_type}</span>
+                      <span>•</span>
+                      <span>{new Date(task.period_start).toLocaleDateString()}</span>
+                    </div>
+                    {task.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{task.description}</p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                    <span>{task.period_type}</span>
-                    <span>•</span>
-                    <span>{new Date(task.period_start).toLocaleDateString()}</span>
+
+                  {/* Priority Quick Actions */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                     <div className="flex flex-col gap-0.5">
+                        <button 
+                          onClick={() => handlePriorityChange(task.id, Math.min(5, (task.priority || 0) + 1))}
+                          className="text-muted-foreground hover:text-orange-500"
+                          title="Increase Priority"
+                        >
+                         <ArrowUp size={14} />
+                        </button>
+                     </div>
+                     <span className={cn(
+                       "text-xs font-mono w-4 text-center",
+                       (task.priority || 0) >= 4 ? "text-red-500 font-bold" : "text-muted-foreground"
+                     )}>
+                       {task.priority || 0}
+                     </span>
                   </div>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{task.description}</p>
-                  )}
+
+                  <div className="h-8 w-[1px] bg-border mx-1" />
+
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-
-                {/* Priority Quick Actions */}
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                   <div className="flex flex-col gap-0.5">
-                      <button 
-                        onClick={() => handlePriorityChange(task.id, Math.min(5, ((task as any).priority || 0) + 1))}
-                        className="text-muted-foreground hover:text-orange-500"
-                        title="Increase Priority"
-                      >
-                       <ArrowUp size={14} />
-                      </button>
-                   </div>
-                   <span className={cn(
-                     "text-xs font-mono w-4 text-center",
-                     ((task as any).priority || 0) >= 4 ? "text-red-500 font-bold" : "text-muted-foreground"
-                   )}>
-                     {(task as any).priority || 0}
-                   </span>
-                </div>
-
-                <div className="h-8 w-[1px] bg-border mx-1" />
-
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </SortableItem> 
-          ))}
+              </SortableItem> 
+            ))}
+          </SortableContent>
         </Sortable>
       </div>
 
@@ -257,18 +277,16 @@ export function TasksSection({ projectId }: TasksSectionProps) {
         Add Task
       </Button>
 
-      {/* Add Task Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+      {/* Add Task Modal - rendered via Portal to appear above all components */}
+      {showAddModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold">Add New Task</h3>
               <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setNewTaskName("");
-                  setNewTaskDescription("");
-                  setNewPriority(0);
+                  resetForm();
                 }}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -276,7 +294,8 @@ export function TasksSection({ projectId }: TasksSectionProps) {
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Task Name */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Task Name *
@@ -291,6 +310,7 @@ export function TasksSection({ projectId }: TasksSectionProps) {
                 />
               </div>
 
+              {/* Description */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Description
@@ -299,17 +319,105 @@ export function TasksSection({ projectId }: TasksSectionProps) {
                   value={newTaskDescription}
                   onChange={(e) => setNewTaskDescription(e.target.value)}
                   placeholder="Enter task description..."
-                  rows={3}
+                  rows={2}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none resize-none"
                   disabled={isAdding}
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Priority
-                </label>
-                <PrioritySelector priority={newPriority} onChange={setNewPriority} />
+              {/* Period Type and Priority Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Period Type
+                  </label>
+                  <select
+                    value={newPeriodType}
+                    onChange={(e) => setNewPeriodType(e.target.value as "WEEK" | "MONTH")}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  >
+                    <option value="WEEK">Weekly</option>
+                    <option value="MONTH">Monthly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Priority
+                  </label>
+                  <PrioritySelector priority={newPriority} onChange={setNewPriority} />
+                </div>
+              </div>
+
+              {/* Date Range Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newPeriodStart}
+                    onChange={(e) => setNewPeriodStart(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newPeriodEnd}
+                    onChange={(e) => setNewPeriodEnd(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  />
+                </div>
+              </div>
+
+              {/* Planning Fields Row */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newPlannedQuantity}
+                    onChange={(e) => setNewPlannedQuantity(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Manpower
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newPlannedManpower}
+                    onChange={(e) => setNewPlannedManpower(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Est. Cost (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newPlannedCost}
+                    onChange={(e) => setNewPlannedCost(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none"
+                    disabled={isAdding}
+                  />
+                </div>
               </div>
             </div>
 
@@ -317,9 +425,7 @@ export function TasksSection({ projectId }: TasksSectionProps) {
               <Button
                 onClick={() => {
                   setShowAddModal(false);
-                  setNewTaskName("");
-                  setNewTaskDescription("");
-                  setNewPriority(0);
+                  resetForm();
                 }}
                 variant="outline"
                 className="flex-1"
@@ -336,7 +442,8 @@ export function TasksSection({ projectId }: TasksSectionProps) {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

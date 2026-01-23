@@ -4,8 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { managerOrganization, managerProjects, Project } from "@/lib/api/manager";
-import { managerDpr } from "@/lib/api/dpr";
+import { managerProjects, Project,managerDPR , managerOrganization } from "@/lib/api/manager";
 import {
   Loader2,
   FileText,
@@ -66,69 +65,76 @@ function ProjectSelector({
   );
 }
 
+import { useRouter } from "next/navigation";
+
 export default function ManagerDprPage() {
+  const router = useRouter();
   const { user } = useAuth();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [dprs, setDprs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDprs, setIsLoadingDprs] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Fetch organization and projects
+  // Fetch projects on mount
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchProjects = async () => {
+      let currentOrgId = (user as any)?.orgId;
+
+      if (!currentOrgId && user) {
+        try {
+           // Fallback: fetch approved organization directly
+           const orgRes = await managerOrganization.getMyRequests();
+           const approved = orgRes.requests?.find(r => r.status === 'APPROVED');
+           if (approved) currentOrgId = approved.org_id;
+        } catch (err) {
+           console.error("Failed to fetch organization context:", err);
+        }
+      }
+
+      if (!currentOrgId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const orgsRes = await managerOrganization.getMyOrganizations();
-        if (orgsRes.organizations && orgsRes.organizations.length > 0) {
-          const orgId = orgsRes.organizations[0].org_id;
-           if (!orgId) {
-             console.error("Organization ID missing in response", orgsRes.organizations[0]);
-             setError("Invalid organization data");
-             return;
-          }
-          setOrganizationId(orgId);
-          const projectsRes = await managerProjects.getMyProjects(orgId);
-          setProjects(projectsRes.projects || []);
-        } else {
-             setProjects([]);
-        }
+        const res = await managerProjects.getMyProjects(currentOrgId);
+        setProjects(res.projects || []);
       } catch (err) {
-        console.error("Failed to fetch initial data:", err);
-        setError("Failed to load organization data");
+        console.error("Failed to fetch projects:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchInitialData();
-  }, []);
+    fetchProjects();
+  }, [user]);
 
-  // Fetch DPRs
-  useEffect(() => {
-    // DPR API requires a project ID, so only fetch if project is selected
+  // Fetch DPRs when project is selected
+  const fetchDprs = async () => {
     if (!selectedProjectId) {
       setDprs([]);
       return;
     }
+    
+    try {
+      setIsLoadingDprs(true);
+      const res = await managerDPR.getAll({ projectId: selectedProjectId });
+      setDprs(res.dprs || []);
+    } catch (err) {
+      console.error("Failed to fetch DPRs:", err);
+    } finally {
+      setIsLoadingDprs(false);
+    }
+  };
 
-    const fetchDprs = async () => {
-      try {
-        setIsLoadingDprs(true);
-        const res = await managerDpr.getAll(selectedProjectId);
-        setDprs(res.dprs);
-      } catch (err) {
-        console.error("Failed to fetch DPRs:", err);
-        setError("Failed to load DPRs");
-      } finally {
-        setIsLoadingDprs(false);
-      }
-    };
-
+  useEffect(() => {
     fetchDprs();
   }, [selectedProjectId]);
+
+  // Handle Review Action
+  // Review logic moved to [id]/page.tsx
 
   // Table columns
   const columns: Column<any>[] = useMemo(
@@ -182,7 +188,11 @@ export default function ManagerDprPage() {
         label: "View",
         width: "80px",
         render: (_: any, row: any) => (
-          <button className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
+          <button 
+            onClick={() => router.push(`/manager/dprs/${row.id}`)}
+            className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+            title="View Details"
+          >
             <Eye size={16} />
           </button>
         ),
@@ -230,10 +240,11 @@ export default function ManagerDprPage() {
           columns={columns}
           searchable={true}
           searchKeys={["project_name", "work_description", "submitted_by_name"]}
-          emptyMessage="No DPRs found."
+          emptyMessage={selectedProjectId ? "No DPRs found for this project." : "Select a project to view DPRs."}
           itemsPerPage={15}
         />
       )}
     </div>
   );
 }
+

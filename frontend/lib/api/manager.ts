@@ -133,18 +133,19 @@ export const managerProjects = {
 
 // ==================== MANAGER ENGINEER REQUESTS API ====================
 
+// ==================== MANAGER ENGINEER REQUESTS API ====================
+
 export const managerEngineerRequests = {
-  getPending: (projectId: string, organizationId: string) =>
+  getPending: (projectId: string) =>
     api.get<{ requests: EngineerRequest[] }>(
-      `/manager/projects/project-requests?projectId=${projectId}&organizationId=${organizationId}`
+      `/manager/project-engineer-requests/engineer-requests?projectId=${projectId}`
     ),
 
-  decide: (requestId: string, projectId: string, organizationId: string, decision: "APPROVED" | "REJECTED") =>
-    api.put<{ message: string }>(`/manager/projects/project-requests/${requestId}/decision`, {
-      projectId,
-      organizationId,
-      decision,
-    }),
+  approve: (requestId: string) =>
+    api.put<{ message: string }>(`/manager/project-engineer-requests/engineer-requests/${requestId}/approve`, {}),
+
+  reject: (requestId: string) =>
+    api.put<{ message: string }>(`/manager/project-engineer-requests/engineer-requests/${requestId}/reject`, {}),
 };
 
 // ==================== MANAGER ORGANIZATION ENGINEER REQUESTS API ====================
@@ -199,6 +200,11 @@ export interface PlanItem {
   planned_cost: number;
   created_at: string;
   status: string;
+  priority: number; // 0-5, default 0
+  completed_at?: string;
+  updated_by?: string;
+  updated_by_role?: string;
+  delay_info?: any;
   approved_by_manager?: string;
   approved_at?: string;
   approved_by_owner?: string;
@@ -257,4 +263,162 @@ export const managerPlans = {
   // Update plan item priority
   updatePriority: (itemId: string, priority: number) =>
     api.patch<{ message: string; plan_item: PlanItem }>(`/manager/plan/plan-items/${itemId}/priority`, { priority }),
+};
+
+
+ 
+// ==================== MANAGER DPR API ====================
+
+export const managerDPR = {
+  // Get all pending DPRs for review
+  getPending: (projectId?: string) =>
+    api.get<{ dprs: any[] }>(`/manager/dpr/pending${projectId ? `?projectId=${projectId}` : ''}`),
+
+  // Get all DPRs with filters  
+  getAll: (filters?: { projectId?: string; status?: string; startDate?: string; endDate?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.projectId) params.append('projectId', filters.projectId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    return api.get<{ dprs: any[] }>(`/manager/dpr?${params.toString()}`);
+  },
+
+  // Get DPR by ID
+  getById: (dprId: string) =>
+    api.get<{ dpr: any }>(`/manager/dpr/${dprId}`),
+
+  // Review DPR (approve or reject)
+  review: (dprId: string, decision: 'APPROVED' | 'REJECTED', remarks?: string) =>
+    api.put<{ message: string; dpr: any }>(`/manager/dpr/${dprId}/review`, { decision, remarks }),
+
+  // Get DPR Image
+  getImage: (dprId: string) => api.getBlob(`/manager/dpr/${dprId}/image`),
+};
+
+// ==================== MANAGER LABOUR REQUESTS API ====================
+
+export interface LabourRequest {
+  id: string;
+  project_id: string;
+  labour_type: string;
+  required_count: number;
+  request_date: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+}
+
+export const managerLabourRequests = {
+  getByProject: (projectId: string) =>
+    api.get<{ labour_requests: LabourRequest[] }>(`/manager/labour-request/labour-requests?projectId=${projectId}`),
+};
+
+// ==================== MANAGER WAGE RATES API ====================
+
+export interface WageRate {
+  id: string;
+  project_id: string;
+  skill_type: string;
+  category: string;
+  hourly_rate: number;
+}
+
+export const managerWageRates = {
+  getAll: (projectId: string) =>
+    api.get<{ wage_rates: WageRate[] }>(`/manager/wage-rates?project_id=${projectId}`),
+
+  create: (data: Omit<WageRate, "id">) =>
+    api.post<{ wage_rate: WageRate }>("/manager/wage-rates", data),
+
+  update: (id: string, hourly_rate: number) =>
+    api.patch<{ wage_rate: WageRate }>(`/manager/wage-rates/${id}`, { hourly_rate }),
+    
+  delete: (id: string) =>
+    api.delete<{ message: string }>(`/manager/wage-rates/${id}`),
+};
+
+// ==================== MANAGER WAGES / PAYROLL API ====================
+
+export interface WageRecord {
+  id: string;
+  attendance_id: string;
+  labour_id: string;
+  project_id: string;
+  wage_type: string;
+  rate: number;
+  total_amount: number;
+  worked_hours: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  labour_name?: string;
+}
+
+export const managerWages = {
+  getUnprocessedAttendance: (projectId: string) =>
+    api.get<{ attendance: any[] }>(`/manager/wages/unprocessed?project_id=${projectId}`),
+    
+  generate: (wageData: { attendance_id: string }[]) =>
+    api.post<{ wages: WageRecord[] }>("/manager/wages/generate", { wage_data: wageData }),
+    
+  getHistory: (filters: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters.project_id) params.append("project_id", filters.project_id);
+    if (filters.status) params.append("status", filters.status);
+    return api.get<{ wages: WageRecord[] }>(`/manager/wages/history?${params.toString()}`);
+  },
+
+  review: (wageId: string, status: "APPROVED" | "REJECTED") =>
+    api.patch<{ wage: WageRecord }>(`/manager/wages/review/${wageId}`, { status }),
+};
+
+// ==================== MANAGER MATERIALS API ====================
+
+export const managerMaterials = {
+  // Get material requests
+  getRequests: (filters?: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append('projectId', filters.project_id);
+    if (filters?.status) params.append('status', filters.status);
+    return api.get<{ requests: any[] }>(`/manager/material/requests?${params.toString()}`);
+  },
+
+  // Get material bills
+  getBills: (filters?: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append('projectId', filters.project_id);
+    if (filters?.status) params.append('status', filters.status);
+    return api.get<{ bills: any[] }>(`/manager/material/bills?${params.toString()}`);
+  },
+
+  // Review material request
+  reviewRequest: (requestId: string, status: 'APPROVED' | 'REJECTED', feedback?: string) =>
+    api.put<{ message: string }>(`/manager/material/requests/${requestId}/review`, { status, feedback }),
+
+  // Review material bill
+  reviewBill: (billId: string, status: 'APPROVED' | 'REJECTED', feedback?: string) =>
+    api.put<{ message: string }>(`/manager/material/bills/${billId}/review`, { status, feedback }),
+};
+
+// ==================== MANAGER PROJECT JOIN REQUESTS ====================
+
+export const managerProjectJoinRequests = {
+  // Request to join a project (from managerProjectReq.js)
+  requestJoin: (projectId: string, organizationId: string) =>
+    api.post<{ message: string }>(`/manager/manager-project-requests/join-project`, { projectId, organizationId }),
+
+  // Get my project join requests (from managerProjectReq.js)
+  getMyRequests: () =>
+    api.get<{ requests: any[] }>(`/manager/manager-project-requests/my-project-requests`),
+};
+
+// ==================== MANAGER REQUESTS APPROVAL (for project creators) ====================
+
+export const managerProjectManagerRequests = {
+  // Get all manager join requests for a project (creator only) - from managerProject.js
+  getPending: (projectId: string, organizationId: string) =>
+    api.get<{ requests: any[] }>(`/manager/projects/manager-requests?projectId=${projectId}&organizationId=${organizationId}`),
+
+  // Approve or reject a manager join request (creator only) - from managerProject.js
+  decide: (requestId: string, decision: 'ACTIVE' | 'REJECTED', projectId: string, organizationId: string) =>
+    api.put<{ message: string }>(`/manager/projects/manager-requests/${requestId}/decision`, { decision, projectId, organizationId }),
 };
