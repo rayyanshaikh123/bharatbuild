@@ -54,15 +54,15 @@ async function getProjectLedger(projectId, filters = {}) {
           w.approved_at::date as date,
           'WAGE' as type,
           w.id as reference_id,
-          CONCAT('Wage Payment - ', l.name, ' (', l.skill, ')') as description,
+          CONCAT('Wage Payment - ', l.name, ' (', l.skill_type, ')') as description,
           w.total_amount as amount,
-          l.skill as category,
+          l.skill_type as category,
           m.name as approved_by_name,
           w.approved_at
         FROM wages w
         JOIN labours l ON w.labour_id = l.id
         LEFT JOIN managers m ON w.approved_by = m.id
-        WHERE w.project_id = $1 
+        WHERE w.project_id = $1::uuid 
           AND w.status = 'APPROVED'
           AND w.approved_at::date BETWEEN $2 AND $3
         
