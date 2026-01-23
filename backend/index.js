@@ -11,9 +11,18 @@ require("./routes/auth/passport");
 
 const app = express();
 const port = process.env.PORT || 3001;
+// CORS Configuration for Live Server (testing harness) and Frontend
+// Live Server runs on port 5500, Frontend on port 3000
+// credentials: true is REQUIRED for session cookies to work cross-origin
+// Note: Live Server can use either localhost or 127.0.0.1, so we allow both
 app.use(
   cors({
-    origin: true, // Reflects the request origin to allow credentials
+    origin: [
+      "http://localhost:5500",
+      "http://127.0.0.1:5500",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+    ],
     credentials: true,
   }),
 );
@@ -139,6 +148,13 @@ app.use("/sync/batch", require("./routes/sync/batch"));
 app.use("/sync/labour", require("./routes/sync/labour"));
 app.use("/sync/engineer", require("./routes/sync/engineer"));
 
+/* ---------------- TESTING HARNESS (development only) ---------------- */
+// Serve testing HTML/JS files at http://localhost:3001/testing/
+// This ensures session cookies work correctly (same origin as backend)
+// Access via: http://localhost:3001/testing/auth.html
+const path = require("path");
+app.use("/testing", express.static(path.join(__dirname, "testing")));
+
 /* ---------------- META (client config) ---------------- */
 
 /* ---------------- HEALTH ---------------- */
@@ -161,4 +177,5 @@ app.get("/", (req, res) => {
 /* ---------------- START SERVER ---------------- */
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
+  console.log(`🧪 Testing harness: http://localhost:${port}/testing/auth.html`);
 });

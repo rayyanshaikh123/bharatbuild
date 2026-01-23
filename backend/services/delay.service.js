@@ -23,15 +23,15 @@ async function getProjectDelays(projectId) {
         pi.period_end,
         pi.completed_at,
         pi.status,
-        pi.delay,
+        pi.delay_info,
         CASE 
           WHEN pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end
           THEN EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
           ELSE 0
         END as delay_days
       FROM plan_items pi
-      JOIN plans p ON pi.plan_id = p.id
-      WHERE p.project_id = $1 AND pi.status = 'DELAYED'
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = $1::uuid AND pi.status = 'DELAYED'
       ORDER BY pi.period_end DESC
     `,
       [projectId],
@@ -65,9 +65,12 @@ async function updatePlanItemStatus(itemId, managerId, data, req) {
   try {
     await client.query("BEGIN");
 
-    // Get current state
+    // Get current state WITH plan info to access project_id
     const beforeResult = await client.query(
-      "SELECT * FROM plan_items WHERE id = $1",
+      `SELECT pi.*, pl.project_id 
+       FROM plan_items pi
+       JOIN plans pl ON pi.plan_id = pl.id
+       WHERE pi.id = $1::uuid`,
       [itemId],
     );
 
@@ -81,7 +84,7 @@ async function updatePlanItemStatus(itemId, managerId, data, req) {
     const authCheck = await client.query(
       `
       SELECT 1 FROM project_managers
-      WHERE project_id = $1 AND manager_id = $2 AND status = 'ACTIVE'
+      WHERE project_id = $1::uuid AND manager_id = $2::uuid AND status = 'ACTIVE'
     `,
       [beforeState.project_id, managerId],
     );

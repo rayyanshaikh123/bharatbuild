@@ -126,7 +126,7 @@ async function getOwnerOverview(ownerId) {
       FROM projects p
       JOIN plans pl ON pl.project_id = p.id
       JOIN plan_items pi ON pi.plan_id = pl.id
-      WHERE p.org_id = $1 AND pi.status = 'DELAYED'
+      WHERE p.org_id = $1::uuid AND pi.status = 'DELAYED'
     `,
       [orgId],
     );
@@ -213,12 +213,12 @@ async function getOwnerProjectAnalytics(ownerId, projectId) {
     const wagesBreakdown = await client.query(
       `
       SELECT 
-        l.skill,
+        l.skill_type,
         COALESCE(SUM(w.total_amount), 0) as total
       FROM wages w
       JOIN labours l ON w.labour_id = l.id
-      WHERE w.project_id = $1 AND w.status = 'APPROVED'
-      GROUP BY l.skill
+      WHERE w.project_id = $1::uuid AND w.status = 'APPROVED'
+      GROUP BY l.skill_type
     `,
       [projectId],
     );
@@ -250,11 +250,12 @@ async function getOwnerProjectAnalytics(ownerId, projectId) {
       `
       SELECT 
         COUNT(*) as total_items,
-        COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending,
-        COUNT(CASE WHEN status = 'DELAYED' THEN 1 END) as delayed
-      FROM plan_items
-      WHERE project_id = $1
+        COUNT(CASE WHEN pi.status = 'COMPLETED' THEN 1 END) as completed,
+        COUNT(CASE WHEN pi.status = 'PENDING' THEN 1 END) as pending,
+        COUNT(CASE WHEN pi.status = 'DELAYED' THEN 1 END) as delayed
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = $1::uuid
     `,
       [projectId],
     );
@@ -265,10 +266,11 @@ async function getOwnerProjectAnalytics(ownerId, projectId) {
       SELECT 
         COUNT(*) as total_delayed_items,
         COALESCE(SUM(
-          EXTRACT(EPOCH FROM (completed_at - period_end))/(24*3600)
+          EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
         ), 0) as total_delay_days
-      FROM plan_items
-      WHERE project_id = $1 AND status = 'DELAYED' AND completed_at IS NOT NULL
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = $1::uuid AND pi.status = 'DELAYED' AND pi.completed_at IS NOT NULL
     `,
       [projectId],
     );
@@ -402,9 +404,10 @@ async function getManagerOverview(managerId) {
     // Delayed projects
     const delayedProjects = await client.query(
       `
-      SELECT COUNT(DISTINCT project_id) as count
-      FROM plan_items
-      WHERE project_id = ANY($1) AND status = 'DELAYED'
+      SELECT COUNT(DISTINCT pl.project_id) as count
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = ANY($1::uuid[]) AND pi.status = 'DELAYED'
     `,
       [projectIds],
     );
@@ -522,12 +525,12 @@ async function getManagerProjectAnalytics(managerId, projectId) {
     const wagesBreakdown = await client.query(
       `
       SELECT 
-        l.skill,
+        l.skill_type,
         COALESCE(SUM(w.total_amount), 0) as total
       FROM wages w
       JOIN labours l ON w.labour_id = l.id
-      WHERE w.project_id = $1 AND w.status = 'APPROVED'
-      GROUP BY l.skill
+      WHERE w.project_id = $1::uuid AND w.status = 'APPROVED'
+      GROUP BY l.skill_type
     `,
       [projectId],
     );
@@ -558,11 +561,12 @@ async function getManagerProjectAnalytics(managerId, projectId) {
       `
       SELECT 
         COUNT(*) as total_items,
-        COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending,
-        COUNT(CASE WHEN status = 'DELAYED' THEN 1 END) as delayed
-      FROM plan_items
-      WHERE project_id = $1
+        COUNT(CASE WHEN pi.status = 'COMPLETED' THEN 1 END) as completed,
+        COUNT(CASE WHEN pi.status = 'PENDING' THEN 1 END) as pending,
+        COUNT(CASE WHEN pi.status = 'DELAYED' THEN 1 END) as delayed
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = $1::uuid
     `,
       [projectId],
     );
@@ -573,10 +577,11 @@ async function getManagerProjectAnalytics(managerId, projectId) {
       SELECT 
         COUNT(*) as total_delayed_items,
         COALESCE(SUM(
-          EXTRACT(EPOCH FROM (completed_at - period_end))/(24*3600)
+          EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
         ), 0) as total_delay_days
-      FROM plan_items
-      WHERE project_id = $1 AND status = 'DELAYED' AND completed_at IS NOT NULL
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pl.project_id = $1::uuid AND pi.status = 'DELAYED' AND pi.completed_at IS NOT NULL
     `,
       [projectId],
     );

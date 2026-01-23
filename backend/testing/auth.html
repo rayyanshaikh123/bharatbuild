@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BharatBuild API Testing Harness</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        text-align: center;
+        color: white;
+        margin-bottom: 10px;
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .subtitle {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 30px;
+        font-size: 1rem;
+      }
+
+      .role-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .role-section h2 {
+        color: #333;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+        font-size: 1.5rem;
+      }
+
+      .button-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .info-box {
+        background: #f0f4ff;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+      }
+
+      .info-box p {
+        margin: 5px 0;
+        color: #555;
+        font-size: 14px;
+      }
+
+      .info-box strong {
+        color: #333;
+      }
+
+      .footer {
+        text-align: center;
+        color: white;
+        margin-top: 30px;
+        padding: 20px;
+        font-size: 14px;
+      }
+
+      .footer p {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎯 BharatBuild API Testing Harness</h1>
+      <p class="subtitle">
+        Browser-based testing for authentication flows • Live Server (port 5500)
+        → Backend (port 3001)
+      </p>
+
+      <!-- OWNER SECTION -->
+      <div class="role-section">
+        <h2>👑 OWNER Authentication</h2>
+        <div class="info-box">
+          <p><strong>Email:</strong> userOwner@gmail.com</p>
+          <p><strong>Password:</strong> Test@123</p>
+        </div>
+        <div class="button-group">
+          <button onclick="registerOwner()">Register Owner</button>
+          <button onclick="loginOwner()">Login Owner</button>
+          <button onclick="getOwnerProfile()">Get Owner Profile</button>
+          <button onclick="logoutOwner()">Logout Owner</button>
+        </div>
+      </div>
+
+      <!-- MANAGER SECTION -->
+      <div class="role-section">
+        <h2>👔 MANAGER Authentication</h2>
+        <div class="info-box">
+          <p><strong>Email:</strong> userManager@gmail.com</p>
+          <p><strong>Password:</strong> Test@123</p>
+        </div>
+        <div class="button-group">
+          <button onclick="registerManager()">Register Manager</button>
+          <button onclick="loginManager()">Login Manager</button>
+          <button onclick="getManagerProfile()">Get Manager Profile</button>
+          <button onclick="logoutManager()">Logout Manager</button>
+        </div>
+      </div>
+
+      <!-- SITE ENGINEER SECTION -->
+      <div class="role-section">
+        <h2>🔧 SITE ENGINEER Authentication</h2>
+        <div class="info-box">
+          <p><strong>Email:</strong> userEngineer@gmail.com</p>
+          <p><strong>Password:</strong> Test@123</p>
+        </div>
+        <div class="button-group">
+          <button onclick="registerEngineer()">Register Site Engineer</button>
+          <button onclick="loginEngineer()">Login Site Engineer</button>
+          <button onclick="getEngineerProfile()">Get Engineer Profile</button>
+          <button onclick="logoutEngineer()">Logout Site Engineer</button>
+        </div>
+      </div>
+
+      <!-- LABOUR SECTION -->
+      <div class="role-section">
+        <h2>👷 LABOUR Authentication (OTP-based)</h2>
+        <div class="info-box">
+          <p><strong>Phone:</strong> 9876543223</p>
+          <p><strong>Note:</strong> Check console for OTP after requesting</p>
+        </div>
+        <div class="button-group">
+          <button onclick="registerLabour()">Register Labour</button>
+          <button onclick="requestLabourOtp()">Request OTP</button>
+          <button onclick="verifyLabourOtp()">Verify OTP</button>
+          <button onclick="getLabourProfile()">Get Labour Profile</button>
+          <button onclick="logoutLabour()">Logout Labour</button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p><strong>💡 How to use:</strong></p>
+        <p>
+          1. Open browser DevTools (F12) → Console tab to see detailed responses
+        </p>
+        <p>
+          2. Check Application → Cookies to verify session cookies (connect.sid)
+        </p>
+        <p>
+          3. Test flow: Register → Login → Get Profile → Logout → Get Profile
+          (should fail)
+        </p>
+        <p>4. Each role has independent sessions</p>
+      </div>
+    </div>
+
+    <!-- Load the JavaScript file -->
+    <script src="auth.js"></script>
+  </body>
+</html>
