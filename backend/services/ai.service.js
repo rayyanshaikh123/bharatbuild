@@ -68,10 +68,13 @@ async function extractMaterialsFromDPR(dprText) {
 async function generateDelaySummary(projectId, planItemId) {
   const client = await pool.connect();
   try {
-    // Get plan item details
+    // Get plan item details WITH project_id from plans table
     const planItem = await client.query(
       `
-      SELECT * FROM plan_items WHERE id = $1 AND project_id = $2
+      SELECT pi.*, pl.project_id 
+      FROM plan_items pi
+      JOIN plans pl ON pi.plan_id = pl.id
+      WHERE pi.id = $1::uuid AND pl.project_id = $2::uuid
     `,
       [planItemId, projectId],
     );
@@ -90,7 +93,7 @@ async function generateDelaySummary(projectId, planItemId) {
       };
     }
 
-    const delayInfo = item.delay || {};
+    const delayInfo = item.delay_info || {};
     const referencedDprs = delayInfo.referenced_dprs || [];
     const delayReason = delayInfo.delay_reason || "No reason provided";
 

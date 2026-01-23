@@ -435,7 +435,7 @@ async function generateAuditPDF(reportData, filters) {
             doc.text(`${index + 1}. ${audit.category} - ${audit.action}`);
             doc.fontSize(9).fillColor("#7F8C8D");
             doc.text(
-              `   By: ${audit.user_type} | ${new Date(audit.created_at).toLocaleString()}`,
+              `   By: ${audit.acted_by_role} | ${new Date(audit.created_at).toLocaleString()}`,
             );
             doc.moveDown(0.3);
           });

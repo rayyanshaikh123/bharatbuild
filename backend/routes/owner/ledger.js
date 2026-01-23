@@ -22,7 +22,7 @@ router.get("/project/:projectId", async (req, res) => {
     const projectCheck = await pool.query(
       `SELECT 1 FROM projects p
        JOIN organizations o ON p.org_id = o.id
-       WHERE p.id = $1 AND o.owner_id = $2`,
+       WHERE p.id = $1::uuid AND o.owner_id = $2::uuid`,
       [projectId, ownerId],
     );
 

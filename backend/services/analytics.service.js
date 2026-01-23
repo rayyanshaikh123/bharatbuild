@@ -237,10 +237,10 @@ async function getOwnerProjectAnalytics(ownerId, projectId) {
     const attendanceSummary = await client.query(
       `
       SELECT 
-        COALESCE(SUM(EXTRACT(EPOCH FROM (checkout_time - checkin_time))/3600), 0) as total_hours,
+        COALESCE(SUM(work_hours), 0) as total_hours,
         COUNT(DISTINCT labour_id) as unique_labours
       FROM attendance
-      WHERE project_id = $1 AND checkout_time IS NOT NULL
+      WHERE project_id = $1::uuid AND check_out_time IS NOT NULL
     `,
       [projectId],
     );
@@ -266,7 +266,11 @@ async function getOwnerProjectAnalytics(ownerId, projectId) {
       SELECT 
         COUNT(*) as total_delayed_items,
         COALESCE(SUM(
-          EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
+          CASE 
+            WHEN pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end
+            THEN (pi.completed_at::date - pi.period_end::date)
+            ELSE 0
+          END
         ), 0) as total_delay_days
       FROM plan_items pi
       JOIN plans pl ON pi.plan_id = pl.id
@@ -439,9 +443,9 @@ async function getManagerOverview(managerId) {
     // Attendance hours
     const attendanceHours = await client.query(
       `
-      SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (checkout_time - checkin_time))/3600), 0) as total_hours
+      SELECT COALESCE(SUM(work_hours), 0) as total_hours
       FROM attendance
-      WHERE project_id = ANY($1) AND checkout_time IS NOT NULL
+      WHERE project_id = ANY($1::uuid[]) AND check_out_time IS NOT NULL
     `,
       [projectIds],
     );
@@ -548,10 +552,10 @@ async function getManagerProjectAnalytics(managerId, projectId) {
     const attendanceSummary = await client.query(
       `
       SELECT 
-        COALESCE(SUM(EXTRACT(EPOCH FROM (checkout_time - checkin_time))/3600), 0) as total_hours,
+        COALESCE(SUM(work_hours), 0) as total_hours,
         COUNT(DISTINCT labour_id) as unique_labours
       FROM attendance
-      WHERE project_id = $1 AND checkout_time IS NOT NULL
+      WHERE project_id = $1::uuid AND check_out_time IS NOT NULL
     `,
       [projectId],
     );
@@ -577,7 +581,11 @@ async function getManagerProjectAnalytics(managerId, projectId) {
       SELECT 
         COUNT(*) as total_delayed_items,
         COALESCE(SUM(
-          EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
+          CASE 
+            WHEN pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end
+            THEN (pi.completed_at::date - pi.period_end::date)
+            ELSE 0
+          END
         ), 0) as total_delay_days
       FROM plan_items pi
       JOIN plans pl ON pi.plan_id = pl.id

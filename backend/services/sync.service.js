@@ -86,7 +86,7 @@ async function checkAuthorization(userId, userRole, action) {
 
       // Check if labour exists
       const labourCheck = await pool.query(
-        `SELECT id FROM labours WHERE id = $1`,
+        `SELECT id FROM labours WHERE id = $1::uuid`,
         [userId],
       );
 
@@ -117,7 +117,7 @@ async function checkAuthorization(userId, userRole, action) {
       // Check if engineer is ACTIVE in project
       const engineerCheck = await pool.query(
         `SELECT id FROM project_site_engineers 
-         WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+         WHERE site_engineer_id = $1::uuid AND project_id = $2::uuid AND status = 'ACTIVE'`,
         [userId, project_id],
       );
 
@@ -146,7 +146,7 @@ async function checkAuthorization(userId, userRole, action) {
 async function checkIdempotency(actionId) {
   try {
     const result = await pool.query(
-      `SELECT id, status, error_message, entity_id FROM sync_action_log WHERE id = $1`,
+      `SELECT id, status, error_message, entity_id FROM sync_action_log WHERE id = $1::uuid`,
       [actionId],
     );
 
@@ -214,7 +214,7 @@ async function logSyncError(client, actionId, userId, reason, payload) {
  */
 async function getOrgIdFromProject(client, projectId) {
   const result = await client.query(
-    `SELECT org_id FROM projects WHERE id = $1`,
+    `SELECT org_id FROM projects WHERE id = $1::uuid`,
     [projectId],
   );
   return result.rows.length > 0 ? result.rows[0].org_id : null;
@@ -249,7 +249,7 @@ async function handleCheckIn(client, action, userId) {
   const attendanceDate = new Date(timestamp).toISOString().split("T")[0];
   const existing = await client.query(
     `SELECT id FROM attendance 
-     WHERE labour_id = $1 AND project_id = $2 AND attendance_date = $3 AND check_in_time IS NOT NULL`,
+     WHERE labour_id = $1::uuid AND project_id = $2::uuid AND attendance_date = $3 AND check_in_time IS NOT NULL`,
     [userId, project_id, attendanceDate],
   );
 
@@ -297,7 +297,7 @@ async function handleCheckOut(client, action, userId) {
   const attendanceDate = new Date(timestamp).toISOString().split("T")[0];
   const attendance = await client.query(
     `SELECT id, check_in_time FROM attendance 
-     WHERE labour_id = $1 AND project_id = $2 AND attendance_date = $3`,
+     WHERE labour_id = $1::uuid AND project_id = $2::uuid AND attendance_date = $3`,
     [userId, project_id, attendanceDate],
   );
 
@@ -318,7 +318,7 @@ async function handleCheckOut(client, action, userId) {
   await client.query(
     `UPDATE attendance 
      SET check_out_time = $1, work_hours = $2, source = 'OFFLINE_SYNC'
-     WHERE id = $3`,
+     WHERE id = $3::uuid`,
     [timestamp, workHours, attendance.rows[0].id],
   );
 
@@ -361,7 +361,7 @@ async function handleUpdateMaterialRequest(client, action, userId) {
   // Check if request exists and is PENDING
   const requestCheck = await client.query(
     `SELECT id, status FROM material_requests 
-     WHERE id = $1 AND site_engineer_id = $2`,
+     WHERE id = $1::uuid AND site_engineer_id = $2::uuid`,
     [request_id, userId],
   );
 
@@ -423,7 +423,7 @@ async function handleDeleteMaterialRequest(client, action, userId) {
   // Check if request exists and is PENDING
   const requestCheck = await client.query(
     `SELECT id, status FROM material_requests 
-     WHERE id = $1 AND site_engineer_id = $2`,
+     WHERE id = $1::uuid AND site_engineer_id = $2::uuid`,
     [request_id, userId],
   );
 
@@ -436,7 +436,7 @@ async function handleDeleteMaterialRequest(client, action, userId) {
   }
 
   // Delete request
-  await client.query(`DELETE FROM material_requests WHERE id = $1`, [
+  await client.query(`DELETE FROM material_requests WHERE id = $1::uuid`, [
     request_id,
   ]);
 
@@ -497,7 +497,7 @@ async function handleManualAttendance(client, action, userId) {
   // Check if attendance already exists
   const existing = await client.query(
     `SELECT id FROM attendance 
-     WHERE labour_id = $1 AND project_id = $2 AND attendance_date = $3`,
+     WHERE labour_id = $1::uuid AND project_id = $2::uuid AND attendance_date = $3`,
     [labour_id, project_id, attendance_date],
   );
 

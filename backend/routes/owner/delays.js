@@ -14,18 +14,14 @@ router.use(ownerCheck);
  */
 router.get("/project/:projectId", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
     const ownerId = req.user.id;
-
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
 
     // Verify project belongs to owner's organization
     const projectCheck = await pool.query(
       `SELECT 1 FROM projects p
        JOIN organizations o ON p.org_id = o.id
-       WHERE p.id = $1 AND o.owner_id = $2`,
+       WHERE p.id = $1::uuid AND o.owner_id = $2::uuid`,
       [projectId, ownerId],
     );
 
