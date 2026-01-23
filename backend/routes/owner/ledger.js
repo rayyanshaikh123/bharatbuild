@@ -15,12 +15,8 @@ router.use(ownerCheck);
  */
 router.get("/project/:projectId", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
     const ownerId = req.user.id;
-
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
 
     // Verify project belongs to owner's organization
     const projectCheck = await pool.query(

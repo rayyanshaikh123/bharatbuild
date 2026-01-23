@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ProjectDetailMap } from "@/components/maps/ProjectsMap";
 import { ProjectManagerApprovalList } from "@/components/dashboard/ProjectManagerApprovalList";
+import { TasksSection } from "@/components/dashboard/TasksSection";
 
 interface Project {
   id: string;
@@ -227,6 +228,11 @@ export function ProjectDetailView({
       {/* Detailed Map with Geofence Radius */}
       {project.latitude && project.longitude && (
         <ProjectDetailMap project={projectLocation} height="400px" />
+      )}
+
+      {/* Tasks Section for Manager */}
+      {userRole === "manager" && (
+        <TasksSection projectId={project.id} />
       )}
 
       {/* Owner Approvals Section */}

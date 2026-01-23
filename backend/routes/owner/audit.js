@@ -4,14 +4,13 @@ const passport = require("passport");
 const auditService = require("../../services/audit.service");
 
 // Middleware to ensure user is authenticated as owner
-const ensureOwner = passport.authenticate("jwt", { session: false });
-
+const ownerCheck = require('../../middleware/ownerCheck');
 /**
  * GET /owner/audits
  * Get audit logs for the organization
  * Query params: project_id, category, start_date, end_date, page, limit
  */
-router.get("/", ensureOwner, async (req, res) => {
+router.get("/", ownerCheck, async (req, res) => {
   try {
     const ownerId = req.user.id;
 

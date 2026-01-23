@@ -124,7 +124,8 @@ async function getOwnerOverview(ownerId) {
       `
       SELECT COUNT(DISTINCT p.id) as count
       FROM projects p
-      JOIN plan_items pi ON pi.project_id = p.id
+      JOIN plans pl ON pl.project_id = p.id
+      JOIN plan_items pi ON pi.plan_id = pl.id
       WHERE p.org_id = $1 AND pi.status = 'DELAYED'
     `,
       [orgId],

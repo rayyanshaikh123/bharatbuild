@@ -189,32 +189,38 @@ export interface Plan {
 export interface PlanItem {
   id: string;
   plan_id: string;
-  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_type: "WEEK" | "MONTH"; // Database constraint allows only WEEK or MONTH
   period_start: string;
   period_end: string;
   task_name: string;
   description?: string;
-  planned_quantity?: number;
-  planned_manpower?: number;
-  planned_cost?: number;
-  created_at?: string;
-}
-
-export interface CreatePlanData {
-  project_id: string;
-  start_date: string;
-  end_date: string;
+  planned_quantity: number;
+  planned_manpower: number;
+  planned_cost: number;
+  created_at: string;
+  status: string;
+  approved_by_manager?: string;
+  approved_at?: string;
+  approved_by_owner?: string;
+  owner_approved_at?: string;
 }
 
 export interface CreatePlanItemData {
-  period_type: "DAILY" | "WEEKLY" | "MONTHLY";
+  period_type: "WEEK" | "MONTH";
   period_start: string;
   period_end: string;
   task_name: string;
   description?: string;
-  planned_quantity?: number;
-  planned_manpower?: number;
-  planned_cost?: number;
+  planned_quantity: number;
+  planned_manpower: number;
+  planned_cost: number;
+}
+
+export interface CreatePlanData {
+  organizationId?: string;
+  project_id: string;
+  start_date: string;
+  end_date: string;
 }
 
 // ==================== MANAGER PLANS API ====================
@@ -247,4 +253,8 @@ export const managerPlans = {
   // Delete a plan item
   deleteItem: (itemId: string) =>
     api.delete<{ message: string }>(`/manager/plan/plans/items/${itemId}`),
+
+  // Update plan item priority
+  updatePriority: (itemId: string, priority: number) =>
+    api.patch<{ message: string; plan_item: PlanItem }>(`/manager/plan/plan-items/${itemId}/priority`, { priority }),
 };

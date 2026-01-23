@@ -188,3 +188,243 @@ export const ownerPlans = {
   getByProjectId: (projectId: string) =>
     api.get<{ plan: Plan; items: PlanItem[] }>(`/owner/plan/plans/${projectId}`),
 };
+
+// ==================== OWNER DPR API (READ-ONLY) ====================
+
+export interface DprEntry {
+  id: string;
+  project_id: string;
+  site_engineer_id: string;
+  plan_id?: string;
+  plan_item_id?: string;
+  report_date: string;
+  work_description: string;
+  materials_used?: string;
+  labour_count?: number;
+  machinery_used?: string;
+  weather_conditions?: string;
+  report_image?: any;
+  report_image_mime?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  review_notes?: string;
+  engineer_name?: string;
+  engineer_phone?: string;
+  plan_start_date?: string;
+  plan_end_date?: string;
+  plan_item_task_name?: string;
+  plan_item_period_start?: string;
+  plan_item_period_end?: string;
+}
+
+export const ownerDpr = {
+  getAll: (projectId: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs`),
+
+  getPending: (projectId: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/pending`),
+
+  getApproved: (projectId: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/approved`),
+
+  getRejected: (projectId: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/rejected`),
+
+  getById: (dprId: string) =>
+    api.get<{ dpr: DprEntry }>(`/owner/dpr/dprs/${dprId}`),
+
+  getByDate: (projectId: string, date: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}`),
+
+  getByDatePending: (projectId: string, date: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/pending`),
+
+  getByDateApproved: (projectId: string, date: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/approved`),
+
+  getByDateRejected: (projectId: string, date: string) =>
+    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/rejected`),
+};
+
+// ==================== OWNER TIMELINE API (READ-ONLY) ====================
+
+export interface TimelineResponse {
+  project_id: string;
+  overall_progress: number;
+  total_tasks: number;
+  completed_tasks: number;
+  pending_tasks: number;
+  delayed_tasks: number;
+  timeline: TimelineItem[];
+}
+
+export interface TimelineItem {
+  plan_item_id: string;
+  task_name: string;
+  period_start: string;
+  period_end: string;
+  status: string;
+  priority: number;
+  delay_days: number;
+  delay_info: any;
+}
+
+export const ownerTimeline = {
+  getProjectTimeline: (projectId: string) =>
+    api.get<TimelineResponse>(`/owner/timeline/project/${projectId}`),
+};
+
+// ==================== OWNER MATERIALS API ====================
+
+export interface MaterialRequest {
+  id: string;
+  project_id: string;
+  site_engineer_id: string;
+  material_name: string;
+  quantity: number;
+  unit: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  project_name?: string;
+  engineer_name?: string;
+}
+
+export interface MaterialBill {
+  id: string;
+  project_id: string;
+  material_request_id?: string;
+  uploaded_by: string;
+  vendor_name: string;
+  vendor_contact?: string;
+  bill_number: string;
+  bill_amount: number;
+  gst_percentage?: number;
+  gst_amount?: number;
+  total_amount: number;
+  category: string;
+  bill_image?: any;
+  bill_image_mime?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  project_name?: string;
+  engineer_name?: string;
+}
+
+export const ownerMaterials = {
+  getRequests: (filters?: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append("project_id", filters.project_id);
+    if (filters?.status) params.append("status", filters.status);
+    return api.get<{ requests: MaterialRequest[] }>(`/owner/material/requests?${params}`);
+  },
+
+  getBills: (filters?: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append("project_id", filters.project_id);
+    if (filters?.status) params.append("status", filters.status);
+    return api.get<{ bills: MaterialBill[] }>(`/owner/material/bills?${params}`);
+  },
+
+  updateBill: (id: string, data: Partial<MaterialBill>) =>
+    api.patch<{ bill: MaterialBill }>(`/owner/material/bills/${id}`, data),
+
+  deleteBill: (id: string) =>
+    api.delete<{ message: string }>(`/owner/material/bills/${id}`),
+};
+
+// ==================== OWNER ANALYTICS API ====================
+
+export interface AnalyticsOverview {
+  total_projects: number;
+  active_projects: number;
+  total_budget: number;
+  total_spent: number;
+  completion_rate: number;
+  on_time_rate: number;
+  // Add more fields as returned by backend
+  [key: string]: any;
+}
+
+export interface ProjectAnalytics {
+  project_id: string;
+  project_name: string;
+  budget_utilization: number;
+  task_completion: number;
+  delay_metrics: any;
+  financial_summary: any;
+  workforce_summary: any;
+  // Add more fields as returned by backend
+  [key: string]: any;
+}
+
+export const ownerAnalytics = {
+  getOverview: () =>
+    api.get<AnalyticsOverview>("/owner/analytics/overview"),
+
+  getProjectAnalytics: (projectId: string) =>
+    api.get<ProjectAnalytics>(`/owner/analytics/project/${projectId}`),
+};
+
+// ==================== OWNER DELAYS API ====================
+
+export interface DelayedItem {
+  plan_item_id: string;
+  task_name: string;
+  period_end: string;
+  status: string;
+  delay_days: number;
+  delay: any;
+}
+
+export const ownerDelays = {
+  getProjectDelays: (projectId: string) =>
+    api.get<{ delayed_items: DelayedItem[] }>(`/owner/delays/project/${projectId}`),
+};
+
+// ==================== OWNER WAGES API ====================
+
+export interface Wage {
+  id: string;
+  labour_id: string;
+  project_id: string;
+  attendance_id: string;
+  amount: number;
+  status: string;
+  labour_name?: string;
+  project_name?: string;
+  attendance_date?: string;
+  engineer_name?: string;
+  created_at: string;
+}
+
+export const ownerWages = {
+  getAll: (filters?: { project_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.project_id) params.append("project_id", filters.project_id);
+    if (filters?.status) params.append("status", filters.status);
+    return api.get<{ wages: Wage[] }>(`/owner/wages?${params}`);
+  },
+};
+
+// ==================== OWNER LABOUR REQUESTS API ====================
+
+export interface LabourRequest {
+  id: string;
+  project_id: string;
+  site_engineer_id: string;
+  request_date: string;
+  labour_type: string;
+  required_count: number;
+  status: string;
+  created_at: string;
+}
+
+export const ownerLabourRequests = {
+  getByProject: (projectId: string) =>
+    api.get<{ labour_requests: LabourRequest[] }>(`/owner/labour-request/labour-requests?projectId=${projectId}`),
+};
+
+
+
