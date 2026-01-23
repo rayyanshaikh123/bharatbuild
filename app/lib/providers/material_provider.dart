@@ -7,14 +7,14 @@ final materialRequestsProvider = FutureProvider.autoDispose<List<dynamic>>((ref)
   final authRes = ref.watch(authServiceProvider);
   final project = ref.watch(currentProjectProvider);
   if (project == null) return [];
-  return await authRes.getMaterialRequests(projectId: (project['id'] ?? project['project_id']).toString());
+  return await authRes.getMaterialRequests(projectId: (project['project_id'] ?? project['id']).toString());
 });
 
 final materialBillsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final authRes = ref.watch(authServiceProvider);
   final project = ref.watch(currentProjectProvider);
   if (project == null) return [];
-  return await authRes.getMaterialBills(projectId: (project['id'] ?? project['project_id']).toString());
+  return await authRes.getMaterialBills(projectId: (project['project_id'] ?? project['id']).toString());
 });
 
 final createMaterialRequestProvider = FutureProvider.family<bool, Map<String, dynamic>>((ref, data) async {
@@ -47,4 +47,9 @@ final uploadMaterialBillProvider = FutureProvider.family<bool, Map<String, dynam
     );
     return false;
   }
+});
+
+final ocrRequestProvider = FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>((ref, data) async {
+  final authRes = ref.read(authServiceProvider);
+  return await authRes.ocrBill(data);
 });

@@ -94,6 +94,21 @@ router.patch("/requests/:id", managerCheck, async (req, res) => {
       organizationId,
     });
 
+    // Create notification for site engineer
+    try {
+      const { createNotification } = require("../../services/notification.service");
+      await createNotification({
+        userId: beforeState.site_engineer_id,
+        userRole: 'SITE_ENGINEER',
+        title: `Material Request ${status}`,
+        message: `Your material request for "${beforeState.title}" has been ${status.toLowerCase()}.`,
+        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
+        projectId: project_id
+      });
+    } catch (notifErr) {
+      console.error("Failed to create material request notification:", notifErr);
+    }
+
     res.json({ request: afterState });
   } catch (err) {
     console.error(err);
@@ -230,6 +245,21 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
     });
 
     await client.query("COMMIT");
+
+    // Create notification for site engineer (outside transaction to avoid delays)
+    try {
+      const { createNotification } = require("../../services/notification.service");
+      await createNotification({
+        userId: beforeState.uploaded_by,
+        userRole: 'SITE_ENGINEER',
+        title: `Material Bill ${status}`,
+        message: `Your bill submission (Bill #${beforeState.bill_number}) for ${beforeState.vendor_name} has been ${status.toLowerCase()}.`,
+        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
+        projectId: project_id
+      });
+    } catch (notifErr) {
+      console.error("Failed to create material bill notification:", notifErr);
+    }
 
     res.json({ bill: afterState });
   } catch (err) {

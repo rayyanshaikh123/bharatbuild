@@ -18,6 +18,8 @@ import 'package:intl/intl.dart';
 import '../../providers/labour_request_provider.dart';
 import '../../providers/plan_provider.dart';
 import '../../widgets/project_gate.dart';
+import '../../providers/activity_provider.dart';
+import '../../providers/notification_provider.dart';
 
 /// Content-only engineer dashboard used in mobile IndexedStack.
 class EngineerDashboardContent extends ConsumerWidget {
@@ -300,29 +302,59 @@ class EngineerDashboardContent extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _activityItem(
-              context,
-              'dpr_submission'.tr(),
-              selectedProject != null ? (selectedProject['name'] + ' - Block A') : 'No Project Selected',
-              '10:30 AM',
-              Icons.description_outlined,
-              Colors.green,
-            ),
-            _activityItem(
-              context,
-              'site_inspection'.tr(),
-              'Foundation Check',
-              'Yesterday',
-              Icons.visibility_outlined,
-              Colors.blue,
-            ),
-            _activityItem(
-              context,
-              'plan_check'.tr(),
-              'Plumbing Review',
-              '2 days ago',
-              Icons.map_outlined,
-              Colors.purple,
+            ref.watch(engineerActivitiesProvider).when(
+              data: (activities) {
+                if (activities.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Text(
+                        'No recent activity',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  );
+                }
+                // Only show top 5
+                return Column(
+                  children: activities.take(5).map((activity) {
+                    final category = activity['category'] ?? '';
+                    final action = activity['action'] ?? '';
+                    final createdAt = activity['created_at'] != null 
+                        ? DateTime.parse(activity['created_at']) 
+                        : DateTime.now();
+                    final timeStr = DateFormat('hh:mm a').format(createdAt);
+                    
+                    IconData icon = Icons.info_outline;
+                    Color color = Colors.grey;
+                    
+                    if (category == 'DPR') {
+                      icon = Icons.description_outlined;
+                      color = Colors.green;
+                    } else if (category == 'ATTENDANCE') {
+                      icon = Icons.how_to_reg_outlined;
+                      color = Colors.blue;
+                    } else if (category == 'MATERIAL_REQUEST') {
+                      icon = Icons.inventory_2_outlined;
+                      color = Colors.orange;
+                    } else if (category == 'PLAN_ITEM') {
+                      icon = Icons.assignment_outlined;
+                      color = Colors.purple;
+                    }
+                    
+                    return _activityItem(
+                      context,
+                      '${category.replaceAll('_', ' ')} ${action.toLowerCase()}',
+                      activity['project_name'] ?? 'General',
+                      timeStr,
+                      icon,
+                      color,
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: LinearProgressIndicator()),
+              error: (err, _) => Text('Error loading activities: $err'),
             ),
             const SizedBox(height: 20),
                 ],

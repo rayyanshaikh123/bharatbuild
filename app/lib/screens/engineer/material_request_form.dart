@@ -52,7 +52,7 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
     if (selectedProject == null) return;
 
     final data = {
-      'project_id': selectedProject['id'] ?? selectedProject['project_id'],
+      'project_id': selectedProject['project_id'] ?? selectedProject['id'],
       'title': _titleController.text.trim(),
       'category': _selectedCategory,
       'quantity': _quantityController.text.trim(),

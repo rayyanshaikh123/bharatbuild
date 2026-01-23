@@ -269,5 +269,12 @@
     "too_far": "Too far",
     "view_details": "View Details",
     "too_far_to_apply": "This site is too far from your primary location to apply.",
-    "cannot_apply": "Out of Range"
+    "cannot_apply": "Out of Range",
+    "project_plan": "Project Plan",
+    "my_organizations": "My Organizations",
+    "select_project_first": "Please select a project first",
+    "scan_failed": "Scanning failed",
+    "bill_scanned_success": "Bill scanned successfully",
+    "scan_bill_ai": "Scan Bill with AI",
+    "scanning": "Scanning..."
 }

@@ -37,13 +37,13 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
       final base64Image = base64Encode(bytes);
       final project = ref.read(currentProjectProvider);
       
-      final result = await ref.read(ocrRequestProvider({
+      final dynamic result = await ref.read(ocrRequestProvider({
         'image': base64Image,
-        'project_id': project?['id'] ?? project?['project_id'],
+        'project_id': project?['project_id'] ?? project?['id'],
       }).future);
 
-      if (result['data'] != null) {
-        final data = result['data'];
+      if (result != null && result['data'] != null) {
+        final data = result['data'] as Map<String, dynamic>;
         setState(() {
           if (data['vendor_name'] != null) _vendorController.text = data['vendor_name'].toString();
           if (data['bill_number'] != null) _billNumberController.text = data['bill_number'].toString();
@@ -93,7 +93,7 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
 
     final data = {
       'material_request_id': widget.request?['id'],
-      'project_id': selectedProject['id'] ?? selectedProject['project_id'],
+      'project_id': selectedProject['project_id'] ?? selectedProject['id'],
       'vendor_name': _vendorController.text.trim(),
       'bill_number': _billNumberController.text.trim(),
       'bill_amount': amount,

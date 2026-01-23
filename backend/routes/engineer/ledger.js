@@ -3,17 +3,7 @@ const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 
-// Check if engineer is ACTIVE in project
-async function engineerProjectStatusCheck(engineerId, projectId) {
-    const result = await pool.query(
-        `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status = 'APPROVED'`,
-        [engineerId, projectId],
-    );
-    return parseInt(result.rows[0].count) > 0;
-}
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 /* ---------------- GET PROJECT STOCK LEVELS ---------------- */
 router.get("/stock/:projectId", engineerCheck, async (req, res) => {
@@ -21,8 +11,10 @@ router.get("/stock/:projectId", engineerCheck, async (req, res) => {
         const engineerId = req.user.id;
         const { projectId } = req.params;
 
-        const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-        if (!isActive) return res.status(403).json({ error: "Access denied." });
+        const access = await verifyEngineerAccess(engineerId, projectId);
+        if (!access.allowed) {
+            return res.status(403).json({ error: access.error });
+        }
 
         // Calculate aggregated stock (IN - OUT + ADJUSTMENT)
         // Note: This is a simplified view. In reality, we might want to group by material_name and category.
@@ -64,8 +56,10 @@ router.post("/movement", engineerCheck, async (req, res) => {
             remarks,
         } = req.body;
 
-        const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-        if (!isActive) return res.status(403).json({ error: "Access denied." });
+        const access = await verifyEngineerAccess(engineerId, project_id);
+        if (!access.allowed) {
+            return res.status(403).json({ error: access.error });
+        }
 
         const result = await pool.query(
             `INSERT INTO material_ledger (project_id, material_name, category, quantity, unit, movement_type, source, remarks, recorded_by, recorded_by_role)
@@ -96,8 +90,10 @@ router.get("/history/:projectId", engineerCheck, async (req, res) => {
         const engineerId = req.user.id;
         const { projectId } = req.params;
 
-        const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-        if (!isActive) return res.status(403).json({ error: "Access denied." });
+        const access = await verifyEngineerAccess(engineerId, projectId);
+        if (!access.allowed) {
+            return res.status(403).json({ error: access.error });
+        }
 
         const result = await pool.query(
             `SELECT * FROM material_ledger

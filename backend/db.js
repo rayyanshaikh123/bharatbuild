@@ -2,9 +2,12 @@ const { Pool } = require("pg");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 10000, // 10s wait for a connection
+  connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
-  max: 20, // adjust as needed for Neon
+  max: 20,
+  ssl: process.env.DATABASE_URL && (process.env.DATABASE_URL.includes("neon") || process.env.DATABASE_URL.includes("aws-west-2"))
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
 pool.on("connect", () => {

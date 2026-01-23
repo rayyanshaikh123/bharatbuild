@@ -6,13 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PersistentClient extends http.BaseClient {
   final http.Client _inner;
   static const _prefsKey = 'session_cookies';
-  static SharedPreferences? _prefs;
+  Future<SharedPreferences>? _prefsFuture;
 
   PersistentClient([http.Client? inner]) : _inner = inner ?? http.Client();
-
-  Future<SharedPreferences> _getPrefs() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    return _prefs!;
+  
+  Future<SharedPreferences> _getPrefs() {
+    _prefsFuture ??= SharedPreferences.getInstance();
+    return _prefsFuture!;
   }
 
   @override
@@ -40,24 +40,36 @@ class PersistentClient extends http.BaseClient {
 
   String _mergeCookie(String? existing, String setCookieHeader) {
     final map = <String, String>{};
-    void parseCookieString(String s) {
-      for (final part in s.split(',')) {
-        final segments = part.split(';');
-        if (segments.isEmpty) continue;
-        final nv = segments[0].trim();
-        if (nv.isEmpty) continue;
-        final idx = nv.indexOf('=');
-        if (idx <= 0) continue;
-        final name = nv.substring(0, idx);
-        final value = nv.substring(idx + 1);
-        map[name] = value;
-      }
+
+    void parse(String s) {
+      // Set-Cookie headers can be tricky. Multiple cookies might be separated by commas, 
+      // but dates also use commas. 
+      // Simple split for session management where we usually get one sid per response.
+      final parts = s.split(';');
+      if (parts.isEmpty) return;
+      
+      final nv = parts[0].trim();
+      if (nv.isEmpty) return;
+      
+      final idx = nv.indexOf('=');
+      if (idx <= 0) return;
+      
+      final name = nv.substring(0, idx);
+      final value = nv.substring(idx + 1);
+      map[name] = value;
     }
 
     if (existing != null && existing.isNotEmpty) {
-      parseCookieString(existing);
+      for (final c in existing.split(';')) {
+        final pair = c.split('=');
+        if (pair.length == 2) map[pair[0].trim()] = pair[1].trim();
+      }
     }
-    parseCookieString(setCookieHeader);
+    
+    // For Set-Cookie, the browser/client usually receives one or more 
+    // We treat the whole string as potentially multiple cookies separated by commas
+    // but we only care about the key-value pairs before the first semicolon of each
+    parse(setCookieHeader);
 
     return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }

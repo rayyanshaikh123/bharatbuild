@@ -3,6 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_colors.dart';
 
 import '../../providers/user_provider.dart';
+import '../../providers/notification_provider.dart';
+import '../../providers/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -13,45 +15,7 @@ class NotificationsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final isEngineer = user?['role'] == 'SITE_ENGINEER';
-
-    // Role-based placeholder notifications
-    final notifications = isEngineer 
-    ? [
-      {
-        'title': 'Labour Request Approved',
-        'message': '5 masons have been approved for Site Alpha',
-        'time': '2 hours ago',
-        'icon': Icons.check_circle,
-        'color': Colors.green,
-        'read': false,
-      },
-      {
-        'title': 'DPR Submitted',
-        'message': 'Daily Progress Report for 20 Jan submitted successfully',
-        'time': '5 hours ago',
-        'icon': Icons.description,
-        'color': Colors.blue,
-        'read': true,
-      },
-    ]
-    : [
-      {
-        'title': 'Job Application Approved',
-        'message': 'You have been approved for Site Phoenix',
-        'time': '1 hour ago',
-        'icon': Icons.check_circle,
-        'color': Colors.green,
-        'read': false,
-      },
-      {
-        'title': 'New Nearby Job',
-        'message': 'Mason job available 2km from your location',
-        'time': '3 hours ago',
-        'icon': Icons.work_outline,
-        'color': Colors.orange,
-        'read': true,
-      },
-    ];
+    final notificationsAsync = ref.watch(isEngineer ? engineerNotificationsProvider : labourNotificationsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -59,8 +23,22 @@ class NotificationsScreen extends ConsumerWidget {
         elevation: 0,
         actions: [
           TextButton(
-            onPressed: () {
-              // TODO: Mark all as read
+            onPressed: () async {
+              try {
+                if (isEngineer) {
+                  await ref.read(authServiceProvider).markEngineerNotificationsRead();
+                  ref.invalidate(engineerNotificationsProvider);
+                } else {
+                  await ref.read(authServiceProvider).markLabourNotificationsRead();
+                  ref.invalidate(labourNotificationsProvider);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
             },
             child: Text(
               'mark_all_read'.tr(),
@@ -69,18 +47,69 @@ class NotificationsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: notifications.isEmpty
-          ? _buildEmptyState(context)
-          : ListView.separated(
+      body: notificationsAsync.when(
+        data: (notifications) {
+          if (notifications.isEmpty) {
+            return _buildEmptyState(context);
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(engineerNotificationsProvider),
+            child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: notifications.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final notification = notifications[index];
-                return _buildNotificationCard(context, notification);
+                
+                // Map backend fields to UI format
+                final mapped = {
+                  'id': notification['id'],
+                  'title': notification['title'],
+                  'message': notification['message'],
+                  'time': _formatTime(notification['created_at']),
+                  'icon': _getIconForType(notification['type']),
+                  'color': _getColorForType(notification['type']),
+                  'read': notification['is_read'] ?? false,
+                };
+                
+                return _buildNotificationCard(context, ref, mapped);
               },
             ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error: $err')),
+      ),
     );
+  }
+
+  String _formatTime(String? createdAt) {
+    if (createdAt == null) return '';
+    final dt = DateTime.parse(createdAt);
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return DateFormat('dd MMM').format(dt);
+  }
+
+  IconData _getIconForType(String? type) {
+    switch (type) {
+      case 'SUCCESS': return Icons.check_circle;
+      case 'WARNING': return Icons.warning;
+      case 'ERROR': return Icons.error;
+      case 'JOB': return Icons.work_outline;
+      default: return Icons.notifications_none;
+    }
+  }
+
+  Color _getColorForType(String? type) {
+    switch (type) {
+      case 'SUCCESS': return Colors.green;
+      case 'WARNING': return Colors.orange;
+      case 'ERROR': return Colors.red;
+      case 'JOB': return Colors.blue;
+      default: return Colors.blue;
+    }
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -120,7 +149,7 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, Map<String, dynamic> notification) {
+  Widget _buildNotificationCard(BuildContext context, WidgetRef ref, Map<String, dynamic> notification) {
     final theme = Theme.of(context);
     final isRead = notification['read'] as bool;
 
@@ -197,8 +226,18 @@ class NotificationsScreen extends ConsumerWidget {
             ),
           ],
         ),
-        onTap: () {
-          // TODO: Navigate to relevant screen or mark as read
+        onTap: () async {
+          if (!isRead) {
+            try {
+              if (isEngineer) {
+                await ref.read(authServiceProvider).markEngineerNotificationRead(notification['id']);
+                ref.invalidate(engineerNotificationsProvider);
+              } else {
+                await ref.read(authServiceProvider).markLabourNotificationRead(notification['id']);
+                ref.invalidate(labourNotificationsProvider);
+              }
+            } catch (_) {}
+          }
         },
       ),
     );

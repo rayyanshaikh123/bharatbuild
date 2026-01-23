@@ -100,7 +100,24 @@ router.patch("/dprs/:dprId/review", managerCheck, async (req, res) => {
       [status, remarks, managerId, dprId],
     );
 
-    res.json({ dpr: result.rows[0] });
+    const updatedDpr = result.rows[0];
+
+    // Create notification for site engineer
+    try {
+      const { createNotification } = require("../../services/notification.service");
+      await createNotification({
+        userId: updatedDpr.site_engineer_id,
+        userRole: 'SITE_ENGINEER',
+        title: `DPR ${status}`,
+        message: `Your DPR for ${new Date(updatedDpr.report_date).toLocaleDateString()} has been ${status.toLowerCase()}.`,
+        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
+        projectId: updatedDpr.project_id
+      });
+    } catch (notifErr) {
+      console.error("Failed to create DPR review notification:", notifErr);
+    }
+
+    res.json({ dpr: updatedDpr });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

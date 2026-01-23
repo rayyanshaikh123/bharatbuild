@@ -28,9 +28,13 @@ class CurrentProjectNotifier extends StateNotifier<Map<String, dynamic>?> {
   }
 
   Future<void> _initializeFromList() async {
-    final projects = await _ref.read(engineerProjectsProvider.future);
-    if (projects.isNotEmpty && state == null) {
-      setProject(projects.first);
+    try {
+      final projects = await _ref.read(engineerProjectsProvider.future).timeout(const Duration(seconds: 10));
+      if (projects.isNotEmpty && state == null) {
+        setProject(projects.first);
+      }
+    } catch (_) {
+      // Avoid hanging if projects cannot be fetched
     }
   }
 

@@ -631,6 +631,20 @@ class AuthService {
     throw Exception('Failed to fetch material bills: ${res.body}');
   }
 
+  /* ---------------- AI / OCR ---------------- */
+  Future<Map<String, dynamic>> ocrBill(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/ai/ocr-bill');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('OCR failed: ${res.body}');
+  }
+
   /* ---------------- WAGES ---------------- */
   Future<List<dynamic>> getWageQueue(String projectId, {String? date}) async {
     final dateStr = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -746,5 +760,66 @@ class AuthService {
       return jsonDecode(res.body) as Map<String, dynamic>;
     }
     throw Exception('Failed to update task: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getEngineerNotifications() async {
+    final uri = Uri.parse('$_base/engineer/notifications');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch notifications: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getEngineerActivities() async {
+    final uri = Uri.parse('$_base/engineer/audits');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch activities: ${res.body}');
+  }
+
+  Future<void> markEngineerNotificationsRead() async {
+    final uri = Uri.parse('$_base/engineer/notifications/read-all');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark notifications as read: ${res.body}');
+    }
+  }
+
+  Future<void> markEngineerNotificationRead(String id) async {
+    final uri = Uri.parse('$_base/engineer/notifications/$id/read');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark notification as read: ${res.body}');
+    }
+  }
+
+  /* ---------------- LABOUR NOTIFICATIONS ---------------- */
+
+  Future<Map<String, dynamic>> getLabourNotifications() async {
+    final uri = Uri.parse('$_base/labour/notifications');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch notifications: ${res.body}');
+  }
+
+  Future<void> markLabourNotificationsRead() async {
+    final uri = Uri.parse('$_base/labour/notifications/read-all');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark notifications as read: ${res.body}');
+    }
+  }
+
+  Future<void> markLabourNotificationRead(String id) async {
+    final uri = Uri.parse('$_base/labour/notifications/$id/read');
+    final res = await _client.post(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark notification as read: ${res.body}');
+    }
   }
 }
