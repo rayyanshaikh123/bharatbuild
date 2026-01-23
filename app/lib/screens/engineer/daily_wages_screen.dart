@@ -69,64 +69,67 @@ class _DailyWagesScreenState extends ConsumerState<DailyWagesScreen> {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final item = list[index];
-              
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          child: Text(
-                            item['name'][0].toUpperCase(),
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(wageQueueProvider.future),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: list.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final item = list[index];
+                
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            child: Text(
+                              item['name'][0].toUpperCase(),
+                              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(item['skill_type'], style: theme.textTheme.bodySmall),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(item['skill_type'], style: theme.textTheme.bodySmall),
+                              ],
+                            ),
                           ),
-                        ),
-                        if (item['rate'] != null)
-                          const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _submitWage(item),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        ),
-                        child: Text(item['rate'] != null ? 'update'.tr() : 'submit_request'.tr()), 
-                        // Using submit_request ('Submit Request') or save ('Save') - reusing submit_request for clarity as it implies processing
+                          if (item['rate'] != null)
+                            const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _submitWage(item),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          child: Text(item['rate'] != null ? 'update'.tr() : 'submit_request'.tr()), 
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

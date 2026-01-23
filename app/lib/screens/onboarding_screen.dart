@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -173,7 +174,9 @@ class OnboardContent extends StatelessWidget {
               aspectRatio: 1,
               child: illustration!.startsWith('http') 
                 ? Image.network(illustration!, fit: BoxFit.contain)
-                : Image.asset(illustration!, fit: BoxFit.contain),
+                : illustration!.endsWith('.svg')
+                    ? SvgPicture.asset(illustration!)
+                    : Image.asset(illustration!, fit: BoxFit.contain),
             ),
           ),
           const SizedBox(height: 24),
@@ -231,13 +234,13 @@ List<Map<String, dynamic>> demoData = [
   },
   {
     "type": "info",
-    "illustration": "https://i.postimg.cc/CKQF6tZB/construction1.png",
+    "illustration": "assets/images/labour_onboarding.svg",
     "title": "onboard_labour_title",
     "text": "onboard_labour_text",
   },
   {
     "type": "info",
-    "illustration": "https://i.postimg.cc/yYy0L3Jk/construction2.png",
+    "illustration": "assets/images/engineer_onboarding.svg",
     "title": "onboard_engineer_title",
     "text": "onboard_engineer_text",
   },

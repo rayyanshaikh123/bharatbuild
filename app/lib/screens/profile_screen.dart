@@ -26,7 +26,7 @@ class ProfileScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: RefreshIndicator(
-        onRefresh: () async => ref.refresh(refreshUserProvider.future),
+        onRefresh: () async => ref.refresh(profileProvider.future),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),

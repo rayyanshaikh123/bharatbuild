@@ -32,6 +32,9 @@ import 'screens/engineer/manual_attendance_screen.dart';
 import 'screens/engineer/material_management_screen.dart';
 import 'screens/engineer/daily_wages_screen.dart';
 import 'screens/engineer/organization_list_screen.dart';
+import 'screens/engineer/engineer_project_list.dart';
+import 'screens/engineer/engineer_requests_screen.dart';
+import 'screens/engineer/tasks_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -96,9 +99,12 @@ class MyApp extends ConsumerWidget {
           '/notifications': (_) => const NotificationsScreen(),
           '/engineer-labour-requests': (_) => const LabourRequestsScreen(),
           '/engineer-attendance': (_) => const ManualAttendanceScreen(),
-          '/engineer-materials': (_) => const MaterialManagementScreen(),
           '/engineer-wages': (_) => const DailyWagesScreen(),
           '/engineer-organization': (_) => const OrganizationListScreen(),
+          '/engineer-join-project': (_) => const EngineerProjectListScreen(),
+          '/engineer-my-requests': (_) => const EngineerRequestsScreen(),
+          '/engineer-materials': (_) => const MaterialManagementScreen(),
+          '/engineer-tasks': (_) => const TasksScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {
@@ -134,23 +140,30 @@ class _SessionGateState extends ConsumerState<SessionGate> {
     final auth = AuthService();
 
     try {
-      final labour = await auth.checkLabourSession();
+      // Run checks in parallel to save time
+      final results = await Future.wait([
+        auth.checkLabourSession(),
+        auth.checkEngineerSession(),
+      ]);
+
+      final labour = results[0];
+      final engineer = results[1];
+
       if (labour != null) {
-        ref.read(currentUserProvider.notifier).state = labour;
+        ref.read(currentUserProvider.notifier).setUser(labour);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/labour-dashboard');
         return;
       }
 
-      final engineer = await auth.checkEngineerSession();
       if (engineer != null) {
-        ref.read(currentUserProvider.notifier).state = engineer;
+        ref.read(currentUserProvider.notifier).setUser(engineer);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/engineer-dashboard');
         return;
       }
     } catch (e) {
-      // ignore error and go to onboarding
+      // ignore error
     } finally {
       if (mounted) setState(() => _loading = false);
     }

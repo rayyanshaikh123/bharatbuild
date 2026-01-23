@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/material_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../providers/inventory_provider.dart';
+import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
 import 'material_request_form.dart';
 import 'upload_bill_form.dart';
@@ -20,7 +22,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -41,6 +43,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
           tabs: [
             Tab(text: 'requests'.tr()),
             Tab(text: 'bills'.tr()),
+            Tab(text: 'inventory'.tr()),
           ],
         ),
       ),
@@ -49,6 +52,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         children: [
           _buildRequestsList(),
           _buildBillsList(),
+          _buildInventoryList(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -66,13 +70,17 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         if (requests.isEmpty) {
           return Center(child: Text('no_materials'.tr()));
         }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final req = requests[index];
-            return _buildRequestCard(req);
-          },
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(materialRequestsProvider.future),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              final req = requests[index];
+              return _buildRequestCard(req);
+            },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -87,13 +95,17 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         if (bills.isEmpty) {
           return Center(child: Text('no_materials'.tr()));
         }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: bills.length,
-          itemBuilder: (context, index) {
-            final bill = bills[index];
-            return _buildBillCard(bill);
-          },
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(materialBillsProvider.future),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: bills.length,
+            itemBuilder: (context, index) {
+              final bill = bills[index];
+              return _buildBillCard(bill);
+            },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -201,6 +213,67 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
     );
   }
 
+  Widget _buildInventoryList() {
+    final stockAsync = ref.watch(projectStockProvider);
+    return stockAsync.when(
+      data: (stock) {
+        if (stock.isEmpty) {
+          return Center(child: Text('no_materials_in_stock'.tr()));
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(projectStockProvider.future),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: stock.length,
+            itemBuilder: (context, index) {
+              final item = stock[index];
+              return _buildInventoryCard(item);
+            },
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Error: $err')),
+    );
+  }
+
+  Widget _buildInventoryCard(Map<String, dynamic> item) {
+    final theme = Theme.of(context);
+    final currentStock = double.tryParse(item['current_stock'].toString()) ?? 0.0;
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        title: Text(item['material_name'] ?? 'Unknown Material'),
+        subtitle: Text('${item['category']}'),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$currentStock',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: currentStock > 0 ? Colors.green : Colors.red,
+              ),
+            ),
+            Text(item['unit'] ?? '', style: theme.textTheme.bodySmall),
+          ],
+        ),
+        onTap: () => _issueMaterial(item),
+      ),
+    );
+  }
+
+  void _issueMaterial(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) => _IssueMaterialDialog(item: item),
+    );
+  }
+
   void _showActionSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -230,9 +303,113 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
                 );
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: Text('record_movement'.tr()),
+              onTap: () {
+                Navigator.pop(context);
+                // We'll show the generic movement dialog
+                _issueMaterial({});
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _IssueMaterialDialog extends ConsumerStatefulWidget {
+  final Map<String, dynamic> item;
+  const _IssueMaterialDialog({required this.item});
+
+  @override
+  ConsumerState<_IssueMaterialDialog> createState() => _IssueMaterialDialogState();
+}
+
+class _IssueMaterialDialogState extends ConsumerState<_IssueMaterialDialog> {
+  final _qtyController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _remarksController = TextEditingController();
+  String _movementType = 'OUT';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.item['material_name'] ?? '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final project = ref.watch(currentProjectProvider);
+
+    return AlertDialog(
+      title: Text('record_movement'.tr()),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _movementType,
+              items: ['IN', 'OUT', 'ADJUSTMENT'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (val) => setState(() => _movementType = val!),
+              decoration: InputDecoration(labelText: 'type'.tr()),
+            ),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: 'material_name'.tr()),
+              enabled: widget.item['material_name'] == null,
+            ),
+            TextField(
+              controller: _qtyController,
+              decoration: InputDecoration(labelText: 'quantity'.tr()),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _remarksController,
+              decoration: InputDecoration(labelText: 'remarks'.tr()),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('cancel'.tr())),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _submit,
+          child: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text('submit'.tr()),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submit() async {
+    if (_qtyController.text.isEmpty) return;
+    
+    setState(() => _isLoading = true);
+    final project = ref.read(currentProjectProvider);
+    
+    final data = {
+      'project_id': project!['id'],
+      'material_name': _nameController.text,
+      'category': widget.item['category'] ?? 'General',
+      'quantity': double.parse(_qtyController.text),
+      'unit': widget.item['unit'] ?? 'Units',
+      'movement_type': _movementType,
+      'remarks': _remarksController.text,
+    };
+
+    final success = await ref.read(recordMovementProvider(data).future);
+    
+    if (mounted) {
+      setState(() => _isLoading = false);
+      Navigator.pop(context);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('movement_recorded'.tr()), backgroundColor: Colors.green));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('queued_offline'.tr()), backgroundColor: Colors.orange));
+      }
+    }
   }
 }

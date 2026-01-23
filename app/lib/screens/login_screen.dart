@@ -74,7 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       try {
         final res = await ref.read(labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future);
         if (res['user'] != null) {
-          ref.read(currentUserProvider.notifier).state = res['user'] as Map<String, dynamic>;
+          ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
         }
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/labour-dashboard');
@@ -92,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
       if (res['user'] != null) {
-        ref.read(currentUserProvider.notifier).state = res['user'] as Map<String, dynamic>;
+        ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
       }
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/engineer-dashboard');

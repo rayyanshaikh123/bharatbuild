@@ -111,7 +111,7 @@ class _AddressCard extends ConsumerWidget {
               TextButton.icon(
                 onPressed: () async {
                   await ref.read(deleteAddressProvider(address['id'].toString()).future);
-                  ref.read(refreshUserProvider.future);
+                  ref.read(profileProvider.future);
                 },
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: Text('delete'.tr()),
@@ -124,7 +124,7 @@ class _AddressCard extends ConsumerWidget {
                       'id': address['id'].toString(),
                       'payload': {'is_primary': true}
                     }).future);
-                    ref.read(refreshUserProvider.future);
+                    ref.read(profileProvider.future);
                   },
                   icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: Text('set_primary'.tr()),
@@ -198,7 +198,7 @@ class _AddAddressSheetState extends ConsumerState<_AddAddressSheet> {
         'longitude': _lon,
         'is_primary': false,
       }).future);
-      await ref.read(refreshUserProvider.future);
+      await ref.read(profileProvider.future);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));

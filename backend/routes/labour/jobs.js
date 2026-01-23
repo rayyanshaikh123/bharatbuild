@@ -129,13 +129,23 @@ router.post("/:id/apply", labourCheck, async (req, res) => {
 router.get("/my-applications", labourCheck, async (req, res) => {
   try {
     const labourId = req.user.id;
+    // Return all applications with project geofence data, regardless of status
     const result = await pool.query(
-      `SELECT lrp.*, lr.category, lr.request_date, lr.project_id, p.name as project_name, p.location_text
+      `SELECT lrp.*, lr.category, lr.request_date, lr.project_id, 
+              p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence,
+              p.status as project_status
              FROM labour_request_participants lrp
              JOIN labour_requests lr ON lrp.labour_request_id = lr.id
              JOIN projects p ON lr.project_id = p.id
              WHERE lrp.labour_id = $1
-             ORDER BY lrp.joined_at DESC`,
+             ORDER BY 
+               CASE lrp.status 
+                 WHEN 'APPROVED' THEN 1 
+                 WHEN 'PENDING' THEN 2 
+                 WHEN 'REJECTED' THEN 3 
+                 ELSE 4 
+               END,
+               lrp.joined_at DESC`,
       [labourId],
     );
     res.json({ applications: result.rows });

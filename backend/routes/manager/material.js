@@ -177,7 +177,7 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
 
     const afterState = result.rows[0];
 
-    // If approved, update project's current_invested
+    // If approved, update project's current_invested and update ledger
     if (status === "APPROVED") {
       await client.query(
         `UPDATE projects 
@@ -185,6 +185,30 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
                WHERE id = $2`,
         [total_amount, project_id],
       );
+
+      // Auto-populate ledger from linked material request
+      if (beforeState.material_request_id) {
+        const reqRes = await client.query(
+          "SELECT title, quantity, category FROM material_requests WHERE id = $1",
+          [beforeState.material_request_id],
+        );
+        if (reqRes.rows.length > 0) {
+          const reqData = reqRes.rows[0];
+          await client.query(
+            `INSERT INTO material_ledger (project_id, material_request_id, material_name, category, quantity, unit, movement_type, source, recorded_by, recorded_by_role)
+             VALUES ($1, $2, $3, $4, $5, $6, 'IN', 'BILL', $7, 'MANAGER')`,
+            [
+              project_id,
+              beforeState.material_request_id,
+              reqData.title,
+              reqData.category,
+              reqData.quantity,
+              "Units",
+              managerId,
+            ],
+          );
+        }
+      }
     }
 
     // Audit log (inside transaction)

@@ -16,6 +16,9 @@ import 'package:geolocator/geolocator.dart';
 import '../../widgets/site_map_widget.dart';
 import 'package:latlong2/latlong.dart';
 import '../../providers/current_project_provider.dart';
+import '../../map/geofence_service.dart';
+import '../../services/auth_service.dart';
+import 'check_in_screen.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends ConsumerWidget {
@@ -98,7 +101,45 @@ class LabourDashboardContent extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       SiteMapWidget(
-                        geofence: (attendance['geofence'] as List).map((p) => LatLng(p[0], p[1])).toList(),
+                        projectsData: attendance['project_id'] != null ? [
+                          {
+                            'name': attendance['project_name'] ?? 'Site',
+                            'latitude': attendance['latitude'],
+                            'longitude': attendance['longitude'],
+                            'location_text': attendance['location_text'],
+                          }
+                        ] : null,
+                        geofences: () {
+                          try {
+                            final gf = attendance['geofence'];
+                            if (gf != null && gf is List) {
+                              final points = gf.map((p) {
+                                try {
+                                  if (p is List && p.length >= 2) {
+                                    return LatLng(
+                                      double.parse(p[0].toString()),
+                                      double.parse(p[1].toString()),
+                                    );
+                                  } else if (p is Map) {
+                                    final lat = p['lat'] ?? p['latitude'];
+                                    final lng = p['lng'] ?? p['longitude'];
+                                    if (lat != null && lng != null) {
+                                      return LatLng(
+                                        double.parse(lat.toString()),
+                                        double.parse(lng.toString()),
+                                      );
+                                    }
+                                  }
+                                } catch (_) {}
+                                return null;
+                              }).whereType<LatLng>().toList();
+                              if (points.isNotEmpty) return [points];
+                            }
+                          } catch (e) {
+                            debugPrint('Error parsing geofence: $e');
+                          }
+                          return <List<LatLng>>[];
+                        }(),
                       ),
                       const SizedBox(height: 32),
                     ],
@@ -499,16 +540,19 @@ class ProfileContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final profileAsync = ref.watch(profileProvider);
     final theme = Theme.of(context);
 
     // Support both direct user map or {labour: {...}} wrap
-    final userData = (user != null && user.containsKey('labour')) ? user['labour'] : user;
+    final userData = user;
     final skillType = userData?['skill_type'] ?? 'Not set';
-    final categories = (userData?['categories'] as List?)?.join(', ') ?? 'No trades selected';
+    final categories = userData?['categories'] is List 
+        ? (userData?['categories'] as List).join(', ') 
+        : (userData?['categories']?.toString() ?? 'No trades selected');
     final address = userData?['address'] ?? 'Address not set';
 
     return RefreshIndicator(
-      onRefresh: () async => ref.refresh(refreshUserProvider.future),
+      onRefresh: () async => ref.refresh(profileProvider.future),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -596,7 +640,7 @@ class ProfileContent extends ConsumerWidget {
               final auth = ref.read(authServiceProvider);
               try {
                 await auth.logoutLabour();
-                ref.read(currentUserProvider.notifier).state = null;
+                ref.read(currentUserProvider.notifier).setUser(null);
                 ref.read(bottomNavIndexProvider.notifier).state = 0;
                 if (!context.mounted) return;
                 Navigator.pushNamedAndRemoveUntil(context, '/onboarding', (route) => false);
@@ -731,7 +775,14 @@ class _AttendanceSection extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () => isCheckedIn ? _handleCheckOut(context, ref) : _handleCheckIn(context, ref),
+            onPressed: isCheckedIn 
+                ? () => _handleCheckOut(context, ref)
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CheckInScreen(),
+                    ),
+                  ),
             style: ElevatedButton.styleFrom(
               backgroundColor: isCheckedIn ? Colors.white : theme.colorScheme.primary,
               foregroundColor: isCheckedIn ? theme.colorScheme.primary : Colors.white,
@@ -749,16 +800,25 @@ class _AttendanceSection extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleCheckIn(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleCheckInOld(BuildContext context, WidgetRef ref) async {
     try {
       // 1. Get Location
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
+        if (permission == LocationPermission.denied) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permission is required for check-in')),
+            );
+          }
+          return;
+        }
       }
       
-      Position position = await Geolocator.getCurrentPosition();
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       
       // 2. Fetch approved applications to choose a site
       final apps = await ref.read(myApplicationsProvider.future);
@@ -773,13 +833,85 @@ class _AttendanceSection extends ConsumerWidget {
         return;
       }
 
+      // Helper function to validate and check-in
+      Future<void> validateAndCheckIn(Map<String, dynamic> application) async {
+        final authService = ref.read(authServiceProvider);
+        final geofenceService = GeofenceService();
+        
+        try {
+          // Get job details including project geofence (using labour_request_id)
+          final labourRequestId = application['labour_request_id']?.toString() ?? 
+                                  application['id']?.toString();
+          
+          if (labourRequestId == null) {
+            throw Exception('Unable to find labour request ID');
+          }
+          
+          final jobDetails = await authService.getJobDetails(labourRequestId);
+          
+          // Validate geofence
+          final validation = geofenceService.validateGeofence(
+            position.latitude,
+            position.longitude,
+            jobDetails,
+          );
+          
+          if (!validation['isValid'] as bool) {
+            final distance = validation['distance'] as int;
+            final allowedRadius = validation['allowedRadius'] as int;
+            
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Outside Geofence'),
+                  content: Text(
+                    'You are ${distance}m away from the project site.\n\n'
+                    'Allowed radius: ${allowedRadius}m\n\n'
+                    'Please move closer to the project location to check in.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return;
+          }
+          
+          // Proceed with check-in
+          await ref.read(checkInProvider({
+            'projectId': application['project_id'],
+            'lat': position.latitude,
+            'lon': position.longitude,
+          }).future);
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Checked in successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+
       // Show project picker if multiple, or just check-in to the only one
       if (approvedApps.length == 1) {
-        await ref.read(checkInProvider({
-          'projectId': approvedApps[0]['project_id'],
-          'lat': position.latitude,
-          'lon': position.longitude,
-        }).future);
+        await validateAndCheckIn(approvedApps[0]);
       } else {
         // Show project picker dialog
         if (!context.mounted) return;
@@ -802,17 +934,18 @@ class _AttendanceSection extends ConsumerWidget {
         );
 
         if (selected != null && context.mounted) {
-          await ref.read(checkInProvider({
-            'projectId': selected['project_id'],
-            'lat': position.latitude,
-            'lon': position.longitude,
-          }).future);
+          await validateAndCheckIn(selected);
         }
       }
 
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

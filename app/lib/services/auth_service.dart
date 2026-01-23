@@ -11,6 +11,28 @@ class AuthService {
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();
 
+  /// Helper method to extract error message from response
+  String _extractErrorMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map && body.containsKey('error')) {
+        return body['error'] as String;
+      }
+      if (body is Map && body.containsKey('message')) {
+        return body['message'] as String;
+      }
+    } catch (_) {
+      // If parsing fails, return the raw body
+    }
+    return response.body.isNotEmpty ? response.body : 'Unknown error occurred';
+  }
+
+  /// Helper method to throw formatted exception
+  Never _throwError(String operation, http.Response response) {
+    final errorMsg = _extractErrorMessage(response);
+    throw Exception('$operation: $errorMsg');
+  }
+
   Future<void> requestLabourOtp(String phone) async {
     final uri = Uri.parse('$_base/auth/labour/otp/request');
     final res = await _client.post(
@@ -19,7 +41,7 @@ class AuthService {
       body: jsonEncode({'phone': phone}),
     );
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception('OTP request failed: ${res.body}');
+      _throwError('OTP request failed', res);
     }
   }
 
@@ -29,9 +51,9 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'otp': otp}),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
-      throw Exception('OTP verify failed: ${res.body}');
+      _throwError('OTP verification failed', res);
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -45,9 +67,9 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
-      throw Exception('Login failed: ${res.body}');
+      _throwError('Login failed', res);
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -68,7 +90,7 @@ class AuthService {
         'phone': phone,
         'password': password,
       }),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 201) {
       throw Exception('Register failed: ${res.body}');
     }
@@ -133,20 +155,30 @@ class AuthService {
   /// Check current labour session. Returns user map if authenticated, null otherwise.
   Future<Map<String, dynamic>?> checkLabourSession() async {
     final uri = Uri.parse('$_base/labour/check-auth');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['labour'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['labour'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or error -> assume logged out or offline
+      return null;
     }
     return null;
   }
 
   Future<Map<String, dynamic>?> checkEngineerSession() async {
     final uri = Uri.parse('$_base/engineer/check-auth');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['engineer'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['engineer'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or error -> assume logged out or offline
+      return null;
     }
     return null;
   }
@@ -306,6 +338,41 @@ class AuthService {
       return data['projects'] as List<dynamic>;
     }
     throw Exception('Failed to fetch projects: ${res.body}');
+  }
+
+  /// Get all projects for a specific organization (to request access)
+  Future<List<dynamic>> getOrgProjects(String orgId) async {
+    final uri = Uri.parse('$_base/engineer/project-requests/projects?organizationId=$orgId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['projects'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch org projects: ${res.body}');
+  }
+
+  /// Request to join a project
+  Future<void> joinProject(String projectId, String orgId) async {
+    final uri = Uri.parse('$_base/engineer/project-requests/project-join/$projectId');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizationId': orgId}),
+    );
+    if (res.statusCode != 200) {
+      _throwError('Failed to join project', res);
+    }
+  }
+
+  /// Get my pending project requests
+  Future<List<dynamic>> getMyProjectRequests() async {
+    final uri = Uri.parse('$_base/engineer/project-requests/my-requests');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['requests'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch requests: ${res.body}');
   }
 
   /* ---------------- DPR (ENGINEER) ---------------- */
@@ -612,5 +679,72 @@ class AuthService {
     if (res.statusCode >= 400) {
       throw Exception('Sync failed (${res.statusCode}): ${res.body}');
     }
+  }
+
+  /* ---------------- INVENTORY / LEDGER ---------------- */
+  Future<List<dynamic>> getProjectStock(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/ledger/stock/$projectId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      return data['stock'] as List<dynamic>;
+    }
+    throw Exception('Failed to load stock: ${res.body}');
+  }
+
+  Future<List<dynamic>> getLedgerHistory(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/ledger/history/$projectId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      return data['history'] as List<dynamic>;
+    }
+    throw Exception('Failed to load ledger history: ${res.body}');
+  }
+
+  Future<void> recordMaterialMovement(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/ledger/movement');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Failed to record movement: ${res.body}');
+    }
+  }
+
+  /* ---------------- DASHBOARD (ENGINEER) ---------------- */
+
+  Future<Map<String, dynamic>> getEngineerDashboard() async {
+    final uri = Uri.parse('$_base/engineer/dashboard');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch dashboard: ${res.body}');
+  }
+
+  /* ---------------- PROJECT PLAN (ENGINEER) ---------------- */
+  Future<Map<String, dynamic>> getProjectPlan(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/plan/plans/$projectId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch plan: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> updatePlanItem(String itemId, Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$_base/engineer/plan/plan-items/$itemId');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to update task: ${res.body}');
   }
 }

@@ -1,16 +1,66 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_providers.dart';
 
-/// Holds the currently authenticated user as a map (nullable).
-/// Example: {"id": 1, "name": "Alice", "phone": "..."}
-final currentUserProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+/// Holds the currently authenticated user as a map.
+/// Persisted locally to survive app restarts and show immediate UI.
+final currentUserProvider = StateNotifierProvider<UserNotifier, Map<String, dynamic>?>((ref) {
+  return UserNotifier();
+});
 
-/// Refresh user profile from backend
-final refreshUserProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
-  final auth = ref.read(authServiceProvider);
-  final user = await auth.getLabourProfile();
-  if (user != null) {
-    ref.read(currentUserProvider.notifier).state = user;
+class UserNotifier extends StateNotifier<Map<String, dynamic>?> {
+  static const _storageKey = 'cached_user';
+
+  UserNotifier() : super(null) {
+    _loadFromStorage();
   }
-  return user;
+
+  Future<void> _loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_storageKey);
+    if (stored != null) {
+      state = jsonDecode(stored) as Map<String, dynamic>;
+    }
+  }
+
+  void setUser(Map<String, dynamic>? user) async {
+    state = user;
+    final prefs = await SharedPreferences.getInstance();
+    if (user != null) {
+      await prefs.setString(_storageKey, jsonEncode(user));
+    } else {
+      await prefs.remove(_storageKey);
+    }
+  }
+}
+
+/// Role-aware profile fetcher that updates currentUserProvider
+final profileProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+  final current = ref.watch(currentUserProvider);
+  if (current == null) return null;
+  
+  final role = current['role']?.toString().toUpperCase() ?? 'LABOUR';
+  final auth = ref.read(authServiceProvider);
+  
+  try {
+    Map<String, dynamic>? updated;
+    if (role == 'SITE_ENGINEER' || role == 'ENGINEER') {
+      updated = await auth.getEngineerProfile();
+    } else {
+      updated = await auth.getLabourProfile();
+    }
+    
+    if (updated != null) {
+      // Ensure role is preserved if backend doesn't send it back in profile call
+      if (updated['role'] == null) updated['role'] = role;
+      
+      // Update global state and storage
+      ref.read(currentUserProvider.notifier).setUser(updated);
+      return updated;
+    }
+  } catch (e) {
+    // Return current state if refresh fails (offline or server error)
+  }
+  return current;
 });

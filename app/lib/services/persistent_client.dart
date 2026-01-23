@@ -6,13 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PersistentClient extends http.BaseClient {
   final http.Client _inner;
   static const _prefsKey = 'session_cookies';
+  static SharedPreferences? _prefs;
 
   PersistentClient([http.Client? inner]) : _inner = inner ?? http.Client();
+
+  Future<SharedPreferences> _getPrefs() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     // attach stored cookies
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final cookie = prefs.getString(_prefsKey);
     if (cookie != null && cookie.isNotEmpty) {
       request.headers['cookie'] = cookie;
@@ -23,7 +29,6 @@ class PersistentClient extends http.BaseClient {
     // collect set-cookie headers and persist
     final setCookie = streamed.headers['set-cookie'];
     if (setCookie != null && setCookie.isNotEmpty) {
-      // For simplicity we store the header as-is; this will contain session id
       await prefs.setString(
         _prefsKey,
         _mergeCookie(prefs.getString(_prefsKey), setCookie),
@@ -33,8 +38,6 @@ class PersistentClient extends http.BaseClient {
     return streamed;
   }
 
-  /// Merge existing cookie header with new Set-Cookie header(s).
-  /// This is simplified: we extract name=value pairs and keep them.
   String _mergeCookie(String? existing, String setCookieHeader) {
     final map = <String, String>{};
     void parseCookieString(String s) {
@@ -59,7 +62,6 @@ class PersistentClient extends http.BaseClient {
     return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }
 
-  /// Clear persisted cookies (logout)
   static Future<void> clearCookies() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsKey);

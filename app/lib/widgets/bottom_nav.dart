@@ -25,8 +25,15 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final currentIndex = ref.watch(bottomNavIndexProvider);
-    final String role = user?['role']?.toString().toUpperCase() ?? 'LABOUR';
-    final isEngineer = role == 'ENGINEER' || role == 'SITE_ENGINEER';
+    
+    // Check role from user object, but fallback to reasonable defaults
+    final String rawRole = user?['role']?.toString().toUpperCase() ?? '';
+    final bool isEngineer = rawRole == 'ENGINEER' || rawRole == 'SITE_ENGINEER';
+    
+    // If the user object is null but we are on an engineer screen, 
+    // we should try to maintain the engineer layout.
+    // However, the cleanest way is to ensure currentUserProvider is never null 
+    // during a refresh (which profileProvider now handles).
 
     final List<BottomNavigationBarItem> items = [
       BottomNavigationBarItem(
