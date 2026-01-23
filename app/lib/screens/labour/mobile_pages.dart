@@ -599,7 +599,7 @@ class ProfileContent extends ConsumerWidget {
                 ref.read(currentUserProvider.notifier).state = null;
                 ref.read(bottomNavIndexProvider.notifier).state = 0;
                 if (!context.mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
+                Navigator.pushNamedAndRemoveUntil(context, '/onboarding', (route) => false);
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

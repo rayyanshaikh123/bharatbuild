@@ -83,6 +83,7 @@ flutter:
 
   assets:
     - assets/images/bharatbuild_logo.png
+    - assets/images/logo_dark.png
     - assets/translations/
 
   # To add assets to your application, add an assets section, like this:

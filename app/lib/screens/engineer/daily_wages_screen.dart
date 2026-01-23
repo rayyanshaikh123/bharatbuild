@@ -13,20 +13,9 @@ class DailyWagesScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyWagesScreenState extends ConsumerState<DailyWagesScreen> {
-  final Map<int, TextEditingController> _controllers = {};
-  bool _isSubmitting = false;
+  // Removed manual rate controllers as rate is now auto-calculated on backend
 
-  @override
-  void dispose() {
-    for (var c in _controllers.values) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _submitWage(Map<String, dynamic> item, String rate) async {
-    if (rate.isEmpty) return;
-    
+  Future<void> _submitWage(Map<String, dynamic> item) async {
     final project = ref.read(currentProjectProvider);
     if (project == null) return;
 
@@ -35,7 +24,6 @@ class _DailyWagesScreenState extends ConsumerState<DailyWagesScreen> {
         'attendanceId': item['attendance_id'],
         'labourId': item['labour_id'],
         'projectId': (project['project_id'] ?? project['id']).toString(),
-        'rate': rate,
       }).future);
 
       if (!mounted) return;
@@ -87,14 +75,7 @@ class _DailyWagesScreenState extends ConsumerState<DailyWagesScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final item = list[index];
-              final attId = item['attendance_id'];
               
-              if (!_controllers.containsKey(index)) {
-                _controllers[index] = TextEditingController(
-                  text: item['rate']?.toString() ?? '',
-                );
-              }
-
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -128,32 +109,19 @@ class _DailyWagesScreenState extends ConsumerState<DailyWagesScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controllers[index],
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'enter_daily_rate'.tr(),
-                              prefixText: '₹ ',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                          ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _submitWage(item),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: () => _submitWage(item, _controllers[index]!.text),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                          child: Text(item['rate'] != null ? 'update'.tr() : 'save'.tr()),
-                        ),
-                      ],
+                        child: Text(item['rate'] != null ? 'update'.tr() : 'submit_request'.tr()), 
+                        // Using submit_request ('Submit Request') or save ('Save') - reusing submit_request for clarity as it implies processing
+                      ),
                     ),
                   ],
                 ),
