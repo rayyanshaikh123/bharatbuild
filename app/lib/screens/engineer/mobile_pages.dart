@@ -99,34 +99,75 @@ class EngineerDashboardContent extends ConsumerWidget {
                     ? projects.firstWhere((p) => p['project_id'] == selectedProject?['project_id'])
                     : null;
                 
-                return DropdownButtonHideUnderline(
-                  child: DropdownButton<Map<String, dynamic>>(
-                    value: currentItem,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    hint: Text('select_project'.tr()),
-                    items: projects.map((project) {
-                      return DropdownMenuItem<Map<String, dynamic>>(
-                        value: project,
-                        child: Text(
-                          project['name'] ?? 'Untitled Project',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                return Column(
+                  children: [
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<Map<String, dynamic>>(
+                        value: currentItem,
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        hint: Text('select_project'.tr()),
+                        items: projects.map((project) {
+                          return DropdownMenuItem<Map<String, dynamic>>(
+                            value: project,
+                            child: Text(
+                              project['name'] ?? 'Untitled Project',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            ref.read(currentProjectProvider.notifier).setProject(value);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.pushNamed(context, '/engineer-join-project'),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: Text('join_project'.tr()),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 0),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        ref.read(currentProjectProvider.notifier).setProject(value);
-                      }
-                    },
-                  ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.pushNamed(context, '/engineer-my-requests'),
+                            icon: const Icon(Icons.pending_actions, size: 16),
+                            label: Text('my_requests'.tr()),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 0),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 );
               },
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16.0),
                 child: Center(child: LinearProgressIndicator()),
               ),
-              error: (err, _) => Text('Error loading projects'),
+              error: (err, _) => Column(
+                children: [
+                   Text('Error loading projects'),
+                   const SizedBox(height: 8),
+                   OutlinedButton(
+                     onPressed: () => ref.refresh(engineerProjectsProvider),
+                     child: const Text('Retry'),
+                   ),
+                ],
+              ),
             ),
           ),
           

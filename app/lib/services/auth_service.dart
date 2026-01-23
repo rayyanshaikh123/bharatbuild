@@ -133,20 +133,30 @@ class AuthService {
   /// Check current labour session. Returns user map if authenticated, null otherwise.
   Future<Map<String, dynamic>?> checkLabourSession() async {
     final uri = Uri.parse('$_base/labour/check-auth');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['labour'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['labour'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or error -> assume logged out or offline
+      return null;
     }
     return null;
   }
 
   Future<Map<String, dynamic>?> checkEngineerSession() async {
     final uri = Uri.parse('$_base/engineer/check-auth');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['engineer'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['engineer'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or error -> assume logged out or offline
+      return null;
     }
     return null;
   }
@@ -306,6 +316,41 @@ class AuthService {
       return data['projects'] as List<dynamic>;
     }
     throw Exception('Failed to fetch projects: ${res.body}');
+  }
+
+  /// Get all projects for a specific organization (to request access)
+  Future<List<dynamic>> getOrgProjects(String orgId) async {
+    final uri = Uri.parse('$_base/engineer/project-requests/projects?organizationId=$orgId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['projects'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch org projects: ${res.body}');
+  }
+
+  /// Request to join a project
+  Future<void> joinProject(String projectId, String orgId) async {
+    final uri = Uri.parse('$_base/engineer/project-requests/project-join/$projectId');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizationId': orgId}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to join project: ${res.body}');
+    }
+  }
+
+  /// Get my pending project requests
+  Future<List<dynamic>> getMyProjectRequests() async {
+    final uri = Uri.parse('$_base/engineer/project-requests/my-requests');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['requests'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch requests: ${res.body}');
   }
 
   /* ---------------- DPR (ENGINEER) ---------------- */

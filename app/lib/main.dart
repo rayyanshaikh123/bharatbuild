@@ -32,6 +32,8 @@ import 'screens/engineer/manual_attendance_screen.dart';
 import 'screens/engineer/material_management_screen.dart';
 import 'screens/engineer/daily_wages_screen.dart';
 import 'screens/engineer/organization_list_screen.dart';
+import 'screens/engineer/engineer_project_list.dart';
+import 'screens/engineer/engineer_requests_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -96,9 +98,10 @@ class MyApp extends ConsumerWidget {
           '/notifications': (_) => const NotificationsScreen(),
           '/engineer-labour-requests': (_) => const LabourRequestsScreen(),
           '/engineer-attendance': (_) => const ManualAttendanceScreen(),
-          '/engineer-materials': (_) => const MaterialManagementScreen(),
           '/engineer-wages': (_) => const DailyWagesScreen(),
           '/engineer-organization': (_) => const OrganizationListScreen(),
+          '/engineer-join-project': (_) => const EngineerProjectListScreen(),
+          '/engineer-my-requests': (_) => const EngineerRequestsScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {
@@ -134,6 +137,7 @@ class _SessionGateState extends ConsumerState<SessionGate> {
     final auth = AuthService();
 
     try {
+      // checkLabourSession now has 5s timeout internally and returns null on failure
       final labour = await auth.checkLabourSession();
       if (labour != null) {
         ref.read(currentUserProvider.notifier).state = labour;
@@ -142,6 +146,7 @@ class _SessionGateState extends ConsumerState<SessionGate> {
         return;
       }
 
+      // checkEngineerSession now has 5s timeout internally and returns null on failure
       final engineer = await auth.checkEngineerSession();
       if (engineer != null) {
         ref.read(currentUserProvider.notifier).state = engineer;
