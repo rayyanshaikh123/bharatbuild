@@ -157,20 +157,38 @@ class JobDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildBottomAction(BuildContext context, WidgetRef ref, Map<String, dynamic> job) {
+    final canApply = job['can_apply'] ?? true;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
       ),
-      child: ElevatedButton(
-        onPressed: () => _handleApply(context, ref, job),
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-        child: Text('apply_now'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!canApply)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'too_far_to_apply'.tr(),
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ElevatedButton(
+            onPressed: canApply ? () => _handleApply(context, ref, job) : null,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
+            ),
+            child: Text(
+              canApply ? 'apply_now'.tr() : 'cannot_apply'.tr(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

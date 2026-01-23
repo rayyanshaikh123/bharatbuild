@@ -19,6 +19,7 @@ import '../../providers/current_project_provider.dart';
 import '../../map/geofence_service.dart';
 import '../../services/auth_service.dart';
 import 'check_in_screen.dart';
+import 'jobs_map_screen.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends ConsumerWidget {
@@ -158,9 +159,25 @@ class LabourDashboardContent extends ConsumerWidget {
                   'available_jobs'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.tune),
-                  onPressed: () {}, // Filter logic
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.map),
+                      onPressed: () {
+                        final jobs = jobsAsync.value ?? [];
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JobsMapScreen(jobs: jobs),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      onPressed: () {}, // Filter logic
+                    ),
+                  ],
                 ),
               ],
             ),

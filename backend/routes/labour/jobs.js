@@ -1,14 +1,12 @@
-const express = require("express");
-const pool = require("../../db");
-const router = express.Router();
-const labourCheck = require("../../middleware/labourCheck");
+/* ---------------- CONSTANTS ---------------- */
+const DEFAULT_LABOUR_RADIUS = 50000; // 50km
 
 /* ---------------- GET AVAILABLE JOBS ---------------- */
 router.get("/available", labourCheck, async (req, res) => {
   try {
     const labourId = req.user.id;
 
-    // Get labour categories and location to suggest better jobs
+    // Get labour categories and location
     const labourResult = await pool.query(
       `SELECT categories, primary_latitude, primary_longitude FROM labours WHERE id = $1`,
       [labourId],
@@ -20,7 +18,7 @@ router.get("/available", labourCheck, async (req, res) => {
     const lon = labour.primary_longitude;
 
     let query = `
-      SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence
+      SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence, p.geofence_radius
     `;
 
     const params = [];
@@ -69,13 +67,27 @@ router.get("/available", labourCheck, async (req, res) => {
     }
 
     if (lat && lon) {
-      query += ` ORDER BY distance_meters ASC, lr.created_at DESC LIMIT 20`;
+      query += ` ORDER BY distance_meters ASC, lr.created_at DESC`;
     } else {
-      query += ` ORDER BY lr.created_at DESC LIMIT 20`;
+      query += ` ORDER BY lr.created_at DESC`;
     }
 
-    const result = await pool.query(query, params);
-    res.json({ jobs: result.rows });
+    const { rows } = await pool.query(query, params);
+
+    // Calculate can_apply for each job
+    const jobs = rows.map((job) => {
+      let canApply = true;
+      if (lat && lon && job.distance_meters !== null) {
+        const projRadius = job.geofence_radius ||
+          (job.geofence && job.geofence.type === 'CIRCLE' ? job.geofence.radius_meters : 0) || 0;
+
+        // Union logic: Distance <= LabourRange + ProjectRange
+        canApply = parseFloat(job.distance_meters) <= (DEFAULT_LABOUR_RADIUS + projRadius);
+      }
+      return { ...job, can_apply: canApply };
+    });
+
+    res.json({ jobs });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -102,14 +114,36 @@ router.post("/:id/apply", labourCheck, async (req, res) => {
       return res.status(400).json({ error: "Job is no longer open" });
     }
 
-    // Check if already applied
-    const participantCheck = await pool.query(
-      `SELECT * FROM labour_request_participants WHERE labour_request_id = $1 AND labour_id = $2`,
-      [requestId, labourId],
+    // Check if application is allowed based on distance
+    const labourLoc = await pool.query(
+      `SELECT primary_latitude, primary_longitude FROM labours WHERE id = $1`,
+      [labourId],
     );
+    const { primary_latitude: lLat, primary_longitude: lLon } = labourLoc.rows[0];
 
-    if (participantCheck.rows.length > 0) {
-      return res.status(400).json({ error: "Already applied" });
+    if (lLat && lLon) {
+      const projLoc = await pool.query(
+        `SELECT latitude, longitude, geofence, geofence_radius FROM projects WHERE id = (SELECT project_id FROM labour_requests WHERE id = $1)`,
+        [requestId],
+      );
+      const { latitude: pLat, longitude: pLon, geofence, geofence_radius } = projLoc.rows[0];
+
+      // Use Haversine distance calculation (similar to SQL logic but in JS for validation)
+      const R = 6371000; // meters
+      const dLat = (pLat - lLat) * Math.PI / 180;
+      const dLon = (pLon - lLon) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lLat * Math.PI / 180) * Math.cos(pLat * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      const projRadius = geofence_radius ||
+        (geofence && geofence.type === 'CIRCLE' ? geofence.radius_meters : 0) || 0;
+
+      if (distance > (DEFAULT_LABOUR_RADIUS + projRadius)) {
+        return res.status(403).json({ error: "Job is too far from your primary location" });
+      }
     }
 
     // Add to participants
