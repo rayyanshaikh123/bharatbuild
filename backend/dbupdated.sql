@@ -289,7 +289,7 @@ CREATE TABLE "project_site_engineers" (
 	"status" text DEFAULT 'PENDING',
 	"assigned_at" timestamp DEFAULT now(),
 	CONSTRAINT "project_site_engineers_project_id_site_engineer_id_key" UNIQUE("project_id","site_engineer_id"),
-	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'REMOVED'::text, 'REJECTED'::text]))))
+	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REMOVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "projects" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

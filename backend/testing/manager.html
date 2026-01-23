@@ -163,7 +163,26 @@
 
       <button onclick="createProject()">Create Project</button>
       <button onclick="getMyProjects()">View My Projects</button>
+      <button onclick="getAllOrganizationProjects()">
+        View All Org Projects
+      </button>
       <button onclick="getProjectDetails()">Get Project Details</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Request to Join Project</h3>
+      <div class="input-group">
+        <label>Project ID (to request):</label>
+        <input
+          type="text"
+          id="projectIdForRequest"
+          placeholder="Paste project ID here"
+        />
+      </div>
+      <button onclick="requestToJoinProject()" class="warning">
+        Request to Join Project
+      </button>
+      <button onclick="getMyProjectRequests()">My Project Requests</button>
     </div>
 
     <div class="section">
@@ -335,14 +354,20 @@
           return;
         }
 
-        const data = await apiCall("POST", "/manager/project", {
+        const data = await apiCall("POST", "/manager/project/create-project", {
+          organizationId: currentOrgId,
           name,
-          location,
-          budget: parseFloat(budget),
+          location_text: location,
+          latitude: 0,
+          longitude: 0,
+          geofence_radius: 100,
           start_date: new Date().toISOString().split("T")[0],
           end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
+          budget: parseFloat(budget),
+          status: "PLANNED",
+          geofence: false,
         });
 
         if (data && data.project) {
@@ -360,7 +385,7 @@
 
         const data = await apiCall(
           "GET",
-          `/manager/projects?organization_id=${currentOrgId}`,
+          `/manager/project/my-projects?organizationId=${currentOrgId}`,
         );
         if (data && data.projects && data.projects.length > 0) {
           currentProjectId = data.projects[0].id;
@@ -369,11 +394,26 @@
       }
 
       async function getProjectDetails() {
-        if (!currentProjectId) {
-          alert("Please get projects first");
+        if (!currentOrgId || !currentProjectId) {
+          alert("Please get organization and projects first");
           return;
         }
-        await apiCall("GET", `/manager/project/${currentProjectId}`);
+        await apiCall(
+          "GET",
+          `/manager/project/project/${currentProjectId}?organizationId=${currentOrgId}`,
+        );
+      }
+
+      async function getAllOrganizationProjects() {
+        if (!currentOrgId) {
+          alert("Please get your organization first");
+          return;
+        }
+
+        await apiCall(
+          "GET",
+          `/manager/project/all-projects?organizationId=${currentOrgId}`,
+        );
       }
 
       // 3️⃣ Engineer Requests
