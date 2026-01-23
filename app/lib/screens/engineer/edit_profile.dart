@@ -56,7 +56,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         // Update current user provider
         final updatedUser = await ref.read(engineerProfileProvider.future);
         if (updatedUser != null) {
-          ref.read(currentUserProvider.notifier).state = updatedUser;
+          ref.read(currentUserProvider.notifier).setUser(updatedUser);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

@@ -5,6 +5,9 @@ import '../widgets/bottom_nav.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/labour/mobile_pages.dart';
 import '../screens/labour/operation_zones_home.dart';
+import '../providers/current_project_provider.dart';
+import '../providers/user_provider.dart';
+import '../widgets/project_gate.dart';
 
 /// AppLayout provides a two-column layout (sidebar + content) inspired by
 /// the web frontend. Intended to be swapped to `gluestack_ui_flutter`
@@ -66,12 +69,32 @@ class AppLayout extends ConsumerWidget {
                 const ProfileContent(),
               ];
 
+          final user = ref.watch(currentUserProvider);
+          final role = user?['role']?.toString().toUpperCase() ?? 'LABOUR';
+          final selectedProject = ref.watch(currentProjectProvider);
+          final isEngineer = role == 'SITE_ENGINEER' || role == 'ENGINEER' || role == 'MANAGER';
+
           return Scaffold(
             appBar: AppHeader(title: title),
             bottomNavigationBar: const BottomNavBar(),
             body: IndexedStack(
               index: idx,
-              children: pages,
+              children: pages.asMap().entries.map((entry) {
+                final pageIdx = entry.key;
+                final page = entry.value;
+
+                // Profile and jobs/organization list might be allowed without project
+                // But generally, the user wants it on "each and every page"
+                // Let's exempt the profile page (usually last) for safety
+                final isProfile = pageIdx == 2 && (role != 'ENGINEER' && role != 'SITE_ENGINEER'); // Profile is 2 for Labour, 3 for Engineer
+                final isEngineerProfile = pageIdx == 3 && isEngineer;
+                
+                if (isEngineer && !isEngineerProfile && selectedProject == null) {
+                   return const ProjectGate(child: SizedBox.shrink());
+                }
+
+                return page;
+              }).toList(),
             ),
           );
         }

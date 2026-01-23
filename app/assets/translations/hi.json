@@ -204,5 +204,12 @@
     "add_task": "कार्य जोड़ें",
     "no_tasks_selected_yet": "अभी तक कोई कार्य नहीं चुना गया",
     "quantity_done": "आज किया गया कार्य",
-    "remarks": "टिप्पणी"
+    "remarks": "टिप्पणी",
+    "inventory": "माल सूची",
+    "no_materials_in_stock": "साइट पर अभी कोई सामग्री नहीं है",
+    "record_movement": "मूवमेंट रिकॉर्ड करें",
+    "type": "प्रकार",
+    "material_name": "सामग्री का नाम",
+    "movement_recorded": "मूवमेंट सफलतापूर्वक दर्ज किया गया",
+    "queued_offline": "कार्रवाई को ऑफ़लाइन सहेजा गया"
 }

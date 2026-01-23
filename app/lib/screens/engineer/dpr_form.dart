@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/dpr_provider.dart';
+import '../../services/voice_nlp_service.dart';
 
 class DPRFormScreen extends ConsumerStatefulWidget {
   const DPRFormScreen({super.key});
@@ -24,7 +25,15 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
   DateTime _reportDate = DateTime.now();
   XFile? _image;
   bool _isLoading = false;
+  bool _isListening = false;
   final _picker = ImagePicker();
+  final _voiceService = VoiceNLPService();
+
+  @override
+  void initState() {
+    super.initState();
+    _voiceService.init();
+  }
 
   @override
   void dispose() {
@@ -100,6 +109,62 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
     }
   }
 
+  void _handleVoiceInput(List<dynamic> availablePlanItems) async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      setState(() => _isListening = false);
+    } else {
+      setState(() => _isListening = true);
+      await _voiceService.startListening((text) {
+        setState(() => _isListening = false);
+        _processVoiceText(text, availablePlanItems);
+      });
+    }
+  }
+
+  void _processVoiceText(String text, List<dynamic> availablePlanItems) {
+    // Build known items map from available plan items
+    final Map<String, String> knownItemsMap = {};
+    for (var item in availablePlanItems) {
+      final taskName = (item['task_name'] as String).toLowerCase();
+      knownItemsMap[taskName] = item['id'];
+    }
+
+    final result = _voiceService.parseSpeech(text, knownItemsMap);
+    final parsedItems = result['items'] as Map<String, double>;
+    final customItems = result['custom'] as List<Map<String, dynamic>>;
+
+    setState(() {
+      // Add matched items
+      parsedItems.forEach((planItemId, qty) {
+        final planItem = availablePlanItems.firstWhere((it) => it['id'] == planItemId);
+        // Check if already in _reportedItems
+        final existingIdx = _reportedItems.indexWhere((ri) => ri['plan_item_id'] == planItemId);
+        if (existingIdx != -1) {
+          _reportedItems[existingIdx]['quantity_done'] = qty;
+        } else {
+          _reportedItems.add({
+            'plan_item_id': planItem['id'],
+            'plan_id': planItem['plan_id'],
+            'task_name': planItem['task_name'],
+            'quantity_done': qty,
+            'remarks': '',
+          });
+        }
+      });
+
+      // Handle custom/unmatched items by adding them as remarks to a "Custom/Other" note or listing them
+      if (customItems.isNotEmpty) {
+        String customRemarks = customItems.map((c) => "${c['quantity']} ${c['item']}").join(", ");
+        _descriptionController.text = "${_descriptionController.text} [Voice: $customRemarks]".trim();
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Processed: $text')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -109,6 +174,17 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
       appBar: AppBar(
         title: Text('submit_dpr'.tr()),
         elevation: 0,
+        actions: [
+          planItemsAsync.maybeWhen(
+            data: (items) => IconButton(
+              icon: Icon(_isListening ? Icons.mic : Icons.mic_none, 
+                         color: _isListening ? Colors.red : null),
+              onPressed: () => _handleVoiceInput(items),
+              tooltip: 'Voice Input',
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

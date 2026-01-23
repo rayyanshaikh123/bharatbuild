@@ -47,5 +47,9 @@
 	<true/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Allow access to your location to set your primary address and discover nearby sites.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Allow access to speech recognition for easier data entry.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow access to the microphone for voice input functionality.</string>
 </dict>
 </plist>

@@ -256,5 +256,14 @@
     "add_task": "Add Task",
     "no_tasks_selected_yet": "No tasks selected yet",
     "quantity_done": "Quantity Done Today",
-    "remarks": "Remarks"
+    "remarks": "Remarks",
+    "inventory": "Inventory",
+    "no_materials_in_stock": "No materials in site stock yet",
+    "record_movement": "Record Movement",
+    "type": "Type",
+    "material_name": "Material Name",
+    "movement_recorded": "Movement recorded successfully",
+    "queued_offline": "Action saved offline and will sync later",
+    "join_project_first": "Join a Project First",
+    "join_project_desc": "You need to be part of a project to access this section. Join an existing project or contact your manager."
 }

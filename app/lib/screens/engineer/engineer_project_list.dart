@@ -131,32 +131,36 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
                     Expanded(
                       child: _filteredProjects.isEmpty
                           ? Center(child: Text('no_projects_found'.tr()))
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: _filteredProjects.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final project = _filteredProjects[index];
-                                return Card(
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.all(16),
-                                    title: Text(
-                                      project['name'] ?? 'Untitled',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Text(project['location_text'] ?? 'No location'),
-                                    trailing: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          : RefreshIndicator(
+                              onRefresh: _fetchProjects,
+                              child: ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _filteredProjects.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final project = _filteredProjects[index];
+                                  return Card(
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.all(16),
+                                      title: Text(
+                                        project['name'] ?? 'Untitled',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                      onPressed: () => _requestJoin(project['id'].toString()),
-                                      child: Text('join'.tr()),
+                                      subtitle: Text(project['location_text'] ?? 'No location'),
+                                      trailing: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        onPressed: () => _requestJoin(project['id'].toString()),
+                                        child: Text('join'.tr()),
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ],

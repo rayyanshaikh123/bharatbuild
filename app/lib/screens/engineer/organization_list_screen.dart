@@ -19,56 +19,67 @@ class OrganizationListScreen extends ConsumerWidget {
         title: Text('organization'.tr()),
         elevation: 0,
       ),
-      body: currentOrgAsync.when(
-        data: (currentOrg) {
-          if (currentOrg != null) {
-            return _buildCurrentOrgInfo(context, currentOrg);
-          }
-          return _buildOrganizationList(context, ref, allOrgsAsync, myRequestsAsync);
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(currentOrgProvider);
+          ref.invalidate(allOrganizationsProvider);
+          ref.invalidate(myOrgRequestsProvider);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        child: currentOrgAsync.when(
+          data: (currentOrg) {
+            if (currentOrg != null) {
+              return _buildCurrentOrgInfo(context, currentOrg);
+            }
+            return _buildOrganizationList(context, ref, allOrgsAsync, myRequestsAsync);
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error: $err')),
+        ),
       ),
     );
   }
 
   Widget _buildCurrentOrgInfo(BuildContext context, Map<String, dynamic> org) {
     final theme = Theme.of(context);
-    return Padding(
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.business, size: 80, color: AppColors.primary),
-          const SizedBox(height: 24),
-          Text(
-            org['name'] ?? 'Your Organization',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            org['address'] ?? 'Address not available',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 40),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+      child: Container(
+        height: MediaQuery.of(context).size.height - 100, // Ensure it fills screen to be scrollable
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.business, size: 80, color: AppColors.primary),
+            const SizedBox(height: 24),
+            Text(
+              org['name'] ?? 'Your Organization',
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                const SizedBox(width: 8),
-                Text('approved_org'.tr(), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-              ],
+            const SizedBox(height: 12),
+            Text(
+              org['address'] ?? 'Address not available',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 40),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  Text('approved_org'.tr(), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -95,6 +106,7 @@ class OrganizationListScreen extends ConsumerWidget {
                 return const Center(child: Text('No organizations found'));
               }
               return ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: orgs.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),

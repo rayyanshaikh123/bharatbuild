@@ -27,6 +27,17 @@ app.use(
   }),
 );
 
+// Logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Started`);
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
+
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json());
 
@@ -133,6 +144,7 @@ app.use("/engineer/attendance", require("./routes/engineer/attendance"));
 app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
 app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
+app.use("/engineer/ledger", require("./routes/engineer/ledger"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
@@ -175,7 +187,7 @@ app.get("/", (req, res) => {
 });
 
 /* ---------------- START SERVER ---------------- */
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`🧪 Testing harness: http://localhost:${port}/testing/auth.html`);
 });

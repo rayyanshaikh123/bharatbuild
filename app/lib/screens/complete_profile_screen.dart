@@ -140,7 +140,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       final auth = ref.read(authServiceProvider);
       final updated = await auth.updateLabourProfile(payload);
       if (updated != null) {
-        ref.read(currentUserProvider.notifier).state = updated;
+        ref.read(currentUserProvider.notifier).setUser(updated);
       }
       if (!mounted) return;
       

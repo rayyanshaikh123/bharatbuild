@@ -537,16 +537,19 @@ class ProfileContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final profileAsync = ref.watch(profileProvider);
     final theme = Theme.of(context);
 
     // Support both direct user map or {labour: {...}} wrap
-    final userData = (user != null && user.containsKey('labour')) ? user['labour'] : user;
+    final userData = user;
     final skillType = userData?['skill_type'] ?? 'Not set';
-    final categories = (userData?['categories'] as List?)?.join(', ') ?? 'No trades selected';
+    final categories = userData?['categories'] is List 
+        ? (userData?['categories'] as List).join(', ') 
+        : (userData?['categories']?.toString() ?? 'No trades selected');
     final address = userData?['address'] ?? 'Address not set';
 
     return RefreshIndicator(
-      onRefresh: () async => ref.refresh(refreshUserProvider.future),
+      onRefresh: () async => ref.refresh(profileProvider.future),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -634,7 +637,7 @@ class ProfileContent extends ConsumerWidget {
               final auth = ref.read(authServiceProvider);
               try {
                 await auth.logoutLabour();
-                ref.read(currentUserProvider.notifier).state = null;
+                ref.read(currentUserProvider.notifier).setUser(null);
                 ref.read(bottomNavIndexProvider.notifier).state = 0;
                 if (!context.mounted) return;
                 Navigator.pushNamedAndRemoveUntil(context, '/onboarding', (route) => false);

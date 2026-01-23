@@ -141,17 +141,21 @@ class _ManualAttendanceScreenState extends ConsumerState<ManualAttendanceScreen>
                     ),
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = list[index];
-                    return _AttendanceListItem(
-                      item: item,
-                      onMark: (status) => _markAttendance(item['labour_id'].toString(), status),
-                    );
-                  },
+                return RefreshIndicator(
+                  onRefresh: () async => ref.refresh(engineerTodayAttendanceProvider.future),
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = list[index];
+                      return _AttendanceListItem(
+                        item: item,
+                        onMark: (status) => _markAttendance(item['labour_id'].toString(), status),
+                      );
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

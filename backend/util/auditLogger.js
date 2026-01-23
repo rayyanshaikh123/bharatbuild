@@ -101,10 +101,10 @@ async function getOrganizationIdFromProject(projectId, client = null) {
   try {
     const executor = client || pool;
     const result = await executor.query(
-      "SELECT organization_id FROM projects WHERE id = $1",
+      "SELECT org_id FROM projects WHERE id = $1",
       [projectId],
     );
-    return result.rows[0]?.organization_id || null;
+    return result.rows[0]?.org_id || null;
   } catch (error) {
     console.error("Failed to fetch organization_id:", error.message);
     return null;

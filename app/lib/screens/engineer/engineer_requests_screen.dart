@@ -59,35 +59,39 @@ class _EngineerRequestsScreenState extends ConsumerState<EngineerRequestsScreen>
               ? Center(child: Text(_error!))
               : _requests.isEmpty
                   ? Center(child: Text('no_requests_found'.tr()))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _requests.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final req = _requests[index];
-                        final status = req['status'] as String? ?? 'UNKNOWN';
-                        
-                        return Card(
-                          child: ListTile(
-                            title: Text(req['project_name'] ?? 'Unknown Project'),
-                            subtitle: Text('Status: $status'),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(status).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status,
-                                style: TextStyle(
-                                  color: _getStatusColor(status),
-                                  fontWeight: FontWeight.bold,
+                  : RefreshIndicator(
+                      onRefresh: _fetchRequests,
+                      child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _requests.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final req = _requests[index];
+                          final status = req['status'] as String? ?? 'UNKNOWN';
+                          
+                          return Card(
+                            child: ListTile(
+                              title: Text(req['project_name'] ?? 'Unknown Project'),
+                              subtitle: Text('Status: $status'),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: TextStyle(
+                                    color: _getStatusColor(status),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
     );
   }
