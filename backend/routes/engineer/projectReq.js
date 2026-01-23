@@ -65,8 +65,7 @@ router.get("/my-requests", engineerCheck, async (req, res) => {
     // No org-level check required here (per system context)
     const result = await pool.query(
       `SELECT pse.*, 
-              p.name AS project_name, 
-              p.description AS project_description,
+              p.name AS project_name,
               p.org_id,
               p.start_date,
               p.end_date

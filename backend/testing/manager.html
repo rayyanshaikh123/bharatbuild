@@ -196,6 +196,52 @@
       <button onclick="getEngineerRequests('REJECTED')" class="danger">
         Rejected Engineer Requests
       </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Approve/Reject Engineer</h3>
+      <div class="input-group">
+        <label>Request ID (from pending requests):</label>
+        <input
+          type="text"
+          id="engineerRequestId"
+          placeholder="Paste request ID here"
+        />
+      </div>
+      <button onclick="approveEngineerRequest()" class="success">
+        Approve Engineer
+      </button>
+      <button onclick="rejectEngineerRequest()" class="danger">
+        Reject Engineer
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>🔐 Manager Project Requests (Creator Only)</h2>
+
+      <button onclick="getProjectManagerRequests()">
+        View Manager Requests for Project
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">
+        Approve/Reject Manager Request
+      </h3>
+      <div class="input-group">
+        <label>Request ID (from manager requests):</label>
+        <input
+          type="text"
+          id="managerRequestId"
+          placeholder="Paste request ID here"
+        />
+      </div>
+      <button onclick="approveManagerRequest()" class="success">
+        Approve Manager
+      </button>
+      <button onclick="rejectManagerRequest()" class="danger">
+        Reject Manager
+      </button>
     </div>
 
     <div class="section">
@@ -416,17 +462,162 @@
         );
       }
 
+      async function requestToJoinProject() {
+        if (!currentOrgId) {
+          alert("Please get your organization first");
+          return;
+        }
+
+        const projectId = document.getElementById("projectIdForRequest").value;
+        if (!projectId) {
+          alert("Please enter project ID");
+          return;
+        }
+
+        await apiCall("POST", "/manager/project-requests/join-project", {
+          projectId: projectId,
+          organizationId: currentOrgId,
+        });
+      }
+
+      async function getMyProjectRequests() {
+        await apiCall("GET", "/manager/project-requests/my-project-requests");
+      }
+
       // 3️⃣ Engineer Requests
       async function getEngineerRequests(status) {
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please get projects first to set project and organization IDs",
+          );
+          return;
+        }
+
         await apiCall(
           "GET",
-          `/manager/organization/site-engineers?status=${status}`,
+          `/manager/projects/project-requests?projectId=${currentProjectId}&organizationId=${currentOrgId}`,
         );
       }
 
-      // 4️⃣ Manager Requests
+      async function approveEngineerRequest() {
+        const requestId = document.getElementById("engineerRequestId").value;
+        if (!requestId) {
+          alert("Please enter request ID");
+          return;
+        }
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please ensure project and organization are set (get projects first)",
+          );
+          return;
+        }
+
+        await apiCall(
+          "PUT",
+          `/manager/projects/project-requests/${requestId}/decision`,
+          {
+            decision: "APPROVED",
+            projectId: currentProjectId,
+            organizationId: currentOrgId,
+          },
+        );
+      }
+
+      async function rejectEngineerRequest() {
+        const requestId = document.getElementById("engineerRequestId").value;
+        if (!requestId) {
+          alert("Please enter request ID");
+          return;
+        }
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please ensure project and organization are set (get projects first)",
+          );
+          return;
+        }
+
+        await apiCall(
+          "PUT",
+          `/manager/projects/project-requests/${requestId}/decision`,
+          {
+            decision: "REJECTED",
+            projectId: currentProjectId,
+            organizationId: currentOrgId,
+          },
+        );
+      }
+
+      // 🔐 Manager Project Requests
+      async function getProjectManagerRequests() {
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please get projects first to set project and organization IDs",
+          );
+          return;
+        }
+
+        await apiCall(
+          "GET",
+          `/manager/projects/manager-requests?projectId=${currentProjectId}&organizationId=${currentOrgId}`,
+        );
+      }
+
+      async function approveManagerRequest() {
+        const requestId = document.getElementById("managerRequestId").value;
+        if (!requestId) {
+          alert("Please enter request ID");
+          return;
+        }
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please ensure project and organization are set (get projects first)",
+          );
+          return;
+        }
+
+        await apiCall(
+          "PUT",
+          `/manager/projects/manager-requests/${requestId}/decision`,
+          {
+            decision: "ACTIVE",
+            projectId: currentProjectId,
+            organizationId: currentOrgId,
+          },
+        );
+      }
+
+      async function rejectManagerRequest() {
+        const requestId = document.getElementById("managerRequestId").value;
+        if (!requestId) {
+          alert("Please enter request ID");
+          return;
+        }
+        if (!currentProjectId || !currentOrgId) {
+          alert(
+            "Please ensure project and organization are set (get projects first)",
+          );
+          return;
+        }
+
+        await apiCall(
+          "PUT",
+          `/manager/projects/manager-requests/${requestId}/decision`,
+          {
+            decision: "REJECTED",
+            projectId: currentProjectId,
+            organizationId: currentOrgId,
+          },
+        );
+      }
+
+      // 4️⃣ Manager Requests (Organization-level)
+      // NOTE: No route exists for viewing manager requests at organization level
+      // Managers can only view their own project requests via /manager/project-requests/my-project-requests
       async function getManagerRequests(status) {
-        await apiCall("GET", `/manager/organization/managers?status=${status}`);
+        alert(
+          "This feature is not available. Manager requests are handled at the project level, not organization level.",
+        );
+        // await apiCall("GET", `/manager/organization/managers?status=${status}`);
       }
 
       // 5️⃣ Analytics

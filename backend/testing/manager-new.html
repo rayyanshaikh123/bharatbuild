@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manager Testing Module</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 30px;
+      }
+
+      .section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 25px;
+        border-left: 4px solid #667eea;
+      }
+
+      .section h2 {
+        color: #667eea;
+        margin-bottom: 20px;
+        font-size: 1.5em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section h3 {
+        color: #764ba2;
+        margin: 20px 0 15px 0;
+        font-size: 1.2em;
+      }
+
+      .input-group {
+        margin-bottom: 15px;
+      }
+
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #495057;
+        font-weight: 500;
+      }
+
+      .input-group input,
+      .input-group select,
+      .input-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .input-group input:focus,
+      .input-group select:focus,
+      .input-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        margin: 5px;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.danger {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      button.success {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+
+      button.warning {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      }
+
+      .output-section {
+        grid-column: 1 / -1;
+        background: #212529;
+        color: #f8f9fa;
+        border-radius: 8px;
+        padding: 25px;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      .output-section h2 {
+        color: #00f2fe;
+        margin-bottom: 20px;
+      }
+
+      #output {
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+      }
+
+      .response {
+        background: #2d3748;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid #00f2fe;
+      }
+
+      .response.error {
+        border-left-color: #f5576c;
+      }
+
+      .response.success {
+        border-left-color: #00f2fe;
+      }
+
+      .response-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+
+      .error-badge {
+        background: #f5576c;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      .success-badge {
+        background: #00f2fe;
+        color: #212529;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .button-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 20px 0;
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔧 Manager Testing Module</h1>
+        <p>Verified API Routes Only | Session-Based Auth | UUID-Safe</p>
+      </div>
+
+      <div class="content">
+        <!-- AUTHENTICATION SECTION -->
+        <div class="section">
+          <h2>🔐 Authentication</h2>
+
+          <h3>Register</h3>
+          <div class="input-group">
+            <label>Name:</label>
+            <input type="text" id="registerName" placeholder="John Doe" />
+          </div>
+          <div class="input-group">
+            <label>Email:</label>
+            <input
+              type="email"
+              id="registerEmail"
+              placeholder="john@example.com"
+            />
+          </div>
+          <div class="input-group">
+            <label>Phone:</label>
+            <input type="tel" id="registerPhone" placeholder="+1234567890" />
+          </div>
+          <div class="input-group">
+            <label>Password:</label>
+            <input
+              type="password"
+              id="registerPassword"
+              placeholder="********"
+            />
+          </div>
+          <button onclick="registerManager()">Register Manager</button>
+
+          <div class="divider"></div>
+
+          <h3>Login</h3>
+          <div class="input-group">
+            <label>Email:</label>
+            <input
+              type="email"
+              id="loginEmail"
+              placeholder="john@example.com"
+            />
+          </div>
+          <div class="input-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" placeholder="********" />
+          </div>
+          <button onclick="loginManager()">Login</button>
+
+          <div class="divider"></div>
+
+          <div class="button-group">
+            <button onclick="checkAuth()">Check Auth</button>
+            <button onclick="getProfile()">Get Profile</button>
+            <button class="danger" onclick="logoutManager()">Logout</button>
+          </div>
+        </div>
+
+        <!-- ORGANIZATION SECTION -->
+        <div class="section">
+          <h2>🏢 Organizations</h2>
+
+          <div class="button-group">
+            <button onclick="getMyOrganizations()">My Organizations</button>
+            <button onclick="getAllOrganizations()">All Organizations</button>
+            <button onclick="getMyOrganizationRequests()">My Requests</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Join Organization</h3>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="organizationId" placeholder="UUID" />
+          </div>
+          <button class="success" onclick="joinOrganization()">
+            Join Organization
+          </button>
+
+          <div class="divider"></div>
+
+          <h3>Leave Organization</h3>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="leaveOrgId" placeholder="UUID" />
+          </div>
+          <button class="danger" onclick="leaveOrganization()">
+            Leave Organization
+          </button>
+        </div>
+
+        <!-- PROJECT MANAGEMENT SECTION -->
+        <div class="section full-width">
+          <h2>📁 Project Management</h2>
+
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px"
+          >
+            <div>
+              <h3>Create Project</h3>
+              <div class="input-group">
+                <label>Project Name:</label>
+                <input
+                  type="text"
+                  id="projectName"
+                  placeholder="New Building"
+                />
+              </div>
+              <div class="input-group">
+                <label>Organization ID:</label>
+                <input type="text" id="projectOrgId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>Start Date:</label>
+                <input type="date" id="projectStartDate" />
+              </div>
+              <div class="input-group">
+                <label>End Date:</label>
+                <input type="date" id="projectEndDate" />
+              </div>
+              <button class="success" onclick="createProject()">
+                Create Project
+              </button>
+            </div>
+
+            <div>
+              <h3>View Projects</h3>
+              <button onclick="getMyProjects()">My Projects</button>
+              <div class="input-group" style="margin-top: 15px">
+                <label>Organization ID:</label>
+                <input type="text" id="allProjectsOrgId" placeholder="UUID" />
+              </div>
+              <button onclick="getAllProjects()">All Projects</button>
+
+              <div class="divider"></div>
+
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="projectDetailsId" placeholder="UUID" />
+              </div>
+              <button onclick="getProjectDetails()">Get Details</button>
+            </div>
+
+            <div>
+              <h3>Update Project</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="updateProjectId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>New Name:</label>
+                <input
+                  type="text"
+                  id="updateProjectName"
+                  placeholder="Optional"
+                />
+              </div>
+              <div class="input-group">
+                <label>New Start Date:</label>
+                <input type="date" id="updateProjectStartDate" />
+              </div>
+              <div class="input-group">
+                <label>New End Date:</label>
+                <input type="date" id="updateProjectEndDate" />
+              </div>
+              <button class="warning" onclick="updateProject()">Update</button>
+              <button class="danger" onclick="deleteProject()">Delete</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Update Project Status</h3>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr auto;
+              gap: 15px;
+              align-items: end;
+            "
+          >
+            <div class="input-group">
+              <label>Project ID:</label>
+              <input type="text" id="statusProjectId" placeholder="UUID" />
+            </div>
+            <div class="input-group">
+              <label>Status:</label>
+              <select id="projectStatus">
+                <option value="">Select Status</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="ON_HOLD">ON_HOLD</option>
+              </select>
+            </div>
+            <button onclick="updateProjectStatus()">Update Status</button>
+          </div>
+        </div>
+
+        <!-- MANAGER PROJECT JOIN SECTION -->
+        <div class="section">
+          <h2>🤝 Manager Project Join</h2>
+
+          <h3>Join Project</h3>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="joinProjectId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="joinProjectOrgId" placeholder="UUID" />
+          </div>
+          <button class="success" onclick="joinProject()">
+            Request to Join
+          </button>
+
+          <div class="divider"></div>
+
+          <button onclick="getMyProjectRequests()">
+            View My Project Requests
+          </button>
+        </div>
+
+        <!-- MANAGER REQUEST APPROVAL (CREATOR ONLY) -->
+        <div class="section">
+          <h2>👥 Manager Requests (Creator Only)</h2>
+
+          <h3>View Manager Requests</h3>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="managerReqProjectId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="managerReqOrgId" placeholder="UUID" />
+          </div>
+          <button onclick="getManagerRequests()">View Requests</button>
+
+          <div class="divider"></div>
+
+          <h3>Approve Manager</h3>
+          <div class="input-group">
+            <label>Request ID:</label>
+            <input type="text" id="approveManagerReqId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input
+              type="text"
+              id="approveManagerProjectId"
+              placeholder="UUID"
+            />
+          </div>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="approveManagerOrgId" placeholder="UUID" />
+          </div>
+          <button class="success" onclick="approveManagerRequest()">
+            Approve
+          </button>
+
+          <div class="divider"></div>
+
+          <h3>Reject Manager</h3>
+          <div class="input-group">
+            <label>Request ID:</label>
+            <input type="text" id="rejectManagerReqId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="rejectManagerProjectId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="rejectManagerOrgId" placeholder="UUID" />
+          </div>
+          <button class="danger" onclick="rejectManagerRequest()">
+            Reject
+          </button>
+        </div>
+
+        <!-- ENGINEER REQUEST MANAGEMENT -->
+        <div class="section full-width">
+          <h2>👷 Engineer Request Management</h2>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+            <div>
+              <h3>View Engineer Requests (ACTIVE Manager)</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="engineerReqProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="input-group">
+                <label>Organization ID:</label>
+                <input type="text" id="engineerReqOrgId" placeholder="UUID" />
+              </div>
+              <button onclick="getEngineerRequests()">View All Requests</button>
+
+              <div class="divider"></div>
+
+              <h3>View by Status</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="pendingEngProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="button-group">
+                <button onclick="getPendingEngineerRequests()">Pending</button>
+              </div>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="acceptedEngProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <button class="success" onclick="getAcceptedEngineerRequests()">
+                Accepted
+              </button>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="rejectedEngProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <button class="danger" onclick="getRejectedEngineerRequests()">
+                Rejected
+              </button>
+            </div>
+
+            <div>
+              <h3>Approve Engineer</h3>
+              <div class="input-group">
+                <label>Request ID:</label>
+                <input
+                  type="text"
+                  id="approveEngineerReqId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="approveEngineerProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="input-group">
+                <label>Organization ID:</label>
+                <input
+                  type="text"
+                  id="approveEngineerOrgId"
+                  placeholder="UUID"
+                />
+              </div>
+              <button class="success" onclick="approveEngineerRequest()">
+                Approve Engineer
+              </button>
+
+              <div class="divider"></div>
+
+              <h3>Reject Engineer</h3>
+              <div class="input-group">
+                <label>Request ID:</label>
+                <input
+                  type="text"
+                  id="rejectEngineerReqId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="rejectEngineerProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <div class="input-group">
+                <label>Organization ID:</label>
+                <input
+                  type="text"
+                  id="rejectEngineerOrgId"
+                  placeholder="UUID"
+                />
+              </div>
+              <button class="danger" onclick="rejectEngineerRequest()">
+                Reject Engineer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS SECTION -->
+        <div class="section">
+          <h2>📊 Analytics</h2>
+
+          <h3>Organization Overview</h3>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="analyticsOrgId" placeholder="UUID" />
+          </div>
+          <button onclick="getAnalyticsOverview()">Get Overview</button>
+
+          <div class="divider"></div>
+
+          <h3>Project Analytics</h3>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="analyticsProjectId" placeholder="UUID" />
+          </div>
+          <button onclick="getProjectAnalytics()">Get Project Analytics</button>
+        </div>
+
+        <!-- LEDGER SECTION -->
+        <div class="section">
+          <h2>📒 Project Ledger</h2>
+
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="ledgerProjectId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Start Date (Optional):</label>
+            <input type="date" id="ledgerStartDate" />
+          </div>
+          <div class="input-group">
+            <label>End Date (Optional):</label>
+            <input type="date" id="ledgerEndDate" />
+          </div>
+          <button onclick="getProjectLedger()">Get Ledger</button>
+        </div>
+
+        <!-- DELAYS SECTION -->
+        <div class="section">
+          <h2>⏰ Delays</h2>
+
+          <h3>View Project Delays</h3>
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="delaysProjectId" placeholder="UUID" />
+          </div>
+          <button onclick="getProjectDelays()">Get Delays</button>
+
+          <div class="divider"></div>
+
+          <h3>Update Plan Item Status</h3>
+          <div class="input-group">
+            <label>Plan Item ID:</label>
+            <input type="text" id="planItemId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Status:</label>
+            <input
+              type="text"
+              id="planItemStatus"
+              placeholder="e.g., COMPLETED"
+            />
+          </div>
+          <div class="input-group">
+            <label>Delay Info (JSON, Optional):</label>
+            <textarea
+              id="planItemDelayInfo"
+              rows="3"
+              placeholder='{"reason": "Weather"}'
+            ></textarea>
+          </div>
+          <button class="warning" onclick="updatePlanItemStatus()">
+            Update Status
+          </button>
+        </div>
+
+        <!-- REPORTS SECTION -->
+        <div class="section full-width">
+          <h2>📄 Reports</h2>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 20px;
+            "
+          >
+            <div>
+              <h3>Financial Report</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="finReportProjectId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>Start Date:</label>
+                <input type="date" id="finReportStartDate" />
+              </div>
+              <div class="input-group">
+                <label>End Date:</label>
+                <input type="date" id="finReportEndDate" />
+              </div>
+              <button onclick="getFinancialReport()">Get Report</button>
+            </div>
+
+            <div>
+              <h3>Progress Report</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input
+                  type="text"
+                  id="progressReportProjectId"
+                  placeholder="UUID"
+                />
+              </div>
+              <button onclick="getProgressReport()">Get Report</button>
+
+              <div class="divider"></div>
+
+              <h3>Materials Report</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="matReportProjectId" placeholder="UUID" />
+              </div>
+              <button onclick="getMaterialsReport()">Get Report</button>
+            </div>
+
+            <div>
+              <h3>Attendance Report</h3>
+              <div class="input-group">
+                <label>Project ID:</label>
+                <input type="text" id="attReportProjectId" placeholder="UUID" />
+              </div>
+              <div class="input-group">
+                <label>Start Date:</label>
+                <input type="date" id="attReportStartDate" />
+              </div>
+              <div class="input-group">
+                <label>End Date:</label>
+                <input type="date" id="attReportEndDate" />
+              </div>
+              <button onclick="getAttendanceReport()">Get Report</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Audit Report</h3>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 15px;
+              align-items: end;
+            "
+          >
+            <div class="input-group">
+              <label>Project ID:</label>
+              <input type="text" id="auditReportProjectId" placeholder="UUID" />
+            </div>
+            <div class="input-group">
+              <label>Start Date:</label>
+              <input type="date" id="auditReportStartDate" />
+            </div>
+            <div class="input-group">
+              <label>End Date:</label>
+              <input type="date" id="auditReportEndDate" />
+            </div>
+            <button onclick="getAuditReport()">Get Report</button>
+          </div>
+        </div>
+
+        <!-- AUDITS SECTION -->
+        <div class="section">
+          <h2>🔍 Audit Logs</h2>
+
+          <div class="input-group">
+            <label>Project ID:</label>
+            <input type="text" id="auditsProjectId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Start Date (Optional):</label>
+            <input type="date" id="auditsStartDate" />
+          </div>
+          <div class="input-group">
+            <label>End Date (Optional):</label>
+            <input type="date" id="auditsEndDate" />
+          </div>
+          <div class="input-group">
+            <label>Limit (Optional):</label>
+            <input type="number" id="auditsLimit" placeholder="e.g., 100" />
+          </div>
+          <button onclick="getProjectAudits()">Get Audit Logs</button>
+        </div>
+
+        <!-- WAGE RATES SECTION -->
+        <div class="section">
+          <h2>💰 Wage Rates</h2>
+
+          <h3>Create Wage Rate</h3>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="wageRateOrgId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>Skill Type:</label>
+            <input
+              type="text"
+              id="wageRateSkillType"
+              placeholder="e.g., MASON"
+            />
+          </div>
+          <div class="input-group">
+            <label>Rate:</label>
+            <input type="number" id="wageRateAmount" placeholder="e.g., 500" />
+          </div>
+          <button class="success" onclick="createWageRate()">Create</button>
+
+          <div class="divider"></div>
+
+          <h3>View Wage Rates</h3>
+          <div class="input-group">
+            <label>Organization ID:</label>
+            <input type="text" id="getWageRatesOrgId" placeholder="UUID" />
+          </div>
+          <button onclick="getWageRates()">Get Wage Rates</button>
+
+          <div class="divider"></div>
+
+          <h3>Update Wage Rate</h3>
+          <div class="input-group">
+            <label>Wage Rate ID:</label>
+            <input type="text" id="updateWageRateId" placeholder="UUID" />
+          </div>
+          <div class="input-group">
+            <label>New Rate:</label>
+            <input
+              type="number"
+              id="updateWageRateAmount"
+              placeholder="e.g., 550"
+            />
+          </div>
+          <button class="warning" onclick="updateWageRate()">Update</button>
+
+          <div class="divider"></div>
+
+          <h3>Delete Wage Rate</h3>
+          <div class="input-group">
+            <label>Wage Rate ID:</label>
+            <input type="text" id="deleteWageRateId" placeholder="UUID" />
+          </div>
+          <button class="danger" onclick="deleteWageRate()">Delete</button>
+        </div>
+
+        <!-- DASHBOARD SECTION -->
+        <div class="section">
+          <h2>📈 Dashboard</h2>
+          <button onclick="getDashboard()">Get Dashboard Data</button>
+        </div>
+
+        <!-- OUTPUT SECTION -->
+        <div class="output-section">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 20px;
+            "
+          >
+            <h2>📡 API Response Output</h2>
+            <button onclick="clearOutput()" style="background: #f5576c">
+              Clear Output
+            </button>
+          </div>
+          <div id="output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load external script -->
+    <script src="manager-script.js"></script>
+  </body>
+</html>

@@ -48,14 +48,18 @@ router.post("/join-project", managerCheck, async (req, res) => {
         .json({ error: "Project not found in this organization." });
     }
 
-    const isProjApproved = await managerProjectStatusCheck(
-      managerId,
-      projectId,
+    // Check for ANY existing request (PENDING, APPROVED, REJECTED, ACTIVE)
+    const existingRequest = await pool.query(
+      `SELECT status FROM project_managers 
+       WHERE manager_id = $1::uuid AND project_id = $2::uuid`,
+      [managerId, projectId],
     );
-    if (isProjApproved) {
-      return res
-        .status(400)
-        .json({ error: "Already an active manager in the project." });
+
+    if (existingRequest.rows.length > 0) {
+      const status = existingRequest.rows[0].status;
+      return res.status(400).json({
+        error: `You already have a ${status} request for this project.`,
+      });
     }
 
     await pool.query(
@@ -76,13 +80,13 @@ router.get("/my-project-requests", managerCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT pm.*,
               p.name AS project_name,
-              p.description AS project_description,
               p.org_id,
               p.start_date,
               p.end_date
        FROM project_managers pm
        JOIN projects p ON pm.project_id = p.id
-       WHERE pm.manager_id = $1 AND pm.status = 'PENDING'`,
+       WHERE pm.manager_id = $1
+       ORDER BY pm.assigned_at DESC`,
       [managerId],
     );
     res.json({ requests: result.rows });

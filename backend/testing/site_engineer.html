@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Site Engineer Dashboard - Testing</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 3px solid #e67e22;
+        padding-bottom: 10px;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .section h2 {
+        color: #34495e;
+        margin-top: 0;
+      }
+      button {
+        background: #e67e22;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #d35400;
+      }
+      button.danger {
+        background: #e74c3c;
+      }
+      button.danger:hover {
+        background: #c0392b;
+      }
+      button.success {
+        background: #27ae60;
+      }
+      button.success:hover {
+        background: #229954;
+      }
+      button.warning {
+        background: #f39c12;
+      }
+      button.warning:hover {
+        background: #e67e22;
+      }
+      #output {
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .input-group {
+        margin: 10px 0;
+      }
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #34495e;
+      }
+      .input-group input,
+      .input-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .stored-data {
+        background: #ecf0f1;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔧 Site Engineer Dashboard (Testing)</h1>
+
+    <div class="section">
+      <h2>Stored Data</h2>
+      <div class="stored-data">
+        <div>
+          <strong>Organization ID:</strong> <span id="storedOrgId">None</span>
+        </div>
+        <div>
+          <strong>Project ID:</strong> <span id="storedProjectId">None</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>1️⃣ Organization Management</h2>
+
+      <button onclick="viewAllOrganizations()">View All Organizations</button>
+      <button onclick="getMyOrganizations()">Get My Organizations</button>
+      <button onclick="getMyOrganizationRequests()">
+        My Organization Requests
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">
+        Request to Join Organization
+      </h3>
+      <div class="input-group">
+        <label>Organization ID (to request):</label>
+        <input
+          type="text"
+          id="orgIdForRequest"
+          placeholder="Paste organization ID here"
+        />
+      </div>
+      <button onclick="requestOrganizationAccess()" class="warning">
+        Request Organization Access
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Leave Organization</h3>
+      <div class="input-group">
+        <label>Organization ID (to leave):</label>
+        <input
+          type="text"
+          id="orgIdToLeave"
+          placeholder="Paste organization ID here"
+        />
+      </div>
+      <button onclick="leaveOrganization()" class="danger">
+        Leave Organization
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>2️⃣ Project Management</h2>
+
+      <button onclick="getOrganizationProjects()">
+        View Organization Projects
+      </button>
+      <button onclick="getMyProjects()">My Active Projects</button>
+      <button onclick="getMyProjectRequests()">My Project Requests</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Request to Join Project</h3>
+      <div class="input-group">
+        <label>Project ID (to request):</label>
+        <input
+          type="text"
+          id="projectIdForRequest"
+          placeholder="Paste project ID here"
+        />
+      </div>
+      <button onclick="requestToJoinProject()" class="warning">
+        Request to Join Project
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>🚪 Session</h2>
+      <button onclick="getProfile()">Get My Profile</button>
+      <button onclick="logout()" class="danger">Logout</button>
+    </div>
+
+    <div class="section">
+      <h2>📋 API Response</h2>
+      <div id="output">Waiting for API calls...</div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:3001";
+      let currentOrgId = null;
+      let currentProjectId = null;
+
+      function updateStoredData() {
+        document.getElementById("storedOrgId").textContent =
+          currentOrgId || "None";
+        document.getElementById("storedProjectId").textContent =
+          currentProjectId || "None";
+      }
+
+      function log(message, data = null) {
+        const output = document.getElementById("output");
+        const timestamp = new Date().toLocaleTimeString();
+        let logMessage = `[${timestamp}] ${message}\n`;
+
+        if (data) {
+          logMessage += JSON.stringify(data, null, 2) + "\n";
+        }
+
+        output.textContent = logMessage + "\n" + output.textContent;
+        console.log(message, data);
+      }
+
+      async function apiCall(method, endpoint, body = null) {
+        try {
+          const options = {
+            method,
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          };
+
+          if (body) {
+            options.body = JSON.stringify(body);
+          }
+
+          log(`${method} ${endpoint}`, body);
+
+          const response = await fetch(`${API_BASE}${endpoint}`, options);
+          const data = await response.json();
+
+          if (!response.ok) {
+            log(`❌ Error (${response.status})`, data);
+            alert(`Error: ${data.error || "Unknown error"}`);
+            return null;
+          }
+
+          log(`✅ Success (${response.status})`, data);
+          return data;
+        } catch (error) {
+          log(`❌ Network Error`, { error: error.message });
+          alert(`Network Error: ${error.message}`);
+          return null;
+        }
+      }
+
+      // 1️⃣ Organization Management
+      async function viewAllOrganizations() {
+        await apiCall("GET", "/engineer/organization/all");
+      }
+
+      async function getMyOrganizations() {
+        const data = await apiCall("GET", "/engineer/organization");
+        if (data && data.organizations && data.organizations.length > 0) {
+          currentOrgId = data.organizations[0].id;
+          updateStoredData();
+        }
+      }
+
+      async function requestOrganizationAccess() {
+        const orgId = document.getElementById("orgIdForRequest").value;
+        if (!orgId) {
+          alert("Please enter organization ID");
+          return;
+        }
+
+        await apiCall("POST", "/engineer/organization/join-organization", {
+          organizationId: orgId,
+        });
+      }
+
+      async function getMyOrganizationRequests() {
+        await apiCall("GET", "/engineer/organization/my-requests");
+      }
+
+      async function leaveOrganization() {
+        const orgId = document.getElementById("orgIdToLeave").value;
+        if (!orgId) {
+          alert("Please enter organization ID to leave");
+          return;
+        }
+
+        if (
+          !confirm(
+            `Are you sure you want to leave this organization? This will remove you from all projects in that organization.`,
+          )
+        ) {
+          return;
+        }
+
+        await apiCall("POST", "/engineer/organization/leave", {
+          organizationId: orgId,
+        });
+      }
+
+      // 2️⃣ Project Management
+      async function getOrganizationProjects() {
+        if (!currentOrgId) {
+          alert("Please get your organizations first to set organization ID");
+          return;
+        }
+
+        const data = await apiCall(
+          "GET",
+          `/engineer/project-requests/projects?organizationId=${currentOrgId}`,
+        );
+        if (data && data.projects && data.projects.length > 0) {
+          // Optionally auto-select first project
+          // currentProjectId = data.projects[0].id;
+          // updateStoredData();
+        }
+      }
+
+      async function getMyProjects() {
+        const data = await apiCall(
+          "GET",
+          "/engineer/project-requests/my-projects",
+        );
+        if (data && data.projects && data.projects.length > 0) {
+          currentProjectId = data.projects[0].id;
+          updateStoredData();
+        }
+      }
+
+      async function requestToJoinProject() {
+        if (!currentOrgId) {
+          alert("Please get your organizations first");
+          return;
+        }
+
+        const projectId = document.getElementById("projectIdForRequest").value;
+        if (!projectId) {
+          alert("Please enter project ID");
+          return;
+        }
+
+        await apiCall(
+          "POST",
+          `/engineer/project-requests/project-join/${projectId}`,
+          {
+            organizationId: currentOrgId,
+          },
+        );
+      }
+
+      async function getMyProjectRequests() {
+        await apiCall("GET", "/engineer/project-requests/my-requests");
+      }
+
+      // 🚪 Session
+      async function getProfile() {
+        await apiCall("GET", "/engineer/profile");
+      }
+
+      async function logout() {
+        const data = await apiCall("POST", "/auth/engineer/logout");
+        if (data) {
+          alert("Logged out successfully!");
+          window.location.href = "auth.html";
+        }
+      }
+
+      // Auto-load profile on page load
+      window.onload = () => {
+        log("Site Engineer Dashboard loaded");
+        getProfile();
+      };
+    </script>
+  </body>
+</html>
