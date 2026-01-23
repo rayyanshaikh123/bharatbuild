@@ -23,7 +23,8 @@ router.get("/available", labourCheck, async (req, res) => {
     const lon = labour.primary_longitude;
 
     let query = `
-      SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence, p.geofence_radius
+      SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence, p.geofence_radius,
+             wr.hourly_rate as wage_rate
     `;
 
     const params = [];
@@ -60,6 +61,8 @@ router.get("/available", labourCheck, async (req, res) => {
     query += `
       FROM labour_requests lr
       JOIN projects p ON lr.project_id = p.id
+      LEFT JOIN wage_rates wr ON lr.project_id = wr.project_id 
+           AND lr.category = wr.category
       WHERE lr.status = 'OPEN'
       AND lr.request_date >= CURRENT_DATE
     `;
@@ -207,11 +210,26 @@ router.get("/:id", labourCheck, async (req, res) => {
       [requestId],
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Job not found" });
-    }
+    const job = result.rows[0];
 
-    res.json({ job: result.rows[0] });
+    // Get all wage rates for this project and category
+    const wagesResult = await pool.query(
+      `SELECT skill_type, hourly_rate FROM wage_rates 
+       WHERE project_id = $1 AND category = $2 
+       ORDER BY 
+         CASE skill_type 
+           WHEN 'SKILLED' THEN 1 
+           WHEN 'SEMI_SKILLED' THEN 2 
+           WHEN 'UNSKILLED' THEN 3 
+           ELSE 4 
+         END`,
+      [job.project_id, job.category],
+    );
+
+    res.json({
+      job,
+      wage_options: wagesResult.rows
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

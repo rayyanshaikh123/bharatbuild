@@ -51,7 +51,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'otp': otp}),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 60));
     if (res.statusCode != 200) {
       _throwError('OTP verification failed', res);
     }
@@ -67,7 +67,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 60));
     if (res.statusCode != 200) {
       _throwError('Login failed', res);
     }
@@ -90,7 +90,7 @@ class AuthService {
         'phone': phone,
         'password': password,
       }),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 60));
     if (res.statusCode != 201) {
       throw Exception('Register failed: ${res.body}');
     }
@@ -103,7 +103,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'name': name, 'phone': phone}),
-    );
+    ).timeout(const Duration(seconds: 60));
     if (res.statusCode != 201) {
       throw Exception('Register failed: ${res.body}');
     }
@@ -126,7 +126,7 @@ class AuthService {
         'phone': phone,
         'password': password,
       }),
-    );
+    ).timeout(const Duration(seconds: 60));
     if (res.statusCode != 201) {
       throw Exception('Register failed: ${res.body}');
     }
@@ -156,7 +156,7 @@ class AuthService {
   Future<Map<String, dynamic>?> checkLabourSession() async {
     final uri = Uri.parse('$_base/labour/check-auth');
     try {
-      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         return data['labour'] as Map<String, dynamic>?;
@@ -171,7 +171,7 @@ class AuthService {
   Future<Map<String, dynamic>?> checkEngineerSession() async {
     final uri = Uri.parse('$_base/engineer/check-auth');
     try {
-      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         return data['engineer'] as Map<String, dynamic>?;
@@ -484,6 +484,17 @@ class AuthService {
     throw Exception('Failed to fetch job details: ${res.body}');
   }
 
+  /* ---------------- PROJECTS ---------------- */
+
+  Future<Map<String, dynamic>> getAllProjects() async {
+    final uri = Uri.parse('$_base/labour/projects/all');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch projects: ${res.body}');
+  }
+
   /* ---------------- ADDRESSES ---------------- */
 
   Future<List<dynamic>> getAddresses() async {
@@ -530,6 +541,14 @@ class AuthService {
     }
   }
 
+  Future<void> setPrimaryAddress(String id) async {
+    final uri = Uri.parse('$_base/labour/addresses/$id/set-primary');
+    final res = await _client.patch(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to set primary address: ${res.body}');
+    }
+  }
+
   /* ---------------- ATTENDANCE ---------------- */
 
   Future<Map<String, dynamic>> checkIn(String projectId, double lat, double lon) async {
@@ -555,9 +574,27 @@ class AuthService {
     final res = await _client.post(uri);
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['attendance'] as Map<String, dynamic>;
+      return (data['attendance'] ?? data['session']) as Map<String, dynamic>;
     }
     throw Exception('Check-out failed: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getLiveStatus() async {
+    final uri = Uri.parse('$_base/labour/attendance/live-status');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch live status: ${res.body}');
+  }
+
+  Future<void> trackLocation(double lat, double lon) async {
+    final uri = Uri.parse('$_base/labour/attendance/track');
+    await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'latitude': lat, 'longitude': lon}),
+    );
   }
 
   Future<List<dynamic>> getAttendanceHistory() async {
@@ -578,6 +615,16 @@ class AuthService {
       return data['attendance'] as Map<String, dynamic>?;
     }
     return null;
+  }
+
+  /* ---------------- WAGES (LABOUR) ---------------- */
+  Future<Map<String, dynamic>> getLabourWages() async {
+    final uri = Uri.parse('$_base/labour/wages/my-wages');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch wages: ${res.body}');
   }
 
   /* ---------------- MATERIAL MANAGEMENT ---------------- */

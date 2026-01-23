@@ -328,4 +328,150 @@ router.get("/today", labourCheck, async (req, res) => {
   }
 });
 
+/* ---------------- TRACK LOCATION ---------------- */
+router.post("/track", labourCheck, async (req, res) => {
+  try {
+    const labourId = req.user.id;
+    const { latitude, longitude } = req.body;
+
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: "Coordinates required" });
+    }
+
+    // 1. Find active attendance
+    const attendanceRes = await pool.query(
+      `SELECT a.*, p.org_id 
+       FROM attendance a
+       JOIN projects p ON a.project_id = p.id
+       WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE 
+       ORDER BY a.id DESC LIMIT 1`,
+      [labourId],
+    );
+
+    if (attendanceRes.rows.length === 0) {
+      return res.status(404).json({ error: "No active attendance for today" });
+    }
+
+    const attendance = attendanceRes.rows[0];
+    const projectId = attendance.project_id;
+    const orgId = attendance.org_id;
+
+    // 2. Validate Geofence
+    const geofenceResult = await validateGeofence(pool, projectId, latitude, longitude);
+
+    // 3. Update breach status
+    let breachCount = attendance.geofence_breach_count || 0;
+    let isCurrentlyBreached = !geofenceResult.isValid;
+    let blacklisted = false;
+
+    if (isCurrentlyBreached && !attendance.is_currently_breached) {
+      // New breach event recorded
+      breachCount += 1;
+
+      if (breachCount >= 3) {
+        // Blacklist logic
+        await pool.query(
+          `INSERT INTO organization_blacklist (org_id, labour_id, reason)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (org_id, labour_id) DO NOTHING`,
+          [orgId, labourId, 'Multiple geofence breaches (3+)'],
+        );
+        blacklisted = true;
+      }
+    }
+
+    // 4. Update attendance record
+    await pool.query(
+      `UPDATE attendance 
+       SET last_known_lat = $1, 
+           last_known_lng = $2, 
+           geofence_breach_count = $3,
+           is_currently_breached = $4,
+           last_event_at = CURRENT_TIMESTAMP
+       WHERE id = $5`,
+      [latitude, longitude, breachCount, isCurrentlyBreached, attendance.id],
+    );
+
+    res.json({
+      success: true,
+      is_inside: geofenceResult.isValid,
+      breach_count: breachCount,
+      blacklisted
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET LIVE STATUS ---------------- */
+router.get("/live-status", labourCheck, async (req, res) => {
+  try {
+    const labourId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT a.id, a.project_id, a.work_hours, a.is_currently_breached, a.geofence_breach_count,
+              p.name as project_name, p.geofence, p.geofence_radius,
+              l.skill_type, l.categories,
+              (
+                SELECT hourly_rate FROM wage_rates wr 
+                WHERE wr.project_id = a.project_id 
+                  AND wr.skill_type = l.skill_type 
+                  AND wr.category = (
+                    SELECT category FROM labour_requests lr 
+                    JOIN labour_request_participants lrp ON lr.id = lrp.labour_request_id
+                    WHERE lrp.labour_id = l.id AND lr.project_id = a.project_id AND lrp.status = 'APPROVED'
+                    LIMIT 1
+                  )
+                LIMIT 1
+              ) as hourly_rate,
+              (
+                SELECT check_in_time FROM attendance_sessions s 
+                WHERE s.attendance_id = a.id AND s.check_out_time IS NULL
+                ORDER BY s.check_in_time DESC LIMIT 1
+              ) as current_session_start
+       FROM attendance a
+       JOIN projects p ON a.project_id = p.id
+       JOIN labours l ON a.labour_id = l.id
+       WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE
+       ORDER BY a.id DESC LIMIT 1`,
+      [labourId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ status: 'INACTIVE', attendance: null });
+    }
+
+    const data = result.rows[0];
+    const hourlyRate = parseFloat(data.hourly_rate || 0);
+    const workHours = parseFloat(data.work_hours || 0);
+
+    // Calculate current session duration if active
+    let sessionMinutes = 0;
+    if (data.current_session_start) {
+      sessionMinutes = Math.floor((new Date() - new Date(data.current_session_start)) / 60000);
+    }
+
+    // Estimated earnings = (previously completed hours + current session hours) * rate
+    const totalHours = workHours + (sessionMinutes / 60);
+    const estimatedWages = (totalHours * hourlyRate).toFixed(2);
+
+    res.json({
+      status: data.current_session_start ? 'WORKING' : 'ON_BREAK',
+      project_name: data.project_name,
+      is_inside: !data.is_currently_breached,
+      breach_count: data.geofence_breach_count,
+      work_hours_today: totalHours.toFixed(2),
+      estimated_wages: estimatedWages,
+      hourly_rate: hourlyRate,
+      session_start: data.current_session_start
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

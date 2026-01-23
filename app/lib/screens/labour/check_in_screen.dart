@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../map/geofence_service.dart';
 import '../../widgets/site_map_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'shift_status_screen.dart';
 
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
@@ -140,7 +141,11 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+        // Navigate to shift status screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {

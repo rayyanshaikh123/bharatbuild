@@ -109,23 +109,14 @@ class _AddressCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton.icon(
-                onPressed: () async {
-                  await ref.read(deleteAddressProvider(address['id'].toString()).future);
-                  ref.read(profileProvider.future);
-                },
+                onPressed: () => ref.read(deleteAddressProvider(address['id'].toString()).future),
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: Text('delete'.tr()),
                 style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
               ),
               if (!isPrimary)
                 TextButton.icon(
-                  onPressed: () async {
-                    await ref.read(updateAddressProvider({
-                      'id': address['id'].toString(),
-                      'payload': {'is_primary': true}
-                    }).future);
-                    ref.read(profileProvider.future);
-                  },
+                  onPressed: () => ref.read(setPrimaryAddressProvider(address['id'].toString()).future),
                   icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: Text('set_primary'.tr()),
                 ),

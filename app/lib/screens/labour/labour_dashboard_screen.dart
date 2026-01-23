@@ -13,6 +13,7 @@ class LabourDashboardScreen extends ConsumerWidget {
       mobilePages: [
         const LabourDashboardContent(),
         const ApplicationsContent(),
+        const EarningsContent(),
         const ProfileContent(),
       ],
       child: const LabourDashboardContent(),

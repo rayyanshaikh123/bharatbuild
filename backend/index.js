@@ -197,11 +197,14 @@ app.use("/engineer/notifications", require("./routes/engineer/notifications"));
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
+app.use("/labour/projects", require("./routes/labour/projects"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+app.use("/labour/wages", require("./routes/labour/wages"));
 app.use("/labour/notifications", require("./routes/labour/notifications"));
 app.use("/labour/address", require("./routes/labour/address"));
 app.use("/labour/sync", require("./routes/labour/sync"));
 app.use("/labour/fast", require("./routes/labour/fast/graphql"));
+app.use("/labour/user", require("./routes/labour/user"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
 /* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */

@@ -276,5 +276,19 @@
     "scan_failed": "Scanning failed",
     "bill_scanned_success": "Bill scanned successfully",
     "scan_bill_ai": "Scan Bill with AI",
-    "scanning": "Scanning..."
+    "scanning": "Scanning...",
+    "explore_projects": "Explore Projects",
+    "view_all_sites": "View All Sites",
+    "no_projects_available": "No projects found",
+    "show_radius": "Radius",
+    "set_current_as_primary": "Set as primary",
+    "nearby_projects": "Nearby Projects",
+    "primary_address_updated": "Primary address updated",
+    "no_vacancy": "No Vacancy",
+    "earnings": "Earnings",
+    "total_earnings": "Total Earnings",
+    "unpaid": "Unpaid",
+    "payment_history": "Payment History",
+    "no_earnings_yet": "No earnings recorded yet",
+    "weekly_overview": "Weekly Overview"
 }

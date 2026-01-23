@@ -70,9 +70,10 @@ class NotificationsScreen extends ConsumerWidget {
                   'icon': _getIconForType(notification['type']),
                   'color': _getColorForType(notification['type']),
                   'read': notification['is_read'] ?? false,
+                  'created_at': notification['created_at'],
                 };
                 
-                return _buildNotificationCard(context, ref, mapped);
+                return _buildNotificationCard(context, ref, mapped, isEngineer);
               },
             ),
           );
@@ -149,7 +150,7 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, WidgetRef ref, Map<String, dynamic> notification) {
+  Widget _buildNotificationCard(BuildContext context, WidgetRef ref, Map<String, dynamic> notification, bool isEngineer) {
     final theme = Theme.of(context);
     final isRead = notification['read'] as bool;
 
