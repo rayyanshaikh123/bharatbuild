@@ -12,7 +12,7 @@ const {
  * Batch synchronization endpoint
  * Accepts array of offline actions and processes them sequentially
  */
-router.post("/batch", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { actions } = req.body;
     const user = req.user;

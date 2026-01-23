@@ -30,10 +30,14 @@ app.use(
 // Logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Started`);
-  res.on('finish', () => {
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.url} - Started`,
+  );
+  res.on("finish", () => {
     const duration = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`,
+    );
   });
   next();
 });
@@ -155,6 +159,8 @@ app.use("/engineer/ledger", require("./routes/engineer/ledger"));
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+app.use("/labour/address", require("./routes/labour/address"));
+app.use("/labour/sync", require("./routes/labour/sync"));
 app.use("/labour/fast", require("./routes/labour/fast/graphql"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
