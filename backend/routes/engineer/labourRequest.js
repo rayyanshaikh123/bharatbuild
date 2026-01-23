@@ -6,31 +6,7 @@ const {
   logAudit,
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
-
-// Check if engineer is APPROVED in organization
-async function engineerOrgStatusCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM organization_site_engineers ose
-     JOIN projects p ON ose.org_id = p.org_id
-     WHERE ose.site_engineer_id = $1 
-       AND p.id = $2 
-       AND ose.status = 'APPROVED'`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
-
-// Check if engineer is ACTIVE in project
-async function engineerProjectStatusCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status = 'ACTIVE'`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 /* ---------------- CREATE LABOUR REQUEST ---------------- */
 router.post("/", engineerCheck, async (req, res) => {
@@ -60,27 +36,14 @@ router.post("/", engineerCheck, async (req, res) => {
       project_id = activeProject.rows[0].project_id;
     }
 
+    // Unified Permission Check
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
+      return res.status(403).json({ error: access.error });
+    }
+
     // Default search radius if not provided
     if (!search_radius_meters) search_radius_meters = 10000; // 10km
-
-    // Check if engineer is APPROVED in organization
-    const isOrgApproved = await engineerOrgStatusCheck(engineerId, project_id);
-    if (!isOrgApproved) {
-      return res.status(403).json({
-        error: "Access denied. Not an approved engineer in the organization.",
-      });
-    }
-
-    // Check if engineer is ACTIVE in project
-    const isProjectActive = await engineerProjectStatusCheck(
-      engineerId,
-      project_id,
-    );
-    if (!isProjectActive) {
-      return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
-      });
-    }
 
     const result = await pool.query(
       `INSERT INTO labour_requests (project_id, site_engineer_id, category, 

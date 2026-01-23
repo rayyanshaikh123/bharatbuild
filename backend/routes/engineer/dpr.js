@@ -2,30 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
-
-// Check if engineer is ACTIVE in project
-async function engineerProjectStatusCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status = 'APPROVED'`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
-
-// Check if engineer is part of project (ACTIVE or PENDING) - for read operations
-async function engineerProjectAccessCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status IN ('APPROVED', 'PENDING')`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 /* ---------------- GET PLAN ITEMS (FOR DROPDOWN) ---------------- */
 router.get(
@@ -36,11 +13,11 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      // Check if engineer has access to project (ACTIVE or PENDING) - read operation
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      // Check if engineer has access to project
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -88,10 +65,10 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
     } = req.body;
 
     // Check if engineer is ACTIVE in project
-    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-    if (!isActive) {
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -171,11 +148,11 @@ router.get("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
     const engineerId = req.user.id;
     const { projectId } = req.params;
 
-    // Check if engineer has access to project (ACTIVE or PENDING) - read operation
-    const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-    if (!hasAccess) {
+    // Check if engineer has access to project
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -213,10 +190,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -255,10 +232,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -297,10 +274,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -348,11 +325,11 @@ router.get("/dprs/:dprId", engineerCheck, async (req, res) => {
 
     const projectId = dprCheck.rows[0].project_id;
 
-    // Check if engineer has access to project (ACTIVE or PENDING) - read operation
-    const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-    if (!hasAccess) {
+    // Check if engineer has access to project
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -419,11 +396,11 @@ router.get("/dprs/:dprId/image", engineerCheck, async (req, res) => {
       report_image_mime,
     } = dprCheck.rows[0];
 
-    // Check if engineer has access to project (ACTIVE or PENDING) - read operation
-    const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-    if (!hasAccess) {
+    // Check if engineer has access to project
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -448,10 +425,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -490,10 +467,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -532,10 +509,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -574,10 +551,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId, date } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -616,10 +593,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -653,10 +630,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -690,10 +667,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 
@@ -727,10 +704,10 @@ router.get(
       const engineerId = req.user.id;
       const { projectId } = req.params;
 
-      const hasAccess = await engineerProjectAccessCheck(engineerId, projectId);
-      if (!hasAccess) {
+      const access = await verifyEngineerAccess(engineerId, projectId);
+      if (!access.allowed) {
         return res.status(403).json({
-          error: "Access denied. Not an engineer in the project.",
+          error: access.error,
         });
       }
 

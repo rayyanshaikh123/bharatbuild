@@ -280,7 +280,7 @@ class EngineerDashboardContent extends ConsumerWidget {
                 _quickActionItem(context, Icons.how_to_reg_outlined, 'manual_attendance'.tr(), () => Navigator.pushNamed(context, '/engineer-attendance')),
                 _quickActionItem(context, Icons.payments_outlined, 'daily_wages'.tr(), () => Navigator.pushNamed(context, '/engineer-wages')),
                 _quickActionItem(context, Icons.inventory_2_outlined, 'material_management'.tr(), () => Navigator.pushNamed(context, '/engineer-materials')),
-                _quickActionItem(context, Icons.business_outlined, 'organization'.tr(), () => Navigator.pushNamed(context, '/engineer-organization')),
+                _quickActionItem(context, Icons.business_outlined, 'my_organizations'.tr(), () => Navigator.pushNamed(context, '/engineer-my-organizations')),
                 _quickActionItem(context, Icons.description_outlined, 'submit_report'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DPRFormScreen()))),
               ],
             ),
@@ -541,7 +541,7 @@ class EngineerJobsContent extends ConsumerWidget {
               subtitle: 'manage_ongoing_projects'.tr(),
               color: Colors.orange,
               onTap: () {
-                // TODO: Navigate to projects list
+                Navigator.pushNamed(context, '/engineer-my-projects');
               },
             ),
           ],
@@ -775,9 +775,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
               context,
               'my_projects'.tr(),
               Icons.construction,
-              onTap: () {
-                // TODO: Navigate to projects list
-              },
+              onTap: () => Navigator.pushNamed(context, '/engineer-my-projects'),
             ),
             _profileOption(
               context,

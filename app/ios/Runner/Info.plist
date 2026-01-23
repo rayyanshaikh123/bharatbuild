@@ -51,5 +51,10 @@
     <string>Allow access to speech recognition for easier data entry.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow access to the microphone for voice input functionality.</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

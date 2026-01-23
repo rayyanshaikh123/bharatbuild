@@ -36,6 +36,9 @@ import 'screens/engineer/engineer_project_list.dart';
 import 'screens/engineer/engineer_requests_screen.dart';
 import 'screens/engineer/tasks_screen.dart';
 
+import 'screens/engineer/my_organizations_page.dart';
+import 'screens/engineer/my_projects_page.dart';
+
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -105,6 +108,8 @@ class MyApp extends ConsumerWidget {
           '/engineer-my-requests': (_) => const EngineerRequestsScreen(),
           '/engineer-materials': (_) => const MaterialManagementScreen(),
           '/engineer-tasks': (_) => const TasksScreen(),
+          '/engineer-my-organizations': (_) => const MyOrganizationsScreen(),
+          '/engineer-my-projects': (_) => const MyProjectsScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {

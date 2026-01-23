@@ -265,5 +265,9 @@
     "movement_recorded": "Movement recorded successfully",
     "queued_offline": "Action saved offline and will sync later",
     "join_project_first": "Join a Project First",
-    "join_project_desc": "You need to be part of a project to access this section. Join an existing project or contact your manager."
+    "join_project_desc": "You need to be part of a project to access this section. Join an existing project or contact your manager.",
+    "too_far": "Too far",
+    "view_details": "View Details",
+    "too_far_to_apply": "This site is too far from your primary location to apply.",
+    "cannot_apply": "Out of Range"
 }

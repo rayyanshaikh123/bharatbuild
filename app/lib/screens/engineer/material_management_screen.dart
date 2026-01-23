@@ -268,9 +268,13 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
   }
 
   void _issueMaterial(Map<String, dynamic> item) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => _IssueMaterialDialog(item: item),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _IssueMaterialSheet(item: item),
     );
   }
 
@@ -319,15 +323,15 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
   }
 }
 
-class _IssueMaterialDialog extends ConsumerStatefulWidget {
+class _IssueMaterialSheet extends ConsumerStatefulWidget {
   final Map<String, dynamic> item;
-  const _IssueMaterialDialog({required this.item});
+  const _IssueMaterialSheet({required this.item});
 
   @override
-  ConsumerState<_IssueMaterialDialog> createState() => _IssueMaterialDialogState();
+  ConsumerState<_IssueMaterialSheet> createState() => _IssueMaterialSheetState();
 }
 
-class _IssueMaterialDialogState extends ConsumerState<_IssueMaterialDialog> {
+class _IssueMaterialSheetState extends ConsumerState<_IssueMaterialSheet> {
   final _qtyController = TextEditingController();
   final _nameController = TextEditingController();
   final _remarksController = TextEditingController();
@@ -343,44 +347,122 @@ class _IssueMaterialDialogState extends ConsumerState<_IssueMaterialDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final project = ref.watch(currentProjectProvider);
-
-    return AlertDialog(
-      title: Text('record_movement'.tr()),
-      content: SingleChildScrollView(
+    
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24, right: 24, top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
-              value: _movementType,
-              items: ['IN', 'OUT', 'ADJUSTMENT'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _movementType = val!),
-              decoration: InputDecoration(labelText: 'type'.tr()),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'record_movement'.tr(),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
-            TextField(
+            const SizedBox(height: 24),
+            
+            _buildTypeSelector(),
+            const SizedBox(height: 20),
+            
+            TextFormField(
               controller: _nameController,
-              decoration: InputDecoration(labelText: 'material_name'.tr()),
+              decoration: InputDecoration(
+                labelText: 'material_name'.tr(),
+                prefixIcon: const Icon(Icons.inventory_2_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               enabled: widget.item['material_name'] == null,
             ),
-            TextField(
+            const SizedBox(height: 16),
+            
+            TextFormField(
               controller: _qtyController,
-              decoration: InputDecoration(labelText: 'quantity'.tr()),
+              decoration: InputDecoration(
+                labelText: 'quantity'.tr(),
+                prefixIcon: const Icon(Icons.numbers),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               keyboardType: TextInputType.number,
             ),
-            TextField(
+            const SizedBox(height: 16),
+            
+            TextFormField(
               controller: _remarksController,
-              decoration: InputDecoration(labelText: 'remarks'.tr()),
+              decoration: InputDecoration(
+                labelText: 'remarks'.tr(),
+                prefixIcon: const Icon(Icons.notes),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isLoading 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                  : Text('submit'.tr()),
+              ),
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text('cancel'.tr())),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _submit,
-          child: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text('submit'.tr()),
-        ),
-      ],
+    );
+  }
+
+  Widget _buildTypeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: ['IN', 'OUT', 'ADJUSTMENT'].map((type) {
+          final isSelected = _movementType == type;
+          return Expanded(
+            child: InkWell(
+              onTap: () => setState(() => _movementType = type),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: isSelected ? [
+                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+                  ] : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  type,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppColors.primary : Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 

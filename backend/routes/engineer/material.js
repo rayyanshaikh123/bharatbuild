@@ -6,18 +6,7 @@ const {
   logAudit,
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
-
-// Check if engineer is ACTIVE in project
-async function engineerProjectStatusCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status = 'APPROVED'`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 /* ---------------- CREATE MATERIAL REQUEST ---------------- */
 router.post("/request", engineerCheck, async (req, res) => {
@@ -34,8 +23,8 @@ router.post("/request", engineerCheck, async (req, res) => {
       request_image_mime,
     } = req.body;
 
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const isActive = await verifyEngineerAccess(engineerId, project_id);
+    if (!isActive.allowed) return res.status(403).json({ error: isActive.error });
 
     // Check standalone request limit if no DPR linked
     if (!dpr_id) {
@@ -187,10 +176,10 @@ router.patch("/requests/:id", engineerCheck, async (req, res) => {
     }
 
     // Verify engineer is still ACTIVE in project
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) {
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -262,10 +251,10 @@ router.delete("/requests/:id", engineerCheck, async (req, res) => {
     }
 
     // Verify engineer is still ACTIVE in project
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) {
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -311,8 +300,8 @@ router.post("/upload-bill", engineerCheck, async (req, res) => {
       category,
     } = req.body;
 
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const isActive = await verifyEngineerAccess(engineerId, project_id);
+    if (!isActive.allowed) return res.status(403).json({ error: isActive.error });
 
     // Validate: if material_request_id provided, it must be APPROVED
     if (material_request_id) {
@@ -468,10 +457,10 @@ router.patch("/bills/:id", engineerCheck, async (req, res) => {
     }
 
     // Verify engineer is still ACTIVE in project
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) {
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
+        error: access.error,
       });
     }
 
@@ -546,10 +535,10 @@ router.delete("/bills/:id", engineerCheck, async (req, res) => {
     }
 
     // Verify engineer is still ACTIVE in project
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) {
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
       return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
+        error: access.error,
       });
     }
 

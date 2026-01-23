@@ -150,6 +150,7 @@ app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
 app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
 app.use("/engineer/ledger", require("./routes/engineer/ledger"));
+app.use("/engineer/ai", require("./routes/engineer/ai"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
