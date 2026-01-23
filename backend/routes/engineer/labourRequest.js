@@ -175,6 +175,18 @@ router.post(
 
       const { project_id, request_date } = reqResult.rows[0];
 
+      // Check if blacklisted by the organization parent of this project
+      const blacklistCheck = await pool.query(
+        `SELECT 1 FROM organization_blacklist ob
+         JOIN projects p ON ob.org_id = p.org_id
+         WHERE ob.labour_id = $1 AND p.id = $2`,
+        [labourId, project_id]
+      );
+
+      if (blacklistCheck.rows.length > 0) {
+        return res.status(403).json({ error: "Cannot approve. Labourer is blacklisted by the organization." });
+      }
+
       // Create entry in attendance table (or update if exists)
       // In this system, "Approval" means we are creating a pending attendance record that allows them to check-in/out
       // or marking them as 'APPROVED' for that day.

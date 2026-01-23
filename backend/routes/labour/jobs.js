@@ -65,7 +65,13 @@ router.get("/available", labourCheck, async (req, res) => {
            AND lr.category = wr.category
       WHERE lr.status = 'OPEN'
       AND lr.request_date >= CURRENT_DATE
+      AND NOT EXISTS (
+        SELECT 1 FROM organization_blacklist ob 
+        WHERE ob.org_id = p.org_id AND ob.labour_id = $${paramIdx}
+      )
     `;
+    params.push(labourId);
+    paramIdx++;
 
     // Optional: Filter by labour's registered categories if any
     if (categories.length > 0) {
@@ -120,6 +126,17 @@ router.post("/:id/apply", labourCheck, async (req, res) => {
 
     if (requestCheck.rows[0].status !== "OPEN") {
       return res.status(400).json({ error: "Job is no longer open" });
+    }
+
+    // Check if blacklisted
+    const blacklistCheck = await pool.query(
+      `SELECT 1 FROM organization_blacklist 
+       WHERE labour_id = $1 AND org_id = (SELECT org_id FROM projects WHERE id = (SELECT project_id FROM labour_requests WHERE id = $2))`,
+      [labourId, requestId]
+    );
+
+    if (blacklistCheck.rows.length > 0) {
+      return res.status(403).json({ error: "Unauthorized. You are blacklisted from this organization." });
     }
 
     // Check if application is allowed based on distance

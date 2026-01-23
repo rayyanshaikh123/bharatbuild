@@ -426,5 +426,27 @@ export const ownerLabourRequests = {
     api.get<{ labour_requests: LabourRequest[] }>(`/owner/labour-request/labour-requests?projectId=${projectId}`),
 };
 
+// ==================== OWNER BLACKLIST API ====================
+
+export interface BlacklistEntry {
+  id: string;
+  org_id: string;
+  labour_id: string;
+  reason: string;
+  created_at: string;
+  labour_name: string;
+  labour_phone: string;
+  skill_type: string;
+  organization_name: string;
+}
+
+export const ownerBlacklist = {
+  getAll: () =>
+    api.get<{ blacklist: BlacklistEntry[] }>("/owner/blacklist"),
+
+  remove: (id: string) =>
+    api.delete<{ message: string }>(`/owner/blacklist/${id}`),
+};
+
 
 
