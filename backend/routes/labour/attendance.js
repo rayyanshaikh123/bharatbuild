@@ -304,7 +304,7 @@ router.get("/today", labourCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT a.id, a.project_id, a.labour_id, a.attendance_date, a.status,
               a.work_hours, a.entry_exit_count, a.max_allowed_exits,
-              p.name as project_name, p.geofence_radius,
+              p.name as project_name, p.latitude, p.longitude, p.location_text, p.geofence, p.geofence_radius,
               (
                 SELECT json_build_object(
                   'session_id', s.id,

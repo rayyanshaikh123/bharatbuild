@@ -60,6 +60,7 @@ router.get(
 
 /* ---------------- CREATE DPR ---------------- */
 router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
+  const client = await pool.connect();
   try {
     const engineerId = req.user.id;
     const { projectId } = req.params;
@@ -71,6 +72,7 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
       report_date,
       report_image,
       report_image_mime,
+      items, // array of { plan_item_id, quantity_done, remarks }
     } = req.body;
 
     // Check if engineer is ACTIVE in project
@@ -81,7 +83,9 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `INSERT INTO dprs (project_id, site_engineer_id, title, description, 
        plan_id, plan_item_id, report_date, report_image, report_image_mime)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
@@ -93,15 +97,31 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
         plan_id || null,
         plan_item_id || null,
         report_date,
-        report_image || null,
+        report_image ? Buffer.from(report_image, "base64") : null,
         report_image_mime || null,
       ],
     );
 
+    const dprId = result.rows[0].id;
+
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO dpr_items (dpr_id, plan_item_id, quantity_done, remarks)
+           VALUES ($1, $2, $3, $4)`,
+          [dprId, item.plan_item_id, item.quantity_done, item.remarks || null],
+        );
+      }
+    }
+
+    await client.query("COMMIT");
     res.status(201).json({ dpr: result.rows[0] });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 
@@ -341,7 +361,24 @@ router.get("/dprs/:dprId", engineerCheck, async (req, res) => {
       [dprId],
     );
 
-    res.json({ dpr: result.rows[0] });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "DPR not found" });
+    }
+
+    const dpr = result.rows[0];
+
+    // Fetch items
+    const itemsResult = await pool.query(
+      `SELECT di.*, pi.task_name, pi.planned_quantity, pi.description as task_description
+       FROM dpr_items di
+       JOIN plan_items pi ON di.plan_item_id = pi.id
+       WHERE di.dpr_id = $1`,
+      [dprId],
+    );
+
+    dpr.items = itemsResult.rows;
+
+    res.json({ dpr });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

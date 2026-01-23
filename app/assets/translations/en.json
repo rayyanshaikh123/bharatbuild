@@ -245,5 +245,16 @@
     "join_org_desc": "Join an organization to start working on projects.",
     "not_in_org": "Not in an Organization",
     "join_one_to_start": "Join one to start managing projects.",
-    "approved_org": "Organization Approved"
+    "approved_org": "Organization Approved",
+    "search_projects": "Search projects...",
+    "join_project": "Join Project",
+    "request_sent": "Request sent successfully",
+    "join": "Join",
+    "my_requests": "My Requests",
+    "your_location": "Your Location",
+    "work_progress": "Work Progress",
+    "add_task": "Add Task",
+    "no_tasks_selected_yet": "No tasks selected yet",
+    "quantity_done": "Quantity Done Today",
+    "remarks": "Remarks"
 }

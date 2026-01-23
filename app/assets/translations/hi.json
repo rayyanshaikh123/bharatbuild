@@ -192,5 +192,17 @@
     "description": "विवरण",
     "link_to_planned_task": "नियोजित कार्य से जोड़ें",
     "describe_work_done": "आज किए गए कार्य का वर्णन करें",
-    "submit_report": "रिपोर्ट सबमिट करें"
+    "submit_report": "रिपोर्ट सबमिट करें",
+    "search_projects": "परियोजनाओं को खोजें...",
+    "join_project": "परियोजना में शामिल हों",
+    "request_sent": "अनुरोध सफलतापूर्वक भेज दिया गया",
+    "join": "शामिल हों",
+    "approved_org": "संगठन स्वीकृत",
+    "my_requests": "मेरे अनुरोध",
+    "your_location": "आपकी स्थिति",
+    "work_progress": "कार्य प्रगति",
+    "add_task": "कार्य जोड़ें",
+    "no_tasks_selected_yet": "अभी तक कोई कार्य नहीं चुना गया",
+    "quantity_done": "आज किया गया कार्य",
+    "remarks": "टिप्पणी"
 }

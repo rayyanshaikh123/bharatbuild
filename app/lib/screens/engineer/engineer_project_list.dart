@@ -14,19 +14,44 @@ class EngineerProjectListScreen extends ConsumerStatefulWidget {
 class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListScreen> {
   bool _isLoading = true;
   List<dynamic> _projects = [];
+  List<dynamic> _filteredProjects = [];
   String? _error;
   String? _orgId;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchProjects();
+    _searchController.addListener(_filterProjects);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterProjects);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterProjects() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredProjects = _projects;
+      } else {
+        _filteredProjects = _projects.where((p) {
+          final name = (p['name'] ?? '').toString().toLowerCase();
+          final location = (p['location_text'] ?? '').toString().toLowerCase();
+          return name.contains(query) || location.contains(query);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _fetchProjects() async {
     try {
       final auth = ref.read(authServiceProvider);
-      // First get current org ID
+      // Get current organization
       final orgData = await auth.getCurrentOrganization();
       final orgs = orgData['organizations'] as List;
       
@@ -38,6 +63,7 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
         return;
       }
       
+      // Engineer can only apply to projects of an organization they are in
       _orgId = orgs.first['id'].toString();
       
       final projects = await auth.getOrgProjects(_orgId!);
@@ -45,6 +71,7 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
       if (mounted) {
         setState(() {
           _projects = projects;
+          _filteredProjects = projects;
           _isLoading = false;
         });
       }
@@ -66,6 +93,8 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('request_sent'.tr()), backgroundColor: Colors.green),
         );
+        // Navigate back or refresh? Typically navigate back to "My Requests"
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -84,26 +113,54 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : _projects.isEmpty
-                  ? Center(child: Text('no_projects_found'.tr()))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _projects.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final project = _projects[index];
-                        return Card(
-                          child: ListTile(
-                            title: Text(project['name'] ?? 'Untitled'),
-                            subtitle: Text(project['location_text'] ?? 'No location'),
-                            trailing: ElevatedButton(
-                              onPressed: () => _requestJoin(project['id'].toString()),
-                              child: Text('join'.tr()),
-                            ),
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'search_projects'.tr(),
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
+                    Expanded(
+                      child: _filteredProjects.isEmpty
+                          ? Center(child: Text('no_projects_found'.tr()))
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _filteredProjects.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final project = _filteredProjects[index];
+                                return Card(
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.all(16),
+                                    title: Text(
+                                      project['name'] ?? 'Untitled',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    subtitle: Text(project['location_text'] ?? 'No location'),
+                                    trailing: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      onPressed: () => _requestJoin(project['id'].toString()),
+                                      child: Text('join'.tr()),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
     );
   }
 }

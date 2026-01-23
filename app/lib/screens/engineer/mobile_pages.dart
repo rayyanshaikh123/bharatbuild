@@ -180,9 +180,49 @@ class EngineerDashboardContent extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SiteMapWidget(
-            geofence: selectedProject?['geofence'] != null 
-              ? (selectedProject!['geofence'] as List).map((p) => LatLng(p[0], p[1])).toList()
-              : [],
+            orgData: currentOrgAsync.maybeWhen(
+              data: (org) => org,
+              orElse: () => null,
+            ),
+            projectsData: projectsAsync.maybeWhen(
+              data: (projects) => projects.map((p) => p as Map<String, dynamic>).toList(),
+              orElse: () => <Map<String, dynamic>>[],
+            ),
+            geofences: projectsAsync.maybeWhen(
+              data: (projects) {
+                return projects.map((project) {
+                  try {
+                    final gf = project['geofence'];
+                    if (gf != null && gf is List) {
+                      return gf.map((p) {
+                        try {
+                          if (p is List && p.length >= 2) {
+                            return LatLng(
+                              double.parse(p[0].toString()),
+                              double.parse(p[1].toString()),
+                            );
+                          } else if (p is Map) {
+                            final lat = p['lat'] ?? p['latitude'];
+                            final lng = p['lng'] ?? p['longitude'];
+                            if (lat != null && lng != null) {
+                              return LatLng(
+                                double.parse(lat.toString()),
+                                double.parse(lng.toString()),
+                              );
+                            }
+                          }
+                        } catch (_) {}
+                        return null;
+                      }).whereType<LatLng>().toList();
+                    }
+                  } catch (e) {
+                    debugPrint('Error parsing geofence: $e');
+                  }
+                  return <LatLng>[];
+                }).where((list) => list.isNotEmpty).toList();
+              },
+              orElse: () => <List<LatLng>>[],
+            ),
           ),
 
           const SizedBox(height: 32),

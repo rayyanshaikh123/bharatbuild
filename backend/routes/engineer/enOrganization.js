@@ -7,7 +7,7 @@ router.get("/", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
     const result = await pool.query(
-      `SELECT o.id, o.name, o.address, o.office_phone
+      `SELECT o.id, o.name, o.address, o.office_phone, o.latitude, o.longitude
              FROM organizations o
              JOIN organization_site_engineers ose ON o.id = ose.org_id
              WHERE ose.site_engineer_id = $1 AND ose.status = 'APPROVED'`,
@@ -26,7 +26,7 @@ router.get("/", engineerCheck, async (req, res) => {
 router.get("/all", engineerCheck, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, address, office_phone FROM organizations`,
+      `SELECT id, name, address, office_phone, latitude, longitude FROM organizations`,
     );
     res.json({ organizations: result.rows });
   } catch (err) {

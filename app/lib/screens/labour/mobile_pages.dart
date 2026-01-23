@@ -98,7 +98,45 @@ class LabourDashboardContent extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       SiteMapWidget(
-                        geofence: (attendance['geofence'] as List).map((p) => LatLng(p[0], p[1])).toList(),
+                        projectsData: attendance['project_id'] != null ? [
+                          {
+                            'name': attendance['project_name'] ?? 'Site',
+                            'latitude': attendance['latitude'],
+                            'longitude': attendance['longitude'],
+                            'location_text': attendance['location_text'],
+                          }
+                        ] : null,
+                        geofences: () {
+                          try {
+                            final gf = attendance['geofence'];
+                            if (gf != null && gf is List) {
+                              final points = gf.map((p) {
+                                try {
+                                  if (p is List && p.length >= 2) {
+                                    return LatLng(
+                                      double.parse(p[0].toString()),
+                                      double.parse(p[1].toString()),
+                                    );
+                                  } else if (p is Map) {
+                                    final lat = p['lat'] ?? p['latitude'];
+                                    final lng = p['lng'] ?? p['longitude'];
+                                    if (lat != null && lng != null) {
+                                      return LatLng(
+                                        double.parse(lat.toString()),
+                                        double.parse(lng.toString()),
+                                      );
+                                    }
+                                  }
+                                } catch (_) {}
+                                return null;
+                              }).whereType<LatLng>().toList();
+                              if (points.isNotEmpty) return [points];
+                            }
+                          } catch (e) {
+                            debugPrint('Error parsing geofence: $e');
+                          }
+                          return <List<LatLng>>[];
+                        }(),
                       ),
                       const SizedBox(height: 32),
                     ],
