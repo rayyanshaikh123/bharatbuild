@@ -163,22 +163,34 @@ router.get("/all-projects", managerCheck, async (req, res) => {
   try {
     const managerId = req.user.id;
     const { organizationId } = req.query;
-    //THE BELOW CAN BE UNCMMENTED IF WE WANT TO RESTRICT MANAGERS TO ONLY VIEW PROJECTS IN ORGS THEY ARE APPROVED IN AND MORE CHANGES SHOULD BE MADE SO THAT IF CRETOR IS REJECTED NE CREATOR SHOULD BE THERE
 
-    // const isApproved = await managerOrgStatusCheck(managerId, organizationId);
-    // if (!isApproved) {
-    //   return res.status(403).json({
-    //     error: "You are not authorized to view projects for this organization.",
-    //   });
-    // }
+    if (!organizationId) {
+      return res.status(400).json({ error: "organizationId is required" });
+    }
 
-    // Get all projects where this manager is ACTIVE
+    // Check if manager is approved in organization
+    const isApproved = await managerOrgStatusCheck(managerId, organizationId);
+    if (!isApproved) {
+      return res.status(403).json({
+        error: "You are not authorized to view projects for this organization.",
+      });
+    }
+
+    // Get ALL projects in the organization with manager's status
     const result = await pool.query(
-      `SELECT p.* FROM projects p
-       JOIN project_managers pm ON p.id = pm.project_id
-       WHERE pm.manager_id = $1 AND p.org_id = $2 AND pm.status = 'ACTIVE'`,
+      `SELECT p.*, 
+              pm.status as my_status,
+              CASE 
+                WHEN p.created_by = $1::uuid THEN true 
+                ELSE false 
+              END as is_creator
+       FROM projects p
+       LEFT JOIN project_managers pm ON p.id = pm.project_id AND pm.manager_id = $1::uuid
+       WHERE p.org_id = $2::uuid
+       ORDER BY p.created_at DESC`,
       [managerId, organizationId],
     );
+
     res.json({ projects: result.rows });
   } catch (err) {
     console.error(err);

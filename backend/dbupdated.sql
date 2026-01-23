@@ -15,6 +15,7 @@ CREATE TABLE "attendance" (
 	"entry_exit_count" integer DEFAULT 0,
 	"max_allowed_exits" integer DEFAULT 3,
 	"last_event_at" timestamp,
+	"source" text DEFAULT 'ONLINE',
 	CONSTRAINT "attendance_project_id_labour_id_attendance_date_key" UNIQUE("project_id","labour_id","attendance_date"),
 	CONSTRAINT "attendance_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
@@ -34,6 +35,18 @@ CREATE TABLE "audit_logs" (
 	"remarks" text,
 	"acted_by_role" text NOT NULL,
 	"acted_by_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"organization_id" uuid,
+	"project_id" uuid,
+	"category" text,
+	"change_summary" jsonb
+);
+CREATE TABLE "dpr_items" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"dpr_id" uuid NOT NULL,
+	"plan_item_id" uuid NOT NULL,
+	"quantity_done" numeric DEFAULT '0' NOT NULL,
+	"remarks" text,
 	"created_at" timestamp DEFAULT now()
 );
 CREATE TABLE "dprs" (
@@ -132,6 +145,25 @@ CREATE TABLE "material_bills" (
 	"bill_image_mime" text,
 	CONSTRAINT "material_bills_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
+CREATE TABLE "material_ledger" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"dpr_id" uuid,
+	"material_request_id" uuid,
+	"material_name" text NOT NULL,
+	"category" text,
+	"quantity" numeric NOT NULL,
+	"unit" text NOT NULL,
+	"movement_type" text NOT NULL,
+	"source" text NOT NULL,
+	"remarks" text,
+	"recorded_by" uuid,
+	"recorded_by_role" text,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "material_ledger_movement_type_check" CHECK (CHECK ((movement_type = ANY (ARRAY['IN'::text, 'OUT'::text, 'ADJUSTMENT'::text])))),
+	CONSTRAINT "material_ledger_recorded_by_role_check" CHECK (CHECK ((recorded_by_role = ANY (ARRAY['SITE_ENGINEER'::text, 'MANAGER'::text])))),
+	CONSTRAINT "material_ledger_source_check" CHECK (CHECK ((source = ANY (ARRAY['AI_DPR'::text, 'MANUAL'::text, 'BILL'::text, 'ADJUSTMENT'::text]))))
+);
 CREATE TABLE "material_requests" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"project_id" uuid,
@@ -178,7 +210,9 @@ CREATE TABLE "organizations" (
 	"office_phone" text,
 	"org_type" text,
 	"owner_id" uuid NOT NULL,
-	"created_at" timestamp DEFAULT now()
+	"created_at" timestamp DEFAULT now(),
+	"latitude" numeric,
+	"longitude" numeric
 );
 CREATE TABLE "otp_logs" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -220,7 +254,16 @@ CREATE TABLE "plan_items" (
 	"planned_manpower" integer,
 	"planned_cost" numeric,
 	"created_at" timestamp DEFAULT now(),
-	CONSTRAINT "plan_items_period_type_check" CHECK (CHECK ((period_type = ANY (ARRAY['WEEK'::text, 'MONTH'::text]))))
+	"status" text DEFAULT 'PENDING',
+	"completed_at" date,
+	"updated_by" uuid,
+	"updated_by_role" text,
+	"delay_info" jsonb,
+	"priority" integer DEFAULT 0 NOT NULL,
+	CONSTRAINT "plan_items_period_type_check" CHECK (CHECK ((period_type = ANY (ARRAY['WEEK'::text, 'MONTH'::text])))),
+	CONSTRAINT "plan_items_priority_check" CHECK (CHECK (((priority >= 0) AND (priority <= 5)))),
+	CONSTRAINT "plan_items_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'IN_PROGRESS'::text, 'COMPLETED'::text, 'BLOCKED'::text])))),
+	CONSTRAINT "plan_items_updated_by_role_check" CHECK (CHECK ((updated_by_role = 'MANAGER'::text)))
 );
 CREATE TABLE "plans" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -246,7 +289,7 @@ CREATE TABLE "project_site_engineers" (
 	"status" text DEFAULT 'PENDING',
 	"assigned_at" timestamp DEFAULT now(),
 	CONSTRAINT "project_site_engineers_project_id_site_engineer_id_key" UNIQUE("project_id","site_engineer_id"),
-	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'REMOVED'::text, 'REJECTED'::text]))))
+	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REMOVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "projects" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -263,6 +306,7 @@ CREATE TABLE "projects" (
 	"created_by" uuid,
 	"created_at" timestamp DEFAULT now(),
 	"current_invested" numeric DEFAULT '0',
+	"geofence" jsonb,
 	CONSTRAINT "projects_status_check" CHECK (CHECK ((status = ANY (ARRAY['PLANNED'::text, 'ACTIVE'::text, 'COMPLETED'::text, 'ON_HOLD'::text]))))
 );
 CREATE TABLE "session" (
@@ -279,6 +323,28 @@ CREATE TABLE "site_engineers" (
 	"role" text DEFAULT 'SITE_ENGINEER' NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
+);
+CREATE TABLE "sync_action_log" (
+	"id" uuid PRIMARY KEY,
+	"user_id" uuid NOT NULL,
+	"user_role" text NOT NULL,
+	"action_type" text NOT NULL,
+	"entity_type" text NOT NULL,
+	"entity_id" uuid,
+	"project_id" uuid,
+	"organization_id" uuid,
+	"payload" jsonb NOT NULL,
+	"status" text DEFAULT 'APPLIED' NOT NULL,
+	"error_message" text,
+	"created_at" timestamp DEFAULT now()
+);
+CREATE TABLE "sync_errors" (
+	"id" uuid PRIMARY KEY,
+	"sync_action_id" uuid,
+	"user_id" uuid,
+	"reason" text,
+	"payload" jsonb,
+	"created_at" timestamp DEFAULT now()
 );
 CREATE TABLE "wage_rates" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -309,88 +375,13 @@ CREATE TABLE "wages" (
 	CONSTRAINT "wages_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))),
 	CONSTRAINT "wages_wage_type_check" CHECK (CHECK ((wage_type = ANY (ARRAY['DAILY'::text, 'HOURLY'::text]))))
 );
-CREATE TABLE material_ledger (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    dpr_id UUID REFERENCES dprs(id) ON DELETE SET NULL,
-    material_request_id UUID REFERENCES material_requests(id) ON DELETE SET NULL,
-
-    material_name TEXT NOT NULL,
-    category TEXT,
-    quantity NUMERIC NOT NULL,
-    unit TEXT NOT NULL, -- bags, kg, tons, meters, etc.
-
-    movement_type TEXT CHECK (
-        movement_type IN ('IN', 'OUT', 'ADJUSTMENT')
-    ) NOT NULL,
-
-    source TEXT CHECK (
-        source IN ('AI_DPR', 'MANUAL', 'BILL', 'ADJUSTMENT')
-    ) NOT NULL,
-
-    remarks TEXT,
-
-    recorded_by UUID,
-    recorded_by_role TEXT CHECK (
-        recorded_by_role IN ('SITE_ENGINEER', 'MANAGER')
-    ),
-
-    created_at TIMESTAMP DEFAULT now()
-);
-CREATE TABLE sync_errors (
-  id UUID PRIMARY KEY,
-  sync_action_id UUID,
-  user_id UUID,
-  reason TEXT,
-  payload JSONB,
-  created_at TIMESTAMP DEFAULT now()
-);
-ALTER TABLE attendance
-ADD COLUMN source TEXT DEFAULT 'ONLINE';
-CREATE TABLE sync_action_log (
-  id UUID PRIMARY KEY,              -- same as offline_actions.id
-  user_id UUID NOT NULL,
-  user_role TEXT NOT NULL,          -- LABOUR | SITE_ENGINEER
-  action_type TEXT NOT NULL,        -- CHECK_IN, CREATE_REQUEST, etc
-  entity_type TEXT NOT NULL,        -- ATTENDANCE, MATERIAL_REQUEST, etc
-  entity_id UUID,                   -- real entity id after sync
-  project_id UUID,
-  organization_id UUID,
-  payload JSONB NOT NULL,
-  status TEXT NOT NULL DEFAULT 'APPLIED', -- APPLIED | REJECTED
-  error_message TEXT,
-  created_at TIMESTAMP DEFAULT now()
-);
-
-ALTER TABLE plan_items
-ADD COLUMN status TEXT CHECK (
-    status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED')
-) DEFAULT 'PENDING',
-
-ADD COLUMN completed_at DATE,
-
-ADD COLUMN updated_by UUID,
-
-ADD COLUMN updated_by_role TEXT CHECK (
-    updated_by_role IN ('MANAGER')
-),
-ALTER TABLE plan_items
-ADD COLUMN priority INTEGER NOT NULL DEFAULT 0
-CHECK (priority BETWEEN 0 AND 5)
-
-ADD COLUMN delay_info JSONB;
-ALTER TABLE audit_logs
-ADD COLUMN organization_id UUID,
-ADD COLUMN project_id UUID,
-ADD COLUMN category TEXT,
-ADD COLUMN change_summary JSONB;
-
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance_sessions" ADD CONSTRAINT "attendance_sessions_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "attendance"("id") ON DELETE CASCADE;
+ALTER TABLE "dpr_items" ADD CONSTRAINT "dpr_items_dpr_id_fkey" FOREIGN KEY ("dpr_id") REFERENCES "dprs"("id") ON DELETE CASCADE;
+ALTER TABLE "dpr_items" ADD CONSTRAINT "dpr_items_plan_item_id_fkey" FOREIGN KEY ("plan_item_id") REFERENCES "plan_items"("id");
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
@@ -404,6 +395,9 @@ ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_material_request_id_
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "site_engineers"("id");
+ALTER TABLE "material_ledger" ADD CONSTRAINT "material_ledger_dpr_id_fkey" FOREIGN KEY ("dpr_id") REFERENCES "dprs"("id") ON DELETE SET NULL;
+ALTER TABLE "material_ledger" ADD CONSTRAINT "material_ledger_material_request_id_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE SET NULL;
+ALTER TABLE "material_ledger" ADD CONSTRAINT "material_ledger_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "material_requests" ADD CONSTRAINT "material_requests_dpr_id_fkey" FOREIGN KEY ("dpr_id") REFERENCES "dprs"("id") ON DELETE SET NULL;
 ALTER TABLE "material_requests" ADD CONSTRAINT "material_requests_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "material_requests" ADD CONSTRAINT "material_requests_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
@@ -438,6 +432,9 @@ CREATE UNIQUE INDEX "audit_logs_pkey" ON "audit_logs" ("id");
 CREATE INDEX "idx_audit_actor" ON "audit_logs" ("acted_by_role","acted_by_id");
 CREATE INDEX "idx_audit_entity" ON "audit_logs" ("entity_type","entity_id");
 CREATE INDEX "idx_audit_time" ON "audit_logs" ("created_at");
+CREATE UNIQUE INDEX "dpr_items_pkey" ON "dpr_items" ("id");
+CREATE INDEX "idx_dpr_items_dpr" ON "dpr_items" ("dpr_id");
+CREATE INDEX "idx_dpr_items_plan_item" ON "dpr_items" ("plan_item_id");
 CREATE UNIQUE INDEX "dprs_pkey" ON "dprs" ("id");
 CREATE UNIQUE INDEX "dprs_project_id_site_engineer_id_report_date_key" ON "dprs" ("project_id","site_engineer_id","report_date");
 CREATE UNIQUE INDEX "labour_addresses_pkey" ON "labour_addresses" ("id");
@@ -457,6 +454,7 @@ CREATE UNIQUE INDEX "managers_phone_key" ON "managers" ("phone");
 CREATE UNIQUE INDEX "managers_pkey" ON "managers" ("id");
 CREATE INDEX "idx_material_bill_status" ON "material_bills" ("status");
 CREATE UNIQUE INDEX "material_bills_pkey" ON "material_bills" ("id");
+CREATE UNIQUE INDEX "material_ledger_pkey" ON "material_ledger" ("id");
 CREATE INDEX "idx_material_req_status" ON "material_requests" ("status");
 CREATE UNIQUE INDEX "material_requests_pkey" ON "material_requests" ("id");
 CREATE UNIQUE INDEX "organization_managers_org_id_manager_id_key" ON "organization_managers" ("org_id","manager_id");
@@ -487,6 +485,8 @@ CREATE INDEX "idx_site_engineer_email" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_email_key" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_phone_key" ON "site_engineers" ("phone");
 CREATE UNIQUE INDEX "site_engineers_pkey" ON "site_engineers" ("id");
+CREATE UNIQUE INDEX "sync_action_log_pkey" ON "sync_action_log" ("id");
+CREATE UNIQUE INDEX "sync_errors_pkey" ON "sync_errors" ("id");
 CREATE UNIQUE INDEX "wage_rates_pkey" ON "wage_rates" ("id");
 CREATE UNIQUE INDEX "wage_rates_project_id_skill_type_category_key" ON "wage_rates" ("project_id","skill_type","category");
 CREATE INDEX "idx_wages_status" ON "wages" ("status");

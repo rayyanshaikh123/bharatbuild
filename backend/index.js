@@ -100,6 +100,7 @@ app.use("/owner/timeline", require("./routes/owner/timeline"));
 app.use("/manager", require("./routes/manager/manager"));
 app.use("/manager/dashboard", require("./routes/manager/dashboard"));
 app.use("/manager/organization", require("./routes/manager/manOrganization"));
+app.use("/manager/organization", require("./routes/manager/leaveOrganization"));
 app.use(
   "/manager/organization-requests",
   require("./routes/manager/enOrganiztionReq"),
@@ -133,6 +134,10 @@ app.use("/manager/timeline", require("./routes/manager/timeline"));
 app.use("/engineer", require("./routes/engineer/engineer"));
 app.use("/engineer/dashboard", require("./routes/engineer/dashboard"));
 app.use("/engineer/organization", require("./routes/engineer/enOrganization"));
+app.use(
+  "/engineer/organization",
+  require("./routes/engineer/leaveOrganization"),
+);
 app.use("/engineer/project-requests", require("./routes/engineer/projectReq"));
 app.use("/engineer/plan", require("./routes/engineer/plan"));
 app.use(

@@ -33,19 +33,19 @@ async function getProjectLedger(projectId, filters = {}) {
       WITH ledger_entries AS (
         -- Material bills
         SELECT 
-          mb.approved_at::date as date,
+          mb.reviewed_at::date as date,
           'MATERIAL' as type,
           mb.id as reference_id,
           CONCAT('Material Bill #', mb.id, ' - ', mb.category) as description,
           mb.total_amount as amount,
           mb.category,
           m.name as approved_by_name,
-          mb.approved_at
+          mb.reviewed_at as approved_at
         FROM material_bills mb
-        LEFT JOIN managers m ON mb.approved_by = m.id
-        WHERE mb.project_id = $1 
+        LEFT JOIN managers m ON mb.reviewed_by = m.id
+        WHERE mb.project_id = $1::uuid 
           AND mb.status = 'APPROVED'
-          AND mb.approved_at::date BETWEEN $2 AND $3
+          AND mb.reviewed_at::date BETWEEN $2 AND $3
         
         UNION ALL
         
@@ -65,23 +65,6 @@ async function getProjectLedger(projectId, filters = {}) {
         WHERE w.project_id = $1::uuid 
           AND w.status = 'APPROVED'
           AND w.approved_at::date BETWEEN $2 AND $3
-        
-        UNION ALL
-        
-        -- Manual adjustments
-        SELECT 
-          la.date,
-          'ADJUSTMENT' as type,
-          la.id as reference_id,
-          la.description,
-          la.amount,
-          la.category,
-          m.name as approved_by_name,
-          la.created_at as approved_at
-        FROM ledger_adjustments la
-        LEFT JOIN managers m ON la.created_by = m.id
-        WHERE la.project_id = $1 
-          AND la.date BETWEEN $2 AND $3
       )
       SELECT * FROM ledger_entries
       WHERE ($4::text IS NULL OR type = $4)
@@ -95,23 +78,17 @@ async function getProjectLedger(projectId, filters = {}) {
     const countResult = await client.query(
       `
       WITH ledger_entries AS (
-        SELECT mb.approved_at::date as date, 'MATERIAL' as type
+        SELECT mb.reviewed_at::date as date, 'MATERIAL' as type
         FROM material_bills mb
-        WHERE mb.project_id = $1 AND mb.status = 'APPROVED'
-          AND mb.approved_at::date BETWEEN $2 AND $3
+        WHERE mb.project_id = $1::uuid AND mb.status = 'APPROVED'
+          AND mb.reviewed_at::date BETWEEN $2 AND $3
         
         UNION ALL
         
         SELECT w.approved_at::date as date, 'WAGE' as type
         FROM wages w
-        WHERE w.project_id = $1 AND w.status = 'APPROVED'
+        WHERE w.project_id = $1::uuid AND w.status = 'APPROVED'
           AND w.approved_at::date BETWEEN $2 AND $3
-        
-        UNION ALL
-        
-        SELECT la.date, 'ADJUSTMENT' as type
-        FROM ledger_adjustments la
-        WHERE la.project_id = $1 AND la.date BETWEEN $2 AND $3
       )
       SELECT COUNT(*) as total
       FROM ledger_entries

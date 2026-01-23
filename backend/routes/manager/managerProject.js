@@ -35,18 +35,26 @@ router.get("/project-requests", managerCheck, async (req, res) => {
   const managerId = req.user.id;
   const { projectId, organizationId } = req.query;
   try {
-    const isProjApproved = await managerProjectStatusCheck(
-      managerId,
-      projectId,
+    // CRITICAL: Check both project AND organization authorization
+    const authCheck = await pool.query(
+      `SELECT 1 
+       FROM project_managers pm
+       JOIN organization_managers om ON om.manager_id = pm.manager_id
+       JOIN projects p ON p.id = pm.project_id
+       WHERE pm.manager_id = $1::uuid 
+         AND pm.project_id = $2::uuid
+         AND pm.status = 'ACTIVE'
+         AND om.status = 'APPROVED'
+         AND p.org_id = om.org_id
+         AND p.org_id = $3::uuid`,
+      [managerId, projectId, organizationId],
     );
 
-    const isCreator = await isProjectCreator(managerId, projectId);
-    if (!isProjApproved && !isCreator) {
-      return res
-        .status(403)
-        .json({
-          error: "Access denied. Not an active manager in the project.",
-        });
+    if (authCheck.rows.length === 0) {
+      return res.status(403).json({
+        error:
+          "Access denied. You must be an ACTIVE manager in this project and APPROVED in the organization.",
+      });
     }
 
     const result = await pool.query(
@@ -59,7 +67,7 @@ router.get("/project-requests", managerCheck, async (req, res) => {
                 se.phone AS engineer_phone
              FROM project_site_engineers pse
              JOIN site_engineers se ON pse.site_engineer_id = se.id
-             WHERE pse.project_id = $1 AND pse.status = 'PENDING'`,
+             WHERE pse.project_id = $1::uuid AND pse.status = 'PENDING'`,
       [projectId],
     );
     res.json({ requests: result.rows });
@@ -76,32 +84,38 @@ router.put(
       const managerId = req.user.id;
       const { requestId } = req.params;
       const { decision, projectId, organizationId } = req.body;
-      const isProjApproved = await managerProjectStatusCheck(
-        managerId,
-        projectId,
+      // CRITICAL: Check both project AND organization authorization
+      const authCheck = await pool.query(
+        `SELECT 1 
+         FROM project_managers pm
+         JOIN organization_managers om ON om.manager_id = pm.manager_id
+         JOIN projects p ON p.id = pm.project_id
+         WHERE pm.manager_id = $1::uuid 
+           AND pm.project_id = $2::uuid
+           AND pm.status = 'ACTIVE'
+           AND om.status = 'APPROVED'
+           AND p.org_id = om.org_id
+           AND p.org_id = $3::uuid`,
+        [managerId, projectId, organizationId],
       );
 
-      const isCreator = await isProjectCreator(managerId, projectId);
-      if (!isProjApproved && !isCreator) {
-        return res
-          .status(403)
-          .json({
-            error: "Access denied. Not an active manager in the project.",
-          });
+      if (authCheck.rows.length === 0) {
+        return res.status(403).json({
+          error:
+            "Access denied. You must be an ACTIVE manager in this project and APPROVED in the organization.",
+        });
       }
 
       if (decision !== "APPROVED" && decision !== "REJECTED") {
-        return res
-          .status(400)
-          .json({
-            error: "Invalid decision. Must be 'APPROVED' or 'REJECTED'.",
-          });
+        return res.status(400).json({
+          error: "Invalid decision. Must be 'APPROVED' or 'REJECTED'.",
+        });
       }
 
       await pool.query(
         `UPDATE project_site_engineers 
          SET status = $1 
-         WHERE id = $2`,
+         WHERE id = $2::uuid`,
         [decision, requestId],
       );
       res.json({ message: `Request ${decision.toLowerCase()} successfully.` });

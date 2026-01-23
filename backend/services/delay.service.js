@@ -26,7 +26,7 @@ async function getProjectDelays(projectId) {
         pi.delay_info,
         CASE 
           WHEN pi.completed_at IS NOT NULL AND pi.completed_at > pi.period_end
-          THEN EXTRACT(EPOCH FROM (pi.completed_at - pi.period_end))/(24*3600)
+          THEN (pi.completed_at::date - pi.period_end::date)
           ELSE 0
         END as delay_days
       FROM plan_items pi

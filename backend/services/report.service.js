@@ -88,7 +88,7 @@ async function getFinancialReport(userId, userType, filters) {
       COALESCE(SUM(budget), 0) as total_budget,
       COALESCE(SUM(current_invested), 0) as total_invested
      FROM projects
-     WHERE id = ANY($1)`,
+     WHERE id = ANY($1::uuid[])`,
     [projectIds],
   );
 
@@ -98,7 +98,7 @@ async function getFinancialReport(userId, userType, filters) {
   const materialResult = await pool.query(
     `SELECT COALESCE(SUM(total_amount), 0) as total_material_cost
      FROM material_bills
-     WHERE project_id = ANY($1) 
+     WHERE project_id = ANY($1::uuid[]) 
        AND status = 'APPROVED'
        AND reviewed_at >= $2 AND reviewed_at <= $3`,
     [projectIds, filters.start_date, filters.end_date],
@@ -108,18 +108,9 @@ async function getFinancialReport(userId, userType, filters) {
   const wageResult = await pool.query(
     `SELECT COALESCE(SUM(total_amount), 0) as total_wages
      FROM wages
-     WHERE project_id = ANY($1) 
+     WHERE project_id = ANY($1::uuid[]) 
        AND status = 'APPROVED'
        AND approved_at >= $2 AND approved_at <= $3`,
-    [projectIds, filters.start_date, filters.end_date],
-  );
-
-  // Ledger adjustments
-  const adjustmentResult = await pool.query(
-    `SELECT COALESCE(SUM(amount), 0) as total_adjustments
-     FROM ledger_adjustments
-     WHERE project_id = ANY($1)
-       AND date >= $2 AND date <= $3`,
     [projectIds, filters.start_date, filters.end_date],
   );
 
@@ -127,9 +118,6 @@ async function getFinancialReport(userId, userType, filters) {
     materialResult.rows[0].total_material_cost,
   );
   summary.total_wages = parseFloat(wageResult.rows[0].total_wages);
-  summary.total_adjustments = parseFloat(
-    adjustmentResult.rows[0].total_adjustments,
-  );
   summary.budget_utilization = calculatePercentage(
     parseFloat(summary.total_invested),
     parseFloat(summary.total_budget),
@@ -154,7 +142,7 @@ async function getFinancialReport(userId, userType, filters) {
        WHERE status = 'APPROVED' AND approved_at >= $2 AND approved_at <= $3
        GROUP BY project_id
      ) w ON p.id = w.project_id
-     WHERE p.id = ANY($1)
+     WHERE p.id = ANY($1::uuid[])
      ORDER BY p.current_invested DESC`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -163,7 +151,7 @@ async function getFinancialReport(userId, userType, filters) {
   const categoryBreakdown = await pool.query(
     `SELECT category, COALESCE(SUM(total_amount), 0) as total
      FROM material_bills
-     WHERE project_id = ANY($1) 
+     WHERE project_id = ANY($1::uuid[]) 
        AND status = 'APPROVED'
        AND reviewed_at >= $2 AND reviewed_at <= $3
      GROUP BY category
@@ -182,7 +170,7 @@ async function getFinancialReport(userId, userType, filters) {
       DATE_TRUNC('month', reviewed_at) as month,
       COALESCE(SUM(total_amount), 0) as material_cost
      FROM material_bills
-     WHERE project_id = ANY($1) 
+     WHERE project_id = ANY($1::uuid[]) 
        AND status = 'APPROVED'
        AND reviewed_at >= $2 AND reviewed_at <= $3
      GROUP BY month
@@ -203,7 +191,6 @@ async function getFinancialReport(userId, userType, filters) {
       budget_utilization: summary.budget_utilization,
       total_material_cost: summary.total_material_cost,
       total_wages: summary.total_wages,
-      total_adjustments: summary.total_adjustments,
     },
     breakdown: {
       by_project: projectBreakdown.rows,
@@ -246,7 +233,7 @@ async function getProjectProgressReport(userId, userType, filters) {
   const statusDist = await pool.query(
     `SELECT status, COUNT(*) as count
      FROM projects
-     WHERE id = ANY($1)
+     WHERE id = ANY($1::uuid[])
      GROUP BY status`,
     [projectIds],
   );
@@ -269,14 +256,14 @@ async function getProjectProgressReport(userId, userType, filters) {
   const delayedItems = await pool.query(
     `SELECT 
       pi.id, pi.task_name, pi.period_start, pi.period_end, pi.completed_at,
-      pi.delay as delay_info,
+      pi.delay_info,
       p.project_id,
       proj.name as project_name,
       EXTRACT(DAY FROM (pi.completed_at - pi.period_end)) as delay_days
      FROM plan_items pi
      JOIN plans p ON pi.plan_id = p.id
      JOIN projects proj ON p.project_id = proj.id
-     WHERE p.project_id = ANY($1) AND pi.status = 'DELAYED'
+     WHERE p.project_id = ANY($1::uuid[]) AND pi.status = 'DELAYED'
      ORDER BY delay_days DESC
      LIMIT 20`,
     [projectIds],
@@ -286,7 +273,7 @@ async function getProjectProgressReport(userId, userType, filters) {
   const dprCount = await pool.query(
     `SELECT COUNT(*) as total_dprs
      FROM dprs
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND report_date >= $2 AND report_date <= $3`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -356,7 +343,7 @@ async function getAttendanceReport(userId, userType, filters) {
       COUNT(*) as total_attendance_records,
       COUNT(CASE WHEN site_engineer_id IS NULL THEN 1 END) as manual_entries
      FROM attendance
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND attendance_date >= $2 AND attendance_date <= $3`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -370,7 +357,7 @@ async function getAttendanceReport(userId, userType, filters) {
      FROM projects p
      LEFT JOIN attendance a ON p.id = a.project_id
        AND a.attendance_date >= $2 AND a.attendance_date <= $3
-     WHERE p.id = ANY($1)
+     WHERE p.id = ANY($1::uuid[])
      GROUP BY p.id, p.name
      ORDER BY total_hours DESC`,
     [projectIds, filters.start_date, filters.end_date],
@@ -384,7 +371,7 @@ async function getAttendanceReport(userId, userType, filters) {
       COUNT(*) as attendance_count
      FROM labours l
      JOIN attendance a ON l.id = a.labour_id
-     WHERE a.project_id = ANY($1)
+     WHERE a.project_id = ANY($1::uuid[])
        AND a.attendance_date >= $2 AND a.attendance_date <= $3
      GROUP BY l.id, l.name, l.skill_type
      ORDER BY total_hours DESC
@@ -454,7 +441,7 @@ async function getMaterialReport(userId, userType, filters) {
       COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending,
       COUNT(CASE WHEN status = 'REJECTED' THEN 1 END) as rejected
      FROM material_requests
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND created_at >= $2 AND created_at <= $3`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -469,7 +456,7 @@ async function getMaterialReport(userId, userType, filters) {
       COUNT(CASE WHEN material_request_id IS NULL THEN 1 END) as orphan_bills,
       COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN total_amount ELSE 0 END), 0) as total_approved_amount
      FROM material_bills
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND created_at >= $2 AND created_at <= $3`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -481,7 +468,7 @@ async function getMaterialReport(userId, userType, filters) {
       COUNT(*) as request_count,
       COALESCE(SUM(quantity), 0) as total_quantity
      FROM material_requests
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND created_at >= $2 AND created_at <= $3
      GROUP BY category
      ORDER BY request_count DESC`,
@@ -545,7 +532,7 @@ async function getAuditReport(userId, userType, filters) {
         COUNT(DISTINCT user_id) as unique_users,
         COUNT(DISTINCT category) as unique_categories
       FROM audit_logs
-      WHERE organization_id = $1
+      WHERE organization_id = $1::uuid
         AND created_at >= $2 AND created_at <= $3
     `;
     auditParams = [orgId, filters.start_date, filters.end_date];
@@ -578,11 +565,11 @@ async function getAuditReport(userId, userType, filters) {
 
   // Breakdown by user role
   const roleBreakdown = await pool.query(
-    `SELECT user_type, COUNT(*) as count
+    `SELECT acted_by_role, COUNT(*) as count
      FROM audit_logs
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND created_at >= $2 AND created_at <= $3
-     GROUP BY user_type
+     GROUP BY acted_by_role
      ORDER BY count DESC`,
     [projectIds, filters.start_date, filters.end_date],
   );
@@ -591,9 +578,9 @@ async function getAuditReport(userId, userType, filters) {
   const criticalAudits = await pool.query(
     `SELECT 
       id, entity_type, entity_id, category, action,
-      user_type, created_at, changed_fields
+      acted_by_role, created_at, change_summary
      FROM audit_logs
-     WHERE project_id = ANY($1)
+     WHERE project_id = ANY($1::uuid[])
        AND category IN ('MATERIAL_BILL', 'WAGES', 'LEDGER_ADJUSTMENT')
        AND created_at >= $2 AND created_at <= $3
      ORDER BY created_at DESC

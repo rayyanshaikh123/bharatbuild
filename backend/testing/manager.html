@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manager Dashboard - Testing</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 3px solid #27ae60;
+        padding-bottom: 10px;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .section h2 {
+        color: #34495e;
+        margin-top: 0;
+      }
+      button {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #229954;
+      }
+      button.danger {
+        background: #e74c3c;
+      }
+      button.danger:hover {
+        background: #c0392b;
+      }
+      button.warning {
+        background: #f39c12;
+      }
+      button.warning:hover {
+        background: #e67e22;
+      }
+      #output {
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .input-group {
+        margin: 10px 0;
+      }
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #34495e;
+      }
+      .input-group input,
+      .input-group select,
+      .input-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .stored-data {
+        background: #ecf0f1;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>👷 Manager Dashboard (Testing)</h1>
+
+    <div class="section">
+      <h2>Stored Data</h2>
+      <div class="stored-data">
+        <div>
+          <strong>Organization ID:</strong> <span id="storedOrgId">None</span>
+        </div>
+        <div>
+          <strong>Project ID:</strong> <span id="storedProjectId">None</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>1️⃣ Organization Access</h2>
+      <button onclick="viewAllOrganizations()">View All Organizations</button>
+      <button onclick="getMyOrganization()">Get My Organization</button>
+      <button onclick="getMyOrganizationRequests()">
+        My Organization Requests
+      </button>
+
+      <div class="input-group" style="margin-top: 15px">
+        <label>Organization ID (for request):</label>
+        <input
+          type="text"
+          id="orgIdForRequest"
+          placeholder="Paste organization ID here"
+        />
+      </div>
+      <button onclick="requestOrganizationAccess()" class="warning">
+        Request Organization Access
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>2️⃣ Project Management</h2>
+
+      <div class="input-group">
+        <label>Project Name:</label>
+        <input
+          type="text"
+          id="projectName"
+          placeholder="New Construction Project"
+          value="Test Project"
+        />
+      </div>
+
+      <div class="input-group">
+        <label>Location:</label>
+        <input
+          type="text"
+          id="projectLocation"
+          placeholder="Mumbai, India"
+          value="Test Location"
+        />
+      </div>
+
+      <div class="input-group">
+        <label>Budget:</label>
+        <input
+          type="number"
+          id="projectBudget"
+          placeholder="1000000"
+          value="1000000"
+        />
+      </div>
+
+      <button onclick="createProject()">Create Project</button>
+      <button onclick="getMyProjects()">View My Projects</button>
+      <button onclick="getAllOrganizationProjects()">
+        View All Org Projects
+      </button>
+      <button onclick="getProjectDetails()">Get Project Details</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Request to Join Project</h3>
+      <div class="input-group">
+        <label>Project ID (to request):</label>
+        <input
+          type="text"
+          id="projectIdForRequest"
+          placeholder="Paste project ID here"
+        />
+      </div>
+      <button onclick="requestToJoinProject()" class="warning">
+        Request to Join Project
+      </button>
+      <button onclick="getMyProjectRequests()">My Project Requests</button>
+    </div>
+
+    <div class="section">
+      <h2>3️⃣ Engineer Requests</h2>
+      <button onclick="getEngineerRequests('PENDING')">
+        Pending Engineer Requests
+      </button>
+      <button onclick="getEngineerRequests('APPROVED')">
+        Approved Engineer Requests
+      </button>
+      <button onclick="getEngineerRequests('REJECTED')" class="danger">
+        Rejected Engineer Requests
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>4️⃣ Manager Requests (in Organization)</h2>
+      <button onclick="getManagerRequests('PENDING')">
+        Pending Manager Requests
+      </button>
+      <button onclick="getManagerRequests('APPROVED')">
+        Approved Manager Requests
+      </button>
+      <button onclick="getManagerRequests('REJECTED')" class="danger">
+        Rejected Manager Requests
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>5️⃣ Analytics</h2>
+      <button onclick="getAnalyticsOverview()">Analytics Overview</button>
+      <button onclick="getProjectAnalytics()">Project Analytics</button>
+    </div>
+
+    <div class="section">
+      <h2>6️⃣ Ledger & Delays</h2>
+      <button onclick="getProjectLedger()">Project Ledger</button>
+      <button onclick="getProjectDelays()">Project Delays</button>
+    </div>
+
+    <div class="section">
+      <h2>7️⃣ Materials & Wages</h2>
+      <button onclick="getMaterialRequests()">Material Requests</button>
+      <button onclick="getMaterialBills()">Material Bills</button>
+      <button onclick="getWages()">Wages</button>
+    </div>
+
+    <div class="section">
+      <h2>8️⃣ Plans & DPRs</h2>
+      <button onclick="getPlans()">Get Plans</button>
+      <button onclick="getDPRs()">Get DPRs</button>
+    </div>
+
+    <div class="section">
+      <h2>9️⃣ Audit Logs</h2>
+      <button onclick="getAuditLogs()">Get Audit Logs</button>
+    </div>
+
+    <div class="section">
+      <h2>🚪 Session</h2>
+      <button onclick="getProfile()">Get My Profile</button>
+      <button onclick="logout()" class="danger">Logout</button>
+    </div>
+
+    <div class="section">
+      <h2>📋 API Response</h2>
+      <div id="output">Waiting for API calls...</div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:3001";
+      let currentOrgId = null;
+      let currentProjectId = null;
+
+      function updateStoredData() {
+        document.getElementById("storedOrgId").textContent =
+          currentOrgId || "None";
+        document.getElementById("storedProjectId").textContent =
+          currentProjectId || "None";
+      }
+
+      function log(message, data = null) {
+        const output = document.getElementById("output");
+        const timestamp = new Date().toLocaleTimeString();
+        let logMessage = `[${timestamp}] ${message}\n`;
+
+        if (data) {
+          logMessage += JSON.stringify(data, null, 2) + "\n";
+        }
+
+        output.textContent = logMessage + "\n" + output.textContent;
+        console.log(message, data);
+      }
+
+      async function apiCall(method, endpoint, body = null) {
+        try {
+          const options = {
+            method,
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          };
+
+          if (body) {
+            options.body = JSON.stringify(body);
+          }
+
+          log(`${method} ${endpoint}`, body);
+
+          const response = await fetch(`${API_BASE}${endpoint}`, options);
+          const data = await response.json();
+
+          if (!response.ok) {
+            log(`❌ Error (${response.status})`, data);
+            alert(`Error: ${data.error || "Unknown error"}`);
+            return null;
+          }
+
+          log(`✅ Success (${response.status})`, data);
+          return data;
+        } catch (error) {
+          log(`❌ Network Error`, { error: error.message });
+          alert(`Network Error: ${error.message}`);
+          return null;
+        }
+      }
+
+      // 1️⃣ Organization Access
+      async function viewAllOrganizations() {
+        await apiCall("GET", "/manager/organization/all");
+      }
+
+      async function getMyOrganization() {
+        const data = await apiCall("GET", "/manager/organization");
+        if (data && data.organizations && data.organizations.length > 0) {
+          currentOrgId = data.organizations[0].id;
+          updateStoredData();
+        }
+      }
+
+      async function requestOrganizationAccess() {
+        const orgId = document.getElementById("orgIdForRequest").value;
+        if (!orgId) {
+          alert("Please enter organization ID");
+          return;
+        }
+
+        await apiCall("POST", "/manager/organization/join-organization", {
+          organizationId: orgId,
+        });
+      }
+
+      async function getMyOrganizationRequests() {
+        await apiCall("GET", "/manager/organization/my-requests");
+      }
+
+      // 2️⃣ Project Management
+      async function createProject() {
+        if (!currentOrgId) {
+          alert("Please get your organization first");
+          return;
+        }
+
+        const name = document.getElementById("projectName").value;
+        const location = document.getElementById("projectLocation").value;
+        const budget = document.getElementById("projectBudget").value;
+
+        if (!name || !location || !budget) {
+          alert("Please fill all project fields");
+          return;
+        }
+
+        const data = await apiCall("POST", "/manager/project/create-project", {
+          organizationId: currentOrgId,
+          name,
+          location_text: location,
+          latitude: 0,
+          longitude: 0,
+          geofence_radius: 100,
+          start_date: new Date().toISOString().split("T")[0],
+          end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          budget: parseFloat(budget),
+          status: "PLANNED",
+          geofence: false,
+        });
+
+        if (data && data.project) {
+          currentProjectId = data.project.id;
+          updateStoredData();
+          alert(`Project created! ID: ${currentProjectId}`);
+        }
+      }
+
+      async function getMyProjects() {
+        if (!currentOrgId) {
+          alert("Please get your organization first");
+          return;
+        }
+
+        const data = await apiCall(
+          "GET",
+          `/manager/project/my-projects?organizationId=${currentOrgId}`,
+        );
+        if (data && data.projects && data.projects.length > 0) {
+          currentProjectId = data.projects[0].id;
+          updateStoredData();
+        }
+      }
+
+      async function getProjectDetails() {
+        if (!currentOrgId || !currentProjectId) {
+          alert("Please get organization and projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/project/project/${currentProjectId}?organizationId=${currentOrgId}`,
+        );
+      }
+
+      async function getAllOrganizationProjects() {
+        if (!currentOrgId) {
+          alert("Please get your organization first");
+          return;
+        }
+
+        await apiCall(
+          "GET",
+          `/manager/project/all-projects?organizationId=${currentOrgId}`,
+        );
+      }
+
+      // 3️⃣ Engineer Requests
+      async function getEngineerRequests(status) {
+        await apiCall(
+          "GET",
+          `/manager/organization/site-engineers?status=${status}`,
+        );
+      }
+
+      // 4️⃣ Manager Requests
+      async function getManagerRequests(status) {
+        await apiCall("GET", `/manager/organization/managers?status=${status}`);
+      }
+
+      // 5️⃣ Analytics
+      async function getAnalyticsOverview() {
+        await apiCall("GET", "/manager/analytics/overview");
+      }
+
+      async function getProjectAnalytics() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/analytics/project/${currentProjectId}`);
+      }
+
+      // 6️⃣ Ledger & Delays
+      async function getProjectLedger() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/ledger/project/${currentProjectId}?start_date=2024-01-01&end_date=2024-12-31`,
+        );
+      }
+
+      async function getProjectDelays() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/delays/project/${currentProjectId}`);
+      }
+
+      // 7️⃣ Materials & Wages
+      async function getMaterialRequests() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/material/requests?project_id=${currentProjectId}`,
+        );
+      }
+
+      async function getMaterialBills() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/material/bills?project_id=${currentProjectId}`,
+        );
+      }
+
+      async function getWages() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/wages?project_id=${currentProjectId}`);
+      }
+
+      // 8️⃣ Plans & DPRs
+      async function getPlans() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/plan/project/${currentProjectId}`);
+      }
+
+      async function getDPRs() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/dpr/project/${currentProjectId}`);
+      }
+
+      // 9️⃣ Audit Logs
+      async function getAuditLogs() {
+        await apiCall("GET", "/manager/audits?page=1&limit=20");
+      }
+
+      // 🚪 Session
+      async function getProfile() {
+        await apiCall("GET", "/manager/profile");
+      }
+
+      async function logout() {
+        const data = await apiCall("POST", "/auth/manager/logout");
+        if (data) {
+          alert("Logged out successfully!");
+          window.location.href = "auth.html";
+        }
+      }
+
+      // Auto-load profile on page load
+      window.onload = () => {
+        log("Manager Dashboard loaded");
+        getProfile();
+      };
+    </script>
+  </body>
+</html>

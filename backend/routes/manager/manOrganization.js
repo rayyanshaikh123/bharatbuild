@@ -39,6 +39,19 @@ router.post("/join-organization", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { organizationId } = req.body;
 
+    // Check if manager already has an APPROVED organization
+    const existingOrgCheck = await pool.query(
+      "SELECT org_id FROM organization_managers WHERE manager_id = $1 AND status = 'APPROVED'",
+      [managerId],
+    );
+
+    if (existingOrgCheck.rows.length > 0) {
+      return res.status(400).json({
+        error:
+          "You are already part of an organization. A manager can only join one organization at a time.",
+      });
+    }
+
     const orgCheck = await pool.query(
       "SELECT id FROM organizations WHERE id = $1",
       [organizationId],
