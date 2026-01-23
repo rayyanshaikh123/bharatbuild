@@ -1,16 +1,18 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../theme/app_colors.dart';
+import '../map/geofence_service.dart';
 
 class SiteMapWidget extends StatefulWidget {
-  final List<List<LatLng>> geofences;
+  final List<List<LatLng>> geofences; // Legacy polygon geofences
   final Map<String, dynamic>? orgData;
-  final List<Map<String, dynamic>>? projectsData;
-  final double? radius;
+  final List<Map<String, dynamic>>? projectsData; // Should include geofence JSONB
+  final double? radius; // Legacy radius
 
   const SiteMapWidget({
     super.key,
@@ -173,6 +175,102 @@ class _SiteMapWidgetState extends State<SiteMapWidget> {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.bharatbuild.construction',
             ),
+            // Render geofences from projectsData (supports GeoJSON and CIRCLE types)
+            if (widget.projectsData != null)
+              ...widget.projectsData!.where((p) => p['geofence'] != null).map((project) {
+                try {
+                  final geofenceJson = project['geofence'];
+                  if (geofenceJson is! Map) return const SizedBox.shrink();
+                  
+                  // Handle GeoJSON Feature format (from web frontend)
+                  if (geofenceJson['type'] == 'Feature') {
+                    final geometry = geofenceJson['geometry'] as Map<String, dynamic>?;
+                    if (geometry != null) {
+                      final geomType = geometry['type'] as String?;
+                      final coordinates = geometry['coordinates'] as dynamic;
+                      
+                      if (geomType == 'Polygon' && coordinates is List) {
+                        // GeoJSON Polygon
+                        final outerRing = coordinates[0] as List;
+                        final polygonPoints = outerRing.map((coord) {
+                          if (coord is List && coord.length >= 2) {
+                            return LatLng(coord[1].toDouble(), coord[0].toDouble()); // GeoJSON is [lng, lat]
+                          }
+                          return null;
+                        }).whereType<LatLng>().toList();
+                        
+                        if (polygonPoints.isNotEmpty) {
+                          return PolygonLayer(
+                            polygons: [
+                              Polygon(
+                                points: polygonPoints,
+                                color: AppColors.primary.withOpacity(0.2),
+                                borderColor: AppColors.primary,
+                                borderStrokeWidth: 2,
+                              ),
+                            ],
+                          );
+                        }
+                      } else if (geomType == 'Circle' || geomType == 'Point') {
+                        // Try to extract circle
+                        final properties = geofenceJson['properties'] as Map<String, dynamic>?;
+                        if (properties != null && properties.containsKey('radius')) {
+                          final center = coordinates is List && coordinates.length >= 2
+                              ? LatLng(coordinates[1].toDouble(), coordinates[0].toDouble())
+                              : null;
+                          final radius = (properties['radius'] as num?)?.toDouble();
+                          if (center != null && radius != null) {
+                            final circlePoints = _generateCirclePoints(center, radius);
+                            return PolygonLayer(
+                              polygons: [
+                                Polygon(
+                                  points: circlePoints,
+                                  color: AppColors.primary.withOpacity(0.2),
+                                  borderColor: AppColors.primary,
+                                  borderStrokeWidth: 2,
+                                ),
+                              ],
+                            );
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                  // Handle simple CIRCLE type
+                  if (geofenceJson['type'] == 'CIRCLE') {
+                    final center = geofenceJson['center'] as Map<String, dynamic>?;
+                    final radiusMeters = geofenceJson['radius_meters'] as num?;
+                    
+                    if (center != null && radiusMeters != null) {
+                      final centerLat = (center['lat'] as num?)?.toDouble();
+                      final centerLng = (center['lng'] as num?)?.toDouble();
+                      
+                      if (centerLat != null && centerLng != null) {
+                        final circlePoints = _generateCirclePoints(
+                          LatLng(centerLat, centerLng),
+                          radiusMeters.toDouble(),
+                        );
+                        
+                        return PolygonLayer(
+                          polygons: [
+                            Polygon(
+                              points: circlePoints,
+                              color: AppColors.primary.withOpacity(0.2),
+                              borderColor: AppColors.primary,
+                              borderStrokeWidth: 2,
+                            ),
+                          ],
+                        );
+                      }
+                    }
+                  }
+                } catch (e) {
+                  debugPrint('Error rendering geofence: $e');
+                }
+                return const SizedBox.shrink();
+              }),
+            // Render legacy polygon geofences
             if (widget.geofences.isNotEmpty)
               PolygonLayer(
                 polygons: widget.geofences
@@ -185,6 +283,26 @@ class _SiteMapWidgetState extends State<SiteMapWidget> {
                         ))
                     .toList(),
               ),
+            // Render legacy radius circles if provided
+            if (widget.radius != null && widget.projectsData != null && widget.projectsData!.isNotEmpty)
+              ...widget.projectsData!.where((p) => p['latitude'] != null && p['longitude'] != null).map((project) {
+                final lat = double.parse(project['latitude'].toString());
+                final lng = double.parse(project['longitude'].toString());
+                final circlePoints = _generateCirclePoints(
+                  LatLng(lat, lng),
+                  widget.radius!,
+                );
+                return PolygonLayer(
+                  polygons: [
+                    Polygon(
+                      points: circlePoints,
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderColor: AppColors.primary.withOpacity(0.5),
+                      borderStrokeWidth: 1.5,
+                    ),
+                  ],
+                );
+              }),
             MarkerLayer(
                 markers: [
                   if (_currentLocation != null)
@@ -306,5 +424,34 @@ class _SiteMapWidgetState extends State<SiteMapWidget> {
         ),
       ),
     );
+  }
+
+  /// Generate circle points from center and radius (in meters)
+  /// Uses Haversine formula to calculate points on a circle
+  List<LatLng> _generateCirclePoints(LatLng center, double radiusMeters, {int segments = 64}) {
+    final points = <LatLng>[];
+    const R = 6371000.0; // Earth radius in meters
+    
+    for (int i = 0; i <= segments; i++) {
+      final angle = (i * 360.0 / segments) * math.pi / 180.0;
+      
+      // Calculate point using Haversine formula
+      final lat1 = center.latitude * math.pi / 180.0;
+      final lon1 = center.longitude * math.pi / 180.0;
+      
+      final lat2 = math.asin(
+        math.sin(lat1) * math.cos(radiusMeters / R) +
+        math.cos(lat1) * math.sin(radiusMeters / R) * math.cos(angle),
+      );
+      
+      final lon2 = lon1 + math.atan2(
+        math.sin(angle) * math.sin(radiusMeters / R) * math.cos(lat1),
+        math.cos(radiusMeters / R) - math.sin(lat1) * math.sin(lat2),
+      );
+      
+      points.add(LatLng(lat2 * 180.0 / math.pi, lon2 * 180.0 / math.pi));
+    }
+    
+    return points;
   }
 }

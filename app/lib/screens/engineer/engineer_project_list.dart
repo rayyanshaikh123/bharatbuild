@@ -91,15 +91,23 @@ class _EngineerProjectListScreenState extends ConsumerState<EngineerProjectListS
       await ref.read(authServiceProvider).joinProject(projectId, _orgId!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('request_sent'.tr()), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text('Project join request submitted. Waiting for manager approval.'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
         );
-        // Navigate back or refresh? Typically navigate back to "My Requests"
-        Navigator.pop(context);
+        // Refresh the list to show updated status
+        _fetchProjects();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }

@@ -7,7 +7,7 @@ const {
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
 
-// Check if engineer is APPROVED in organization AND APPROVED in project
+// Check if engineer is APPROVED in organization AND has access to project (ACTIVE or PENDING)
 async function engineerProjectAccess(engineerId, projectId) {
   const result = await pool.query(
     `SELECT COUNT(*) FROM project_site_engineers pse
@@ -15,8 +15,8 @@ async function engineerProjectAccess(engineerId, projectId) {
      JOIN organization_site_engineers ose ON ose.site_engineer_id = pse.site_engineer_id AND ose.org_id = p.org_id
      WHERE pse.site_engineer_id = $1 
        AND pse.project_id = $2 
-       AND pse.status = 'ACTIVE'
-       AND ose.status = 'APPROVED'`,
+       AND pse.status IN ('ACTIVE', 'PENDING')
+       AND ose.status IN ('APPROVED', 'PENDING')`,
     [engineerId, projectId],
   );
   return parseInt(result.rows[0].count) > 0;
@@ -28,12 +28,12 @@ router.get("/plans/:projectId", engineerCheck, async (req, res) => {
     const engineerId = req.user.id;
     const { projectId } = req.params;
 
-    // Check if engineer is APPROVED in both organization and project
+    // Check if engineer has access to project (ACTIVE or PENDING) and organization (APPROVED or PENDING)
     const hasAccess = await engineerProjectAccess(engineerId, projectId);
 
     if (!hasAccess) {
       return res.status(403).json({
-        error: "Access denied. Not an approved engineer in this project.",
+        error: "Access denied. You must be part of the organization and project to view plans.",
       });
     }
 
@@ -90,7 +90,7 @@ router.patch("/plan-items/:itemId", engineerCheck, async (req, res) => {
     // Check project access
     const hasAccess = await engineerProjectAccess(engineerId, projectId);
     if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied. Not an approved engineer in this project." });
+      return res.status(403).json({ error: "Access denied. You must be part of the organization and project to update plan items." });
     }
 
     // Prepare update fields

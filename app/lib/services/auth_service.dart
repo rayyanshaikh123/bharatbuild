@@ -11,6 +11,28 @@ class AuthService {
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();
 
+  /// Helper method to extract error message from response
+  String _extractErrorMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map && body.containsKey('error')) {
+        return body['error'] as String;
+      }
+      if (body is Map && body.containsKey('message')) {
+        return body['message'] as String;
+      }
+    } catch (_) {
+      // If parsing fails, return the raw body
+    }
+    return response.body.isNotEmpty ? response.body : 'Unknown error occurred';
+  }
+
+  /// Helper method to throw formatted exception
+  Never _throwError(String operation, http.Response response) {
+    final errorMsg = _extractErrorMessage(response);
+    throw Exception('$operation: $errorMsg');
+  }
+
   Future<void> requestLabourOtp(String phone) async {
     final uri = Uri.parse('$_base/auth/labour/otp/request');
     final res = await _client.post(
@@ -19,7 +41,7 @@ class AuthService {
       body: jsonEncode({'phone': phone}),
     );
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception('OTP request failed: ${res.body}');
+      _throwError('OTP request failed', res);
     }
   }
 
@@ -31,7 +53,7 @@ class AuthService {
       body: jsonEncode({'phone': phone, 'otp': otp}),
     ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
-      throw Exception('OTP verify failed: ${res.body}');
+      _throwError('OTP verification failed', res);
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -47,7 +69,7 @@ class AuthService {
       body: jsonEncode({'email': email, 'password': password}),
     ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
-      throw Exception('Login failed: ${res.body}');
+      _throwError('Login failed', res);
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -338,7 +360,7 @@ class AuthService {
       body: jsonEncode({'organizationId': orgId}),
     );
     if (res.statusCode != 200) {
-      throw Exception('Failed to join project: ${res.body}');
+      _throwError('Failed to join project', res);
     }
   }
 
@@ -690,6 +712,17 @@ class AuthService {
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw Exception('Failed to record movement: ${res.body}');
     }
+  }
+
+  /* ---------------- DASHBOARD (ENGINEER) ---------------- */
+
+  Future<Map<String, dynamic>> getEngineerDashboard() async {
+    final uri = Uri.parse('$_base/engineer/dashboard');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch dashboard: ${res.body}');
   }
 
   /* ---------------- PROJECT PLAN (ENGINEER) ---------------- */
