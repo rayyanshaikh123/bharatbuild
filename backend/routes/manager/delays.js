@@ -14,7 +14,7 @@ router.use(managerCheck);
  */
 router.get("/project/:projectId", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
     const managerId = req.user.id;
 
     if (isNaN(projectId)) {

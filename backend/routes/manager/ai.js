@@ -14,7 +14,7 @@ router.use(managerCheck);
  */
 router.post("/project/:projectId/extract-materials", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
     const managerId = req.user.id;
 
     if (isNaN(projectId)) {
@@ -64,7 +64,7 @@ router.post("/project/:projectId/extract-materials", async (req, res) => {
  */
 router.post("/project/:projectId/delay-summary", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.projectId);
+    const projectId = req.params.projectId;
     const managerId = req.user.id;
 
     if (isNaN(projectId)) {
