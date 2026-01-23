@@ -4,14 +4,13 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { ownerOrganization, ownerProjects, Project } from "@/lib/api/owner";
-import { ownerAudit } from "@/lib/api/audit";
+import { managerOrganization, managerProjects, Project } from "@/lib/api/manager";
+import { managerAudit } from "@/lib/api/audit";
 import type { AuditLog, AuditCategory, AuditAction } from "@/types/ledger";
 import {
   Loader2,
   History,
   Filter,
-  FileText,
   User,
   AlertCircle,
   CheckCircle,
@@ -67,16 +66,16 @@ function ProjectFilter({
   onSelect,
 }: {
   projects: Project[];
-  selected: number | null;
-  onSelect: (id: number | null) => void;
+  selected: string | null;
+  onSelect: (id: string | null) => void;
 }) {
   return (
     <select
       value={selected ?? ""}
-      onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+      onChange={(e) => onSelect(e.target.value || null)}
       className="h-10 px-3 bg-background/50 border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
     >
-      <option value="">All Projects</option>
+      <option value="">All My Projects</option>
       {projects.map((p) => (
         <option key={p.id} value={p.id}>
           {p.name}
@@ -124,7 +123,7 @@ function formatDateTime(dateStr: string) {
   };
 }
 
-export default function OwnerAuditPage() {
+export default function ManagerAuditPage() {
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -132,7 +131,7 @@ export default function OwnerAuditPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAudits, setIsLoadingAudits] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [projectFilter, setProjectFilter] = useState<number | null>(null);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<AuditCategory | null>(null);
 
   // Fetch organization and projects
@@ -140,11 +139,19 @@ export default function OwnerAuditPage() {
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
-        const orgRes = await ownerOrganization.get();
-        if (orgRes.organization) {
-          setOrganizationId(orgRes.organization.id);
-          const projectsRes = await ownerProjects.getAll(orgRes.organization.id);
+        const orgsRes = await managerOrganization.getMyOrganizations();
+        if (orgsRes.organizations && orgsRes.organizations.length > 0) {
+          const orgId = orgsRes.organizations[0].org_id;
+           if (!orgId) {
+             console.error("Organization ID missing in response", orgsRes.organizations[0]);
+             setError("Invalid organization data");
+             return;
+          }
+          setOrganizationId(orgId);
+          const projectsRes = await managerProjects.getMyProjects(orgId);
           setProjects(projectsRes.projects || []);
+        } else {
+            setProjects([]);
         }
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
@@ -164,7 +171,7 @@ export default function OwnerAuditPage() {
     const fetchAudits = async () => {
       try {
         setIsLoadingAudits(true);
-        const res = await ownerAudit.getLogs({
+        const res = await managerAudit.getLogs({
           project_id: projectFilter ?? undefined,
           category: categoryFilter ?? undefined,
           limit: 100,
@@ -272,14 +279,10 @@ export default function OwnerAuditPage() {
   // Calculate summary stats
   const stats = useMemo(() => {
     const byAction: Record<string, number> = {};
-    const byCategory: Record<string, number> = {};
-
     audits.forEach((a) => {
       byAction[a.action] = (byAction[a.action] || 0) + 1;
-      byCategory[a.category] = (byCategory[a.category] || 0) + 1;
     });
-
-    return { byAction, byCategory, total: audits.length };
+    return { byAction, total: audits.length };
   }, [audits]);
 
   if (isLoading) {
@@ -292,10 +295,7 @@ export default function OwnerAuditPage() {
 
   return (
     <div className="space-y-8 pt-12 md:pt-0 pb-12">
-      <DashboardHeader
-        userName={user?.name?.split(" ")[0]}
-        title="System Audit Logs"
-      />
+      <DashboardHeader userName={user?.name?.split(" ")[0]} title="Project Audit Logs" />
 
       {/* Filters Bar */}
       <div className="glass-card rounded-2xl p-4">
@@ -304,11 +304,7 @@ export default function OwnerAuditPage() {
             <Filter size={16} />
             <span>Filters:</span>
           </div>
-          <ProjectFilter
-            projects={projects}
-            selected={projectFilter}
-            onSelect={setProjectFilter}
-          />
+          <ProjectFilter projects={projects} selected={projectFilter} onSelect={setProjectFilter} />
           <CategoryFilter selected={categoryFilter} onSelect={setCategoryFilter} />
         </div>
       </div>
@@ -373,7 +369,7 @@ export default function OwnerAuditPage() {
           columns={columns}
           searchable={true}
           searchKeys={["entity_type", "project_name", "user_type"]}
-          emptyMessage="No audit logs found."
+          emptyMessage="No audit logs found for your assigned projects."
           itemsPerPage={15}
         />
       )}

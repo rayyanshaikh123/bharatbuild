@@ -15,6 +15,11 @@ import {
   X,
   Receipt,
   History,
+  Calendar,
+  Clock,
+  Package,
+  BarChart,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -29,10 +34,16 @@ interface NavItem {
 
 const ownerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
+  { label: "Projects", href: "/owner/projects", icon: Building2 },
+  { label: "Plans", href: "/owner/plans", icon: Calendar },
+  { label: "Timeline", href: "/owner/timeline", icon: Clock },
+  { label: "DPR", href: "/owner/dpr", icon: FileText },
+  { label: "Materials", href: "/owner/materials", icon: Package },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
-  { label: "Audit Logs", href: "/owner/audit", icon: History },
-  { label: "Reports", href: "/owner/reports", icon: FileText },
+  { label: "Audit Logs", href: "/owner/audits", icon: History },
+  { label: "Analytics", href: "/owner/analytics", icon: TrendingUp },
+  { label: "Reports", href: "/owner/reports", icon: BarChart },
 ];
 
 const managerNavItems: NavItem[] = [
@@ -40,7 +51,7 @@ const managerNavItems: NavItem[] = [
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "Ledger", href: "/manager/ledger", icon: Receipt },
-  { label: "Audit Logs", href: "/manager/audit", icon: History },
+  { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
 ];
 

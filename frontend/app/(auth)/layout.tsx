@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { BlueprintBackground } from "@/components/shared/BlueprintBackground";
 import DotGrid from "@/components/DotGrid";
 import ThemeToggle from "@/components/shared/theme-toggle";
-import { Construction } from "lucide-react";
 import Link from "next/link";
 
 export default function AuthLayout({
@@ -38,16 +37,14 @@ export default function AuthLayout({
             maxSpeed={5000}
             resistance={750}
             returnDuration={1.5}
+            style={{}}
           />
         </div>
 
         {/* Header */}
         <header className="relative z-50 p-6 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <div className="brand-badge inline-flex items-center gap-3 px-3 py-1 rounded-xl shadow-sm">
-              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-primary-foreground shadow-xl">
-                <Construction size={20} />
-              </div>
+            <div className="brand-badge inline-flex items-center gap-3 px-3 py-1 ">
               <span className="text-xl font-black tracking-tighter uppercase italic brand-text">
                 Bharat<span className="text-primary">Build</span>
               </span>

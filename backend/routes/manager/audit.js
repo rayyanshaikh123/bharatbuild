@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const passport = require("passport");
 const auditService = require("../../services/audit.service");
 
 // Middleware to ensure user is authenticated as manager
-const ensureManager = passport.authenticate("jwt", { session: false });
+const ensureManager = require("../../middleware/managerCheck");
 
 /**
  * GET /manager/audits
@@ -17,7 +16,7 @@ router.get("/", ensureManager, async (req, res) => {
 
     // Parse query parameters
     const filters = {
-      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      project_id: req.query.project_id || null,
       category: req.query.category || null,
       start_date: req.query.start_date || undefined,
       end_date: req.query.end_date || undefined,

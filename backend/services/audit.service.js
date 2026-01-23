@@ -49,7 +49,7 @@ async function getOwnerAudits(ownerId, filters = {}) {
       LEFT JOIN projects p ON al.project_id = p.id
       WHERE al.organization_id = $1
         AND al.created_at::date BETWEEN $2 AND $3
-        AND ($4::integer IS NULL OR al.project_id = $4)
+        AND ($4::uuid IS NULL OR al.project_id = $4)
         AND ($5::text IS NULL OR al.category = $5)
       ORDER BY al.created_at DESC
       LIMIT $6 OFFSET $7
@@ -64,7 +64,7 @@ async function getOwnerAudits(ownerId, filters = {}) {
       FROM audit_logs
       WHERE organization_id = $1
         AND created_at::date BETWEEN $2 AND $3
-        AND ($4::integer IS NULL OR project_id = $4)
+        AND ($4::uuid IS NULL OR project_id = $4)
         AND ($5::text IS NULL OR category = $5)
     `,
       [orgId, start_date, end_date, project_id, category],
@@ -140,7 +140,7 @@ async function getManagerAudits(managerId, filters = {}) {
     const offset = (page - 1) * limit;
 
     // Validate project_id if provided
-    if (project_id && !projectIds.includes(parseInt(project_id))) {
+    if (project_id && !projectIds.includes(project_id)) {
       throw new Error("Unauthorized: Project not assigned to manager");
     }
 
@@ -154,7 +154,7 @@ async function getManagerAudits(managerId, filters = {}) {
       LEFT JOIN projects p ON al.project_id = p.id
       WHERE al.project_id = ANY($1)
         AND al.created_at::date BETWEEN $2 AND $3
-        AND ($4::integer IS NULL OR al.project_id = $4)
+        AND ($4::uuid IS NULL OR al.project_id = $4)
         AND ($5::text IS NULL OR al.category = $5)
       ORDER BY al.created_at DESC
       LIMIT $6 OFFSET $7
@@ -169,7 +169,7 @@ async function getManagerAudits(managerId, filters = {}) {
       FROM audit_logs
       WHERE project_id = ANY($1)
         AND created_at::date BETWEEN $2 AND $3
-        AND ($4::integer IS NULL OR project_id = $4)
+        AND ($4::uuid IS NULL OR project_id = $4)
         AND ($5::text IS NULL OR category = $5)
     `,
       [projectIds, start_date, end_date, project_id, category],
