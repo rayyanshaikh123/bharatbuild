@@ -257,12 +257,16 @@ export default function OwnerAuditPage() {
       {
         key: "change_summary",
         label: "Summary",
-        render: (value: string | null) =>
-          value ? (
-            <span className="text-sm text-muted-foreground">{value}</span>
-          ) : (
-            <span className="text-muted-foreground text-sm">—</span>
-          ),
+        render: (value: string | object | null) => {
+          if (!value) {
+            return <span className="text-muted-foreground text-sm">—</span>;
+          }
+          // Handle JSONB object from database
+          const displayText = typeof value === 'object' 
+            ? (value as any).action || JSON.stringify(value).substring(0, 50) + '...'
+            : String(value);
+          return <span className="text-sm text-muted-foreground">{displayText}</span>;
+        },
       },
     ],
     []

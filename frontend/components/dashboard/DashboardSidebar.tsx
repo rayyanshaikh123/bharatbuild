@@ -23,6 +23,7 @@ import {
   BarChart,
   TrendingUp,
   ShieldAlert,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -61,6 +62,7 @@ const managerNavItems: NavItem[] = [
   { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
   { label: "Materials", href: "/manager/materials", icon: Package },
+  { label: "GRN", href: "/manager/grn", icon: ClipboardCheck },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
   { label: "Audit Logs", href: "/manager/audit", icon: History },
   { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },
@@ -69,8 +71,10 @@ const managerNavItems: NavItem[] = [
 
 const poManagerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/po-manager", icon: LayoutDashboard },
+  { label: "Projects", href: "/po-manager/projects", icon: Building2 },
   { label: "Material Requests", href: "/po-manager/material-requests", icon: Package },
   { label: "Purchase Orders", href: "/po-manager/purchase-orders", icon: FileText },
+  { label: "GRN", href: "/po-manager/grn", icon: ClipboardCheck },
 ];
 
 export function DashboardSidebar() {

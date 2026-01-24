@@ -231,3 +231,36 @@ export const poManagerOrganization = {
     return api.post<{ message: string }>("/purchase-manager/join-organization", { organizationId });
   },
 };
+
+// ==================== GRN API ====================
+
+export interface GRN {
+  id: string;
+  project_id: string;
+  project_name: string;
+  purchase_order_id: string;
+  po_number: string;
+  vendor_name: string;
+  material_request_id: string;
+  material_request_title: string;
+  site_engineer_id: string;
+  engineer_name: string;
+  grn_number: string;
+  quantity_received: number;
+  unit: string;
+  quality_check_status: "PENDING" | "PASSED" | "FAILED";
+  remarks?: string;
+  received_at: string;
+  created_at: string;
+  verified_by?: string;
+  verified_by_name?: string;
+  verified_at?: string;
+}
+
+export const poManagerGRN = {
+  // Get GRNs for a project
+  getByProject: async (projectId: string): Promise<{ grns: GRN[] }> => {
+    return api.get<{ grns: GRN[] }>(`/purchase-manager/grns?projectId=${projectId}`);
+  },
+};
+

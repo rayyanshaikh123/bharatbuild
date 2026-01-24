@@ -451,5 +451,33 @@ export const ownerBlacklist = {
     api.delete<{ message: string }>(`/owner/blacklist/${id}`),
 };
 
+// ==================== OWNER PURCHASE MANAGER REQUESTS API ====================
 
+export interface PurchaseManagerRequest {
+  id: string;
+  org_id: string;
+  purchase_manager_id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  approved_at?: string;
+  purchase_manager_name: string;
+  purchase_manager_email: string;
+  purchase_manager_phone: string;
+}
 
+export const ownerPurchaseManagerRequests = {
+  getAll: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(`/owner/purchase-manager-requests?orgId=${orgId}`),
+
+  getPending: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(`/owner/purchase-manager-requests/pending?orgId=${orgId}`),
+
+  getAccepted: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(`/owner/purchase-manager-requests/accepted?orgId=${orgId}`),
+
+  getRejected: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(`/owner/purchase-manager-requests/rejected?orgId=${orgId}`),
+
+  updateStatus: (requestId: string, status: "APPROVED" | "REJECTED") =>
+    api.patch<{ request: PurchaseManagerRequest }>(`/owner/purchase-manager-requests/${requestId}`, { status }),
+};

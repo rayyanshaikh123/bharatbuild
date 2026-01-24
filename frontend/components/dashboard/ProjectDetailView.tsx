@@ -10,6 +10,7 @@ import { ProjectManagerApprovalList } from "@/components/dashboard/ProjectManage
 import { TasksSection } from "@/components/dashboard/TasksSection";
 import { ProjectEngineerRequestsList } from "@/components/dashboard/ProjectEngineerRequestsList";
 import { ProjectManagerRequestsList } from "@/components/dashboard/ProjectManagerRequestsList";
+import { ProjectPurchaseManagerRequestsList } from "@/components/dashboard/ProjectPurchaseManagerRequestsList";
 
 interface Project {
   id: string;
@@ -243,7 +244,8 @@ export function ProjectDetailView({
       {userRole === "manager" && (
         <div className="space-y-6">
           {/* Request Sections Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Request Sections Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Site Engineer Requests */}
             <div className="glass-card rounded-2xl p-6">
               <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
@@ -251,6 +253,15 @@ export function ProjectDetailView({
                 Site Engineer Requests
               </h3>
               <ProjectEngineerRequestsList projectId={project.id} />
+            </div>
+
+            {/* Purchase Manager Requests */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                <Users size={20} className="text-purple-500" />
+                PO Manager Requests
+              </h3>
+              <ProjectPurchaseManagerRequestsList projectId={project.id} organizationId={project.org_id} />
             </div>
 
             {/* Manager Join Requests (only for project creator) */}

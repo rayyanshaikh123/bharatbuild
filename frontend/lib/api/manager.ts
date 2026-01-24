@@ -375,6 +375,9 @@ export const managerWages = {
 
   review: (wageId: string, status: "APPROVED" | "REJECTED") =>
     api.patch<{ wage: WageRecord }>(`/manager/wages/review/${wageId}`, { status }),
+
+  getWeeklyCost: (project_id: string) =>
+    api.get<{ weekly_costs: any[] }>(`/manager/wages/weekly-cost?project_id=${project_id}`),
 };
 
 // ==================== MANAGER MATERIALS API ====================
@@ -483,4 +486,55 @@ export const managerTimeline = {
   getProjectTimeline: (projectId: string) =>
     api.get<TimelineResponse>(`/manager/timeline/project/${projectId}`),
 };
+
+// ==================== MANAGER PURCHASE MANAGER REQUESTS API ====================
+
+export interface PurchaseManagerProjectRequest {
+  id: string;
+  project_id: string;
+  purchase_manager_id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  assigned_at: string;
+  purchase_manager_name: string;
+  purchase_manager_email: string;
+  purchase_manager_phone: string;
+}
+
+export const managerPurchaseManagerRequests = {
+  // Get all PM requests for a project
+  getAll: (projectId: string, organizationId: string) =>
+    api.get<{ purchase_manager_requests: PurchaseManagerProjectRequest[] }>(
+      `/manager/project-purchase-manager-requests/purchase-manager-requests?projectId=${projectId}&organizationId=${organizationId}`
+    ),
+
+  // Get pending PM requests
+  getPending: (projectId: string, organizationId: string) =>
+    api.get<{ purchase_manager_requests: PurchaseManagerProjectRequest[] }>(
+      `/manager/project-purchase-manager-requests/purchase-manager-requests/pending?projectId=${projectId}&organizationId=${organizationId}`
+    ),
+
+  // Get approved PM requests
+  getApproved: (projectId: string, organizationId: string) =>
+    api.get<{ purchase_manager_requests: PurchaseManagerProjectRequest[] }>(
+      `/manager/project-purchase-manager-requests/purchase-manager-requests/approved?projectId=${projectId}&organizationId=${organizationId}`
+    ),
+
+  // Approve/reject PM request
+  updateStatus: (requestId: string, decision: "APPROVED" | "REJECTED", projectId: string, organizationId: string) =>
+    api.patch<{ message: string; request: PurchaseManagerProjectRequest }>(
+      `/manager/project-purchase-manager-requests/purchase-manager-request/${requestId}/decision`,
+      { decision, projectId, organizationId }
+    ),
+};
+
+// ==================== MANAGER GRN API ====================
+
+export const managerGrn = {
+  getProjectGrns: (projectId: string) =>
+    api.get<{ grns: any[] }>(`/manager/grn/grns?projectId=${projectId}`),
+
+  verify: (grnId: string, remarks?: string) =>
+    api.patch<{ message: string; grn: any }>(`/manager/grn/grns/${grnId}/verify`, { remarks }),
+};
+
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { DataTable, Column } from "@/components/ui/DataTable";
+import { DataTable } from "@/components/ui/DataTable";
 import { 
   managerProjects, 
   Project,
@@ -16,7 +16,6 @@ import {
 import { 
   Loader2, 
   Coins, 
-  Filter, 
   Plus, 
   Trash2, 
   Edit2, 
@@ -56,7 +55,7 @@ function ProjectSelector({
 
 export default function ManagerWagesPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"rates" | "processing" | "history">("rates");
+  const [activeTab, setActiveTab] = useState<"rates" | "processing" | "history" | "weekly-cost">("rates");
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   
@@ -74,6 +73,9 @@ export default function ManagerWagesPage() {
 
   // State for Wage History
   const [wageHistory, setWageHistory] = useState<WageRecord[]>([]);
+
+  // State for Weekly Cost
+  const [weeklyCosts, setWeeklyCosts] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -101,6 +103,7 @@ export default function ManagerWagesPage() {
       setWageRates([]);
       setUnprocessedAttendance([]);
       setWageHistory([]);
+      setWeeklyCosts([]);
       return;
     }
 
@@ -116,6 +119,10 @@ export default function ManagerWagesPage() {
         } else if (activeTab === "history") {
           const res = await managerWages.getHistory({ project_id: selectedProjectId });
           setWageHistory(res.wages || []);
+        } else if (activeTab === "weekly-cost") {
+          // @ts-ignore - method added via Object.assign
+          const res = await managerWages.getWeeklyCost(selectedProjectId);
+          setWeeklyCosts(res.weekly_costs || []);
         }
       } catch (err) {
         console.error("Failed to fetch data:", err);
@@ -209,7 +216,7 @@ export default function ManagerWagesPage() {
         <ProjectSelector projects={projects} selected={selectedProjectId} onSelect={setSelectedProjectId} />
         
         <div className="flex bg-muted/30 p-1 rounded-lg ml-auto">
-          {["rates", "processing", "history"].map((tab) => (
+          {["rates", "processing", "history", "weekly-cost"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -217,7 +224,7 @@ export default function ManagerWagesPage() {
                 activeTab === tab ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "rates" ? "Wage Rates" : tab === "processing" ? "Process Wages" : "History"}
+              {tab === "rates" ? "Wage Rates" : tab === "processing" ? "Process Wages" : tab === "history" ? "History" : "Weekly Cost"}
             </button>
           ))}
         </div>
@@ -441,6 +448,36 @@ export default function ManagerWagesPage() {
                 searchKeys={["labour_name"]}
                 emptyMessage="No wage history found."
               />
+            )}
+
+            {/* WEEKLY COST TAB */}
+            {activeTab === "weekly-cost" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Weekly Wage Analysis</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {weeklyCosts.map((week, idx) => (
+                    <div key={idx} className="bg-card border border-border rounded-xl p-4 flex flex-col items-center text-center">
+                       <span className="text-muted-foreground text-xs uppercase tracking-widest mb-1">
+                          Week Starting
+                       </span>
+                       <span className="font-mono text-sm mb-3">
+                          {new Date(week.week_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                       </span>
+                       <div className="text-2xl font-black text-primary mb-2">
+                          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(week.total_cost)}
+                       </div>
+                       <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+                          {week.record_count} Records
+                       </div>
+                    </div>
+                  ))}
+                  {weeklyCosts.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-muted-foreground">
+                      No weekly data available.
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </>
         )}
