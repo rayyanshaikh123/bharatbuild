@@ -7,6 +7,7 @@ const {
   logAudit,
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
+const { checkCategoryCapacity } = require("../../util/wageCalculator");
 
 /* ---------------- CHECK-IN ---------------- */
 router.post("/check-in", labourCheck, async (req, res) => {
@@ -25,22 +26,56 @@ router.post("/check-in", labourCheck, async (req, res) => {
         .json({ error: "Latitude and longitude are required" });
     }
 
-    // 1. Verify if labour is approved for this project
-    const approvedCheck = await client.query(
-      `SELECT lrp.id 
-             FROM labour_request_participants lrp
-             JOIN labour_requests lr ON lrp.labour_request_id = lr.id
-             WHERE lrp.labour_id = $1 AND lr.project_id = $2 AND lrp.status = 'APPROVED'`,
-      [labourId, project_id],
+    // 1. Check if labour is blacklisted for this organization (within 3 days)
+    const orgRes = await client.query(
+      `SELECT org_id FROM projects WHERE id = $1`,
+      [project_id],
+    );
+    if (orgRes.rows.length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    const orgId = orgRes.rows[0].org_id;
+
+    const blacklistCheck = await client.query(
+      `SELECT id, created_at FROM organization_blacklist 
+       WHERE org_id = $1 AND labour_id = $2 
+       AND created_at + interval '3 days' > NOW()`,
+      [orgId, labourId],
     );
 
-    if (approvedCheck.rows.length === 0) {
-      return res
-        .status(403)
-        .json({ error: "You are not approved for this project" });
+    if (blacklistCheck.rows.length > 0) {
+      const blacklistedAt = new Date(blacklistCheck.rows[0].created_at);
+      const expiresAt = new Date(
+        blacklistedAt.getTime() + 3 * 24 * 60 * 60 * 1000,
+      );
+      const remainingHours = Math.ceil(
+        (expiresAt - new Date()) / (1000 * 60 * 60),
+      );
+
+      return res.status(403).json({
+        error: "You are blacklisted from this organization",
+        reason: "Exceeded maximum allowed exits",
+        remaining_hours: remainingHours,
+      });
     }
 
-    // 2. Validate geofence
+    // 2. Verify labour has applied and check category capacity
+    const capacityCheck = await checkCategoryCapacity(
+      client,
+      labourId,
+      project_id,
+    );
+
+    if (!capacityCheck.hasCapacity) {
+      return res.status(403).json({
+        error: capacityCheck.error || "Category capacity is full",
+        category: capacityCheck.category,
+        currentCount: capacityCheck.currentCount,
+        requiredCount: capacityCheck.requiredCount,
+      });
+    }
+
+    // 3. Validate geofence
     const geofenceResult = await validateGeofence(
       client,
       project_id,
@@ -58,7 +93,8 @@ router.post("/check-in", labourCheck, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 3. Get or create attendance record for today
+    // 4. Get or create attendance record for today
+    // GEO-FENCE ATTENDANCE: Auto-approved, is_manual=false
     let attendanceRes = await client.query(
       `SELECT id, entry_exit_count, max_allowed_exits FROM attendance 
              WHERE labour_id = $1 AND project_id = $2 AND attendance_date = CURRENT_DATE`,
@@ -66,20 +102,22 @@ router.post("/check-in", labourCheck, async (req, res) => {
     );
 
     let attendanceId;
+    let isNewAttendance = false;
     if (attendanceRes.rows.length === 0) {
-      // Create new attendance record
+      // Create new attendance record - AUTO-APPROVED for geo-fence check-in
       const newAttendance = await client.query(
-        `INSERT INTO attendance (labour_id, project_id, attendance_date, status, last_event_at)
-               VALUES ($1, $2, CURRENT_DATE, 'PENDING', CURRENT_TIMESTAMP)
+        `INSERT INTO attendance (labour_id, project_id, attendance_date, status, is_manual, last_event_at)
+               VALUES ($1, $2, CURRENT_DATE, 'APPROVED', false, CURRENT_TIMESTAMP)
                RETURNING id, entry_exit_count, max_allowed_exits`,
         [labourId, project_id],
       );
       attendanceId = newAttendance.rows[0].id;
+      isNewAttendance = true;
     } else {
       attendanceId = attendanceRes.rows[0].id;
     }
 
-    // 4. Check for active session (not checked out)
+    // 5. Check for active session (not checked out)
     const activeSession = await client.query(
       `SELECT id FROM attendance_sessions 
              WHERE attendance_id = $1 AND check_out_time IS NULL`,
@@ -91,7 +129,7 @@ router.post("/check-in", labourCheck, async (req, res) => {
       return res.status(400).json({ error: "Already checked in" });
     }
 
-    // 5. Create new session
+    // 6. Create new session
     const sessionRes = await client.query(
       `INSERT INTO attendance_sessions (attendance_id, check_in_time)
              VALUES ($1, CURRENT_TIMESTAMP)
@@ -99,10 +137,41 @@ router.post("/check-in", labourCheck, async (req, res) => {
       [attendanceId],
     );
 
-    // 6. Update attendance last_event_at
+    // 7. Create wage record if this is a new attendance
+    // Wage rate is fetched from wage_rates table (server-side)
+    if (isNewAttendance) {
+      const labourInfo = await client.query(
+        `SELECT skill_type, categories[1] as category FROM labours WHERE id = $1`,
+        [labourId],
+      );
+
+      const { skill_type, category } = labourInfo.rows[0];
+
+      const rateRes = await client.query(
+        `SELECT hourly_rate FROM wage_rates 
+         WHERE project_id = $1 AND skill_type = $2 AND category = $3`,
+        [project_id, skill_type, category],
+      );
+
+      if (rateRes.rows.length > 0) {
+        const hourly_rate = rateRes.rows[0].hourly_rate;
+
+        await client.query(
+          `INSERT INTO wages (attendance_id, labour_id, project_id, wage_type, rate, total_amount, worked_hours, status)
+           VALUES ($1, $2, $3, 'HOURLY', $4, 0, 0, 'PENDING')`,
+          [attendanceId, labourId, project_id, hourly_rate],
+        );
+      }
+    }
+
+    // 8. Update attendance last_event_at and location
     await client.query(
-      `UPDATE attendance SET last_event_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [attendanceId],
+      `UPDATE attendance SET last_event_at = CURRENT_TIMESTAMP, 
+                            last_known_lat = $2, 
+                            last_known_lng = $3,
+                            is_currently_breached = false
+       WHERE id = $1`,
+      [attendanceId, latitude, longitude],
     );
 
     // 7. Fetch final attendance state for audit
@@ -355,50 +424,173 @@ router.post("/track", labourCheck, async (req, res) => {
     const attendance = attendanceRes.rows[0];
     const projectId = attendance.project_id;
     const orgId = attendance.org_id;
+    const maxAllowedExits = attendance.max_allowed_exits || 3;
 
-    // 2. Validate Geofence
-    const geofenceResult = await validateGeofence(pool, projectId, latitude, longitude);
+    // 2. Check if already blacklisted (within 3 days)
+    const blacklistCheck = await pool.query(
+      `SELECT id, created_at FROM organization_blacklist 
+       WHERE org_id = $1 AND labour_id = $2 
+       AND created_at + interval '3 days' > NOW()`,
+      [orgId, labourId],
+    );
 
-    // 3. Update breach status
-    let breachCount = attendance.geofence_breach_count || 0;
+    if (blacklistCheck.rows.length > 0) {
+      const blacklistedAt = new Date(blacklistCheck.rows[0].created_at);
+      const expiresAt = new Date(
+        blacklistedAt.getTime() + 3 * 24 * 60 * 60 * 1000,
+      );
+      const remainingHours = Math.ceil(
+        (expiresAt - new Date()) / (1000 * 60 * 60),
+      );
+
+      return res.status(403).json({
+        error: "You are blacklisted from this organization",
+        reason: "Exceeded maximum allowed exits",
+        remaining_hours: remainingHours,
+      });
+    }
+
+    // 3. Validate Geofence
+    const geofenceResult = await validateGeofence(
+      pool,
+      projectId,
+      latitude,
+      longitude,
+    );
+
+    // 4. Handle geo-fence state changes
+    let entryExitCount = attendance.entry_exit_count || 0;
     let isCurrentlyBreached = !geofenceResult.isValid;
     let blacklisted = false;
+    let sessionClosed = false;
+    let sessionStarted = false;
+    let workedDuration = 0;
 
+    // CASE 1: Labour EXITS geo-fence (was inside, now outside) - PAUSE
     if (isCurrentlyBreached && !attendance.is_currently_breached) {
-      // New breach event recorded
-      breachCount += 1;
+      // Close current active session (PAUSE wage accumulation)
+      const activeSessionRes = await pool.query(
+        `SELECT id, check_in_time FROM attendance_sessions 
+         WHERE attendance_id = $1 AND check_out_time IS NULL
+         ORDER BY check_in_time DESC LIMIT 1`,
+        [attendance.id],
+      );
 
-      if (breachCount >= 3) {
-        // Blacklist logic
+      if (activeSessionRes.rows.length > 0) {
+        const sessionId = activeSessionRes.rows[0].id;
+        const checkInTime = activeSessionRes.rows[0].check_in_time;
+
+        // Close the session (PAUSE)
+        await pool.query(
+          `UPDATE attendance_sessions 
+           SET check_out_time = CURRENT_TIMESTAMP,
+               worked_minutes = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in_time)) / 60
+           WHERE id = $1`,
+          [sessionId],
+        );
+
+        sessionClosed = true;
+
+        // Calculate worked duration for this session
+        const now = new Date();
+        const start = new Date(checkInTime);
+        workedDuration = Math.floor((now - start) / 60000); // minutes
+      }
+
+      // Increment entry/exit count
+      entryExitCount += 1;
+
+      // Update total work hours
+      const totalRes = await pool.query(
+        `SELECT SUM(worked_minutes) as total_minutes 
+         FROM attendance_sessions 
+         WHERE attendance_id = $1 AND check_out_time IS NOT NULL`,
+        [attendance.id],
+      );
+
+      const work_hours = (totalRes.rows[0].total_minutes || 0) / 60;
+
+      await pool.query(`UPDATE attendance SET work_hours = $1 WHERE id = $2`, [
+        work_hours,
+        attendance.id,
+      ]);
+
+      // Check for blacklisting: ONLY if entry_exit_count > max_allowed_exits
+      if (entryExitCount > maxAllowedExits) {
         await pool.query(
           `INSERT INTO organization_blacklist (org_id, labour_id, reason)
            VALUES ($1, $2, $3)
            ON CONFLICT (org_id, labour_id) DO NOTHING`,
-          [orgId, labourId, 'Multiple geofence breaches (3+)'],
+          [orgId, labourId, "Exceeded maximum allowed exits"],
         );
         blacklisted = true;
       }
     }
 
-    // 4. Update attendance record
+    // CASE 2: Labour RE-ENTERS geo-fence (was outside, now inside) - RESUME
+    if (!isCurrentlyBreached && attendance.is_currently_breached) {
+      // Check if labour can resume (not exceeding exit limit)
+      if (entryExitCount <= maxAllowedExits) {
+        // Check if there's no active session (should always be true after exit)
+        const activeSessionCheck = await pool.query(
+          `SELECT id FROM attendance_sessions 
+           WHERE attendance_id = $1 AND check_out_time IS NULL`,
+          [attendance.id],
+        );
+
+        if (activeSessionCheck.rows.length === 0) {
+          // Create new session (RESUME wage accumulation)
+          await pool.query(
+            `INSERT INTO attendance_sessions (attendance_id, check_in_time)
+             VALUES ($1, CURRENT_TIMESTAMP)`,
+            [attendance.id],
+          );
+          sessionStarted = true;
+        }
+      }
+    }
+
+    // 5. Update attendance record with latest location and breach status
     await pool.query(
       `UPDATE attendance 
        SET last_known_lat = $1, 
            last_known_lng = $2, 
-           geofence_breach_count = $3,
-           is_currently_breached = $4,
+           is_currently_breached = $3,
+           entry_exit_count = $4,
            last_event_at = CURRENT_TIMESTAMP
        WHERE id = $5`,
-      [latitude, longitude, breachCount, isCurrentlyBreached, attendance.id],
+      [latitude, longitude, isCurrentlyBreached, entryExitCount, attendance.id],
     );
 
-    res.json({
+    // 6. Prepare response
+    const response = {
       success: true,
       is_inside: geofenceResult.isValid,
-      breach_count: breachCount,
-      blacklisted
-    });
+      entry_exit_count: entryExitCount,
+      max_allowed_exits: maxAllowedExits,
+      remaining_exits: Math.max(0, maxAllowedExits - entryExitCount),
+      blacklisted,
+    };
 
+    if (sessionClosed) {
+      response.status = "PAUSED";
+      response.worked_duration_minutes = workedDuration;
+      response.warning =
+        "You have exited the geo-fence area. Your work session has been paused.";
+    }
+
+    if (sessionStarted) {
+      response.status = "RESUMED";
+      response.message =
+        "You have re-entered the geo-fence area. Your work session has been resumed.";
+    }
+
+    if (blacklisted) {
+      response.error =
+        "You have been blacklisted from this organization for 3 days due to exceeding maximum allowed exits.";
+    }
+
+    res.json(response);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -440,7 +632,7 @@ router.get("/live-status", labourCheck, async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.json({ status: 'INACTIVE', attendance: null });
+      return res.json({ status: "INACTIVE", attendance: null });
     }
 
     const data = result.rows[0];
@@ -450,24 +642,25 @@ router.get("/live-status", labourCheck, async (req, res) => {
     // Calculate current session duration if active
     let sessionMinutes = 0;
     if (data.current_session_start) {
-      sessionMinutes = Math.floor((new Date() - new Date(data.current_session_start)) / 60000);
+      sessionMinutes = Math.floor(
+        (new Date() - new Date(data.current_session_start)) / 60000,
+      );
     }
 
     // Estimated earnings = (previously completed hours + current session hours) * rate
-    const totalHours = workHours + (sessionMinutes / 60);
+    const totalHours = workHours + sessionMinutes / 60;
     const estimatedWages = (totalHours * hourlyRate).toFixed(2);
 
     res.json({
-      status: data.current_session_start ? 'WORKING' : 'ON_BREAK',
+      status: data.current_session_start ? "WORKING" : "ON_BREAK",
       project_name: data.project_name,
       is_inside: !data.is_currently_breached,
       breach_count: data.geofence_breach_count,
       work_hours_today: totalHours.toFixed(2),
       estimated_wages: estimatedWages,
       hourly_rate: hourlyRate,
-      session_start: data.current_session_start
+      session_start: data.current_session_start,
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

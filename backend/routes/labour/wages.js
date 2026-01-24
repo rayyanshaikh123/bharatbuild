@@ -2,63 +2,106 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const labourCheck = require("../../middleware/labourCheck");
+const { calculateWageForAttendance } = require("../../util/wageCalculator");
 
 /* ---------------- GET WAGE HISTORY & ANALYTICS ---------------- */
 router.get("/my-wages", labourCheck, async (req, res) => {
-    try {
-        const labourId = req.user.id;
+  try {
+    const labourId = req.user.id;
 
-        // 1. Get all wages for this labour with project details
-        const wagesResult = await pool.query(
-            `SELECT w.id, w.attendance_id, w.wage_type, w.rate, w.total_amount, 
-              w.status, w.approved_at, w.created_at, w.worked_hours,
-              w.is_ready_for_payment, w.paid_at,
-              p.name as project_name, p.location_text,
-              a.attendance_date
-       FROM wages w
-       JOIN projects p ON w.project_id = p.id
-       JOIN attendance a ON w.attendance_id = a.id
-       WHERE w.labour_id = $1
-       ORDER BY a.attendance_date DESC`,
-            [labourId],
+    // 1. Get all attendance records with wage info
+    const attendanceResult = await pool.query(
+      `SELECT a.id as attendance_id, a.attendance_date, a.status as attendance_status,
+                    a.check_out_time, a.is_manual,
+                    w.id as wage_id, w.status as wage_status, w.approved_at, w.paid_at,
+                    p.name as project_name, p.location_text
+             FROM attendance a
+             LEFT JOIN wages w ON a.id = w.attendance_id
+             JOIN projects p ON a.project_id = p.id
+             WHERE a.labour_id = $1
+             ORDER BY a.attendance_date DESC`,
+      [labourId],
+    );
+
+    // 2. Calculate wages for each attendance (server-side)
+    const wagesWithCalculation = [];
+    for (const record of attendanceResult.rows) {
+      try {
+        const calculation = await calculateWageForAttendance(
+          pool,
+          record.attendance_id,
         );
-
-        // 2. Calculate Analytics
-        const analyticsResult = await pool.query(
-            `SELECT 
-        COUNT(*) filter (where status = 'APPROVED') as total_approved_days,
-        SUM(total_amount) filter (where status = 'APPROVED') as total_earnings,
-        SUM(total_amount) filter (where status = 'PENDING') as pending_earnings,
-        SUM(total_amount) filter (where status = 'APPROVED' AND paid_at IS NULL) as unpaid_earnings,
-        SUM(total_amount) filter (where paid_at IS NOT NULL) as paid_earnings
-       FROM wages
-       WHERE labour_id = $1`,
-            [labourId],
-        );
-
-        // 3. Weekly breakdown (last 4 weeks)
-        const weeklyResult = await pool.query(
-            `SELECT 
-        DATE_TRUNC('week', a.attendance_date) as week_start,
-        SUM(w.total_amount) as amount
-       FROM wages w
-       JOIN attendance a ON w.attendance_id = a.id
-       WHERE w.labour_id = $1 AND w.status = 'APPROVED'
-       GROUP BY week_start
-       ORDER BY week_start DESC
-       LIMIT 4`,
-            [labourId],
-        );
-
-        res.json({
-            wages: wagesResult.rows,
-            summary: analyticsResult.rows[0],
-            weekly_stats: weeklyResult.rows
+        wagesWithCalculation.push({
+          ...record,
+          worked_hours: calculation.worked_hours,
+          hourly_rate: calculation.hourly_rate,
+          total_amount: calculation.total_amount,
+          is_ready_for_payment: calculation.is_ready_for_payment,
+          category: calculation.category,
+          skill_type: calculation.skill_type,
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Server error" });
+      } catch (err) {
+        // If wage calculation fails (e.g., no rate configured), skip this record
+        console.error(
+          `Wage calculation failed for attendance ${record.attendance_id}:`,
+          err.message,
+        );
+      }
     }
+
+    // 3. Calculate Analytics
+    const totalApproved = wagesWithCalculation.filter(
+      (w) => w.wage_status === "APPROVED",
+    ).length;
+    const totalEarnings = wagesWithCalculation
+      .filter((w) => w.wage_status === "APPROVED")
+      .reduce((sum, w) => sum + (w.total_amount || 0), 0);
+    const pendingEarnings = wagesWithCalculation
+      .filter((w) => w.wage_status === "PENDING")
+      .reduce((sum, w) => sum + (w.total_amount || 0), 0);
+    const unpaidEarnings = wagesWithCalculation
+      .filter((w) => w.wage_status === "APPROVED" && !w.paid_at)
+      .reduce((sum, w) => sum + (w.total_amount || 0), 0);
+    const paidEarnings = wagesWithCalculation
+      .filter((w) => w.paid_at)
+      .reduce((sum, w) => sum + (w.total_amount || 0), 0);
+
+    // 4. Weekly breakdown (last 4 weeks)
+    const weeklyStats = {};
+    wagesWithCalculation
+      .filter((w) => w.wage_status === "APPROVED")
+      .forEach((w) => {
+        const date = new Date(w.attendance_date);
+        const weekStart = new Date(
+          date.setDate(date.getDate() - date.getDay()),
+        );
+        const weekKey = weekStart.toISOString().split("T")[0];
+
+        if (!weeklyStats[weekKey]) {
+          weeklyStats[weekKey] = { week_start: weekKey, amount: 0 };
+        }
+        weeklyStats[weekKey].amount += w.total_amount || 0;
+      });
+
+    const weeklyArray = Object.values(weeklyStats)
+      .sort((a, b) => new Date(b.week_start) - new Date(a.week_start))
+      .slice(0, 4);
+
+    res.json({
+      wages: wagesWithCalculation,
+      summary: {
+        total_approved_days: totalApproved,
+        total_earnings: totalEarnings,
+        pending_earnings: pendingEarnings,
+        unpaid_earnings: unpaidEarnings,
+        paid_earnings: paidEarnings,
+      },
+      weekly_stats: weeklyArray,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;
