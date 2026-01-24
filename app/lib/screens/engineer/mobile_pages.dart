@@ -15,11 +15,15 @@ import '../../providers/current_project_provider.dart';
 import '../../providers/dpr_provider.dart';
 import 'dpr_form.dart';
 import 'package:intl/intl.dart';
+import 'grn_screen.dart';
 import '../../providers/labour_request_provider.dart';
 import '../../providers/plan_provider.dart';
 import '../../widgets/project_gate.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/notification_provider.dart';
+import 'manual_attendance_screen.dart';
+import 'semi_manual_attendance_screen.dart';
+import 'tools_management_screen.dart';
 
 /// Content-only engineer dashboard used in mobile IndexedStack.
 class EngineerDashboardContent extends ConsumerWidget {
@@ -279,11 +283,14 @@ class EngineerDashboardContent extends ConsumerWidget {
               children: [
                 _quickActionItem(context, Icons.assignment_outlined, 'project_plan'.tr(), () => Navigator.pushNamed(context, '/engineer-tasks')),
                 _quickActionItem(context, Icons.people_outline, 'labour_requests'.tr(), () => Navigator.pushNamed(context, '/engineer-labour-requests')),
-                _quickActionItem(context, Icons.how_to_reg_outlined, 'manual_attendance'.tr(), () => Navigator.pushNamed(context, '/engineer-attendance')),
+                _quickActionItem(context, Icons.how_to_reg_outlined, 'manual_attendance'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManualAttendanceScreen()))),
+                _quickActionItem(context, Icons.playlist_add_check, 'semi_manual_attendance'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SemiManualAttendanceScreen()))),
                 _quickActionItem(context, Icons.payments_outlined, 'daily_wages'.tr(), () => Navigator.pushNamed(context, '/engineer-wages')),
                 _quickActionItem(context, Icons.inventory_2_outlined, 'material_management'.tr(), () => Navigator.pushNamed(context, '/engineer-materials')),
+                _quickActionItem(context, Icons.construction, 'Tools Management', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ToolsManagementScreen()))),
                 _quickActionItem(context, Icons.business_outlined, 'my_organizations'.tr(), () => Navigator.pushNamed(context, '/engineer-my-organizations')),
                 _quickActionItem(context, Icons.description_outlined, 'submit_report'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DPRFormScreen()))),
+                _quickActionItem(context, Icons.receipt_long, 'GRN Note', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GRNScreen()))),
               ],
             ),
 

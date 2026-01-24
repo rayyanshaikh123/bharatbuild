@@ -6,11 +6,19 @@ class VoiceNLPService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isAvailable = false;
 
+  // Common Unit Words to Skip
+  static const Set<String> _units = {
+    'bag', 'bags', 'kattan', 'bora', 'kg', 'ltr', 'liter', 'litre',
+    'meter', 'metre', 'sqm', 'sqft', 'feet', 'foot', 'cft', 'nos', 
+    'number', 'piece', 'pcs'
+  };
+
   // Multilingual Stopwords (English, Hindi, Hinglish)
   static const Set<String> _stopWords = {
     'i', 'want', 'please', 'and', 'get', 'need', 'add', 'today', 'done', 'did',
     'chahiye', 'hai', 'tha', 'raha', 'kar', 'liya', 'dedo', 'karna', 'baaki',
-    'total', 'lagi', 'hui', 'gya', 'karne', 'se'
+    'total', 'lagi', 'hui', 'gya', 'karne', 'se',
+    'aur', 'ka', 'ki', 'ke', 'mai', 'me', 'h', 'use', 'lagaya', 'complete'
   };
 
   Future<bool> init() async {
@@ -40,7 +48,39 @@ class VoiceNLPService {
     await _speech.stop();
   }
 
+  // Hindi to English Construction Terms Dictionary
+  static final Map<String, String> _hindiToEnglish = {
+    'ret': 'sand',
+    'reti': 'sand',
+    'balu': 'sand',
+    'eent': 'brick',
+    'int': 'brick',
+    'pathar': 'stone',
+    'gitti': 'aggregate',
+    'sariya': 'steel',
+    'loha': 'steel',
+    'cement': 'cement',
+    'pani': 'water',
+    'mitti': 'soil',
+    'khudai': 'excavation',
+    'plaster': 'plastering',
+    'paint': 'painting',
+    'diwar': 'wall',
+    'chhat': 'slab',
+    'beam': 'beam',
+    'column': 'column',
+    'fash': 'flooring',
+    'tiles': 'tiling',
+    'darwaza': 'door',
+    'khidki': 'window',
+    'bijli': 'electrical',
+    'taar': 'wire',
+    'pipe': 'plumbing',
+    'nal': 'tap',
+  };
+
   /// Local NLP Logic with Multilingual handling and Autocorrection (Fuzzy Match)
+  // knownItems: Map<TaskName, PlanItemID> for Work Tasks
   Map<String, dynamic> parseSpeech(String text, Map<String, String> knownItems) {
     // 1. Normalize & Remove Stopwords
     String normalized = text.toLowerCase();
@@ -49,8 +89,14 @@ class VoiceNLPService {
     List<String> rawTokens = normalized.split(RegExp(r'\s+'));
     List<String> tokens = rawTokens.where((t) => !_stopWords.contains(t)).toList();
 
-    Map<String, double> resultItems = {};
-    List<Map<String, dynamic>> customItems = [];
+    Map<String, double> workTasks = {};
+    List<Map<String, dynamic>> materialsUsed = [];
+    List<Map<String, dynamic>> customItems = []; // Unrecognized
+
+    // Known materials set (from dictionary values)
+    final Set<String> knownMaterials = _hindiToEnglish.values.toSet();
+    // Add common English materials just in case
+    knownMaterials.addAll(['cement', 'sand', 'brick', 'steel', 'aggregate', 'water', 'paint']);
 
     // 3. Extraction logic
     for (int i = 0; i < tokens.length; i++) {
@@ -58,37 +104,74 @@ class VoiceNLPService {
       
       if (qty != null && i + 1 < tokens.length) {
         String nextWord = tokens[i + 1];
+        int skipCount = 1;
+
+        // Skip unit word if present (e.g. "10 [bag] cement")
+        if (_units.contains(nextWord) && i + 2 < tokens.length) {
+          nextWord = tokens[i + 2];
+          skipCount = 2; // Skip both unit and item
+        }
         
-        // Autocorrection: Check for best fuzzy match among known items
+        // Dictionary Lookup (Hindi -> English)
+        String englishWord = _hindiToEnglish[nextWord] ?? nextWord;
+
+        // A. Check if it's a Material
+        // Simple logic: direct match with material dictionary
+        if (knownMaterials.contains(englishWord) || knownMaterials.contains(nextWord)) {
+           materialsUsed.add({
+             "material": englishWord,
+             "quantity": qty
+           });
+           i += skipCount;
+           continue; 
+        }
+
+        // B. Check if it's a Work Task (Plan Item)
         String? bestMatchId;
         double highestSimilarity = 0.0;
 
         for (var itemName in knownItems.keys) {
-          double similarity = _calculateSimilarity(nextWord, itemName);
+          final itemLower = itemName.toLowerCase();
+          
+          // 1. Exact or Substring Match (Strongest)
+          // e.g. "Excavation" in "Excavation of Foundation"
+          if (itemLower.contains(englishWord) || englishWord.contains(itemLower)) {
+             bestMatchId = knownItems[itemName];
+             highestSimilarity = 1.0;
+             break; // Strong match found, stop searching for this word
+          }
+
+          // 2. Fuzzy Match (Levenstein)
+          double similarityRaw = _calculateSimilarity(nextWord, itemName);
+          double similarityTrans = _calculateSimilarity(englishWord, itemName);
+          double similarity = max(similarityRaw, similarityTrans);
+
           if (similarity > highestSimilarity) {
             highestSimilarity = similarity;
             bestMatchId = knownItems[itemName];
           }
         }
 
-        // 70% similarity threshold for "autocorrection"
-        if (bestMatchId != null && highestSimilarity > 0.7) {
-          resultItems[bestMatchId] = (resultItems[bestMatchId] ?? 0) + qty;
-          i++; // Skip next word as it was matched
+        // Thresholds: 1.0 for substring, 0.6 for fuzzy
+        if (bestMatchId != null && highestSimilarity > 0.6) {
+          workTasks[bestMatchId] = (workTasks[bestMatchId] ?? 0) + qty;
+          i += skipCount; 
         } else {
-          // Custom attribute or unknown item
+          // C. Unknown
           customItems.add({
-            "item": nextWord,
+            "item": englishWord,
             "quantity": qty
           });
-          i++;
+          i += skipCount;
         }
       }
     }
 
     return {
-      "items": resultItems,
-      "custom": customItems,
+      "items": workTasks,      // Work Tasks (linked to Plan Items)
+      "materials": materialsUsed, // Consumed Materials (to update Ledger)
+      "custom": customItems,   // Unknown
+      "full_text": text,       // Original text for description
     };
   }
 

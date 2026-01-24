@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import 'edit_profile_screen.dart';
+import 'tools_screen.dart';
 import '../../providers/user_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -105,6 +106,29 @@ class ProfileScreen extends ConsumerWidget {
                   ? user['address'] as String
                   : '-',
               icon: Icons.location_on_outlined,
+            ),
+
+            const SizedBox(height: 12),
+
+            /// TOOLS BUTTON
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: AppColors.card,
+              child: ListTile(
+                leading: Icon(Icons.construction, color: AppColors.primary),
+                title: Text('Tools Management'),
+                subtitle: Text('Scan QR codes to issue/return tools'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LabourToolsScreen(),
+                    ),
+                  );
+                },
+              ),
             ),
 
             const SizedBox(height: 12),

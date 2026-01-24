@@ -64,7 +64,6 @@ router.get("/:poId", engineerCheck, async (req, res) => {
               po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
               mr.description AS material_request_description,
-              mr.items AS material_request_items,
               p.name AS project_name,
               pm.name AS created_by_name
        FROM purchase_orders po
@@ -188,7 +187,6 @@ router.get("/sent/list", engineerCheck, async (req, res) => {
               po.vendor_name, po.items, po.total_amount, po.status, 
               po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
-              mr.items AS material_request_items,
               p.name AS project_name,
               COALESCE(
                 (SELECT COUNT(*) FROM grns WHERE purchase_order_id = po.id),

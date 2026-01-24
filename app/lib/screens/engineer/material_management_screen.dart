@@ -7,7 +7,6 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
 import 'material_request_form.dart';
-import 'upload_bill_form.dart';
 
 class MaterialManagementScreen extends ConsumerStatefulWidget {
   const MaterialManagementScreen({super.key});
@@ -22,7 +21,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -42,7 +41,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
           controller: _tabController,
           tabs: [
             Tab(text: 'requests'.tr()),
-            Tab(text: 'bills'.tr()),
             Tab(text: 'inventory'.tr()),
           ],
         ),
@@ -51,7 +49,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         controller: _tabController,
         children: [
           _buildRequestsList(),
-          _buildBillsList(),
           _buildInventoryList(),
         ],
       ),
@@ -79,31 +76,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
             itemBuilder: (context, index) {
               final req = requests[index];
               return _buildRequestCard(req);
-            },
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Error: $err')),
-    );
-  }
-
-  Widget _buildBillsList() {
-    final billsAsync = ref.watch(materialBillsProvider);
-    return billsAsync.when(
-      data: (bills) {
-        if (bills.isEmpty) {
-          return Center(child: Text('no_materials'.tr()));
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.refresh(materialBillsProvider.future),
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: bills.length,
-            itemBuilder: (context, index) {
-              final bill = bills[index];
-              return _buildBillCard(bill);
             },
           ),
         );
@@ -152,48 +124,8 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 12),
-            if (status == 'APPROVED')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UploadBillForm(request: req),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: Text('upload_bill'.tr()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    foregroundColor: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBillCard(Map<String, dynamic> bill) {
-    final theme = Theme.of(context);
-    final status = bill['status'] as String;
-    final color = status == 'APPROVED' ? Colors.green : (status == 'REJECTED' ? Colors.red : Colors.orange);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        title: Text(bill['vendor_name'] ?? 'Unknown Vendor'),
-        subtitle: Text('Amt: ₹${bill['total_amount']} • ${bill['category']}'),
-        trailing: _statusBadge(status, color),
-        onTap: () {
-          // Show bill details
-        },
       ),
     );
   }
@@ -293,17 +225,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MaterialRequestForm()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: Text('upload_bill'.tr()),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const UploadBillForm()),
                 );
               },
             ),

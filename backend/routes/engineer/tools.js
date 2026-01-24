@@ -245,16 +245,42 @@ router.delete("/:toolId", engineerCheck, async (req, res) => {
 
 /* ---------------- GENERATE QR CODE FOR TOOL ---------------- */
 router.post("/:toolId/qr", engineerCheck, async (req, res) => {
-  const client = await pool.connect();
   try {
     const engineerId = req.user.id;
     const { toolId } = req.params;
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-    await client.query("BEGIN");
+    console.log(`[QR Generation] Request for tool ${toolId} by engineer ${engineerId}`);
 
-    // Get tool details and verify access
-    const toolCheck = await client.query(
+    // Check if QR already exists for today (fast path - no JOIN needed)
+    const existingQR = await pool.query(
+      `SELECT * FROM tool_qr_codes 
+       WHERE tool_id = $1 AND valid_date = $2`,
+      [toolId, today],
+    );
+
+    if (existingQR.rows.length > 0) {
+      console.log(`[QR Generation] Existing QR found for tool ${toolId}`);
+      // Verify access before returning existing QR
+      const accessCheck = await pool.query(
+        `SELECT 1 FROM project_tools t
+         JOIN projects p ON t.project_id = p.id
+         JOIN project_site_engineers pse ON p.id = pse.project_id
+         WHERE t.id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
+        [toolId, engineerId],
+      );
+
+      if (accessCheck.rows.length > 0) {
+        console.log(`[QR Generation] Returning existing QR for tool ${toolId}`);
+        return res.json({
+          message: "QR code already exists for today",
+          qr: existingQR.rows[0],
+        });
+      }
+    }
+
+    // Verify access and get tool details in one query
+    const toolCheck = await pool.query(
       `SELECT t.*, p.org_id
        FROM project_tools t
        JOIN projects p ON t.project_id = p.id
@@ -264,45 +290,34 @@ router.post("/:toolId/qr", engineerCheck, async (req, res) => {
     );
 
     if (toolCheck.rows.length === 0) {
-      await client.query("ROLLBACK");
+      console.log(`[QR Generation] Access denied for tool ${toolId}`);
       return res.status(404).json({
         error: "Tool not found or you do not have access",
       });
     }
 
     const tool = toolCheck.rows[0];
-
-    // Check if QR already exists for today
-    const existingQR = await client.query(
-      `SELECT * FROM tool_qr_codes 
-       WHERE tool_id = $1 AND valid_date = $2`,
-      [toolId, today],
-    );
-
-    if (existingQR.rows.length > 0) {
-      await client.query("COMMIT");
-      return res.json({
-        message: "QR code already exists for today",
-        qr: existingQR.rows[0],
-      });
-    }
+    console.log(`[QR Generation] Creating new QR for tool ${toolId}`);
 
     // Generate unique QR token
     const qrToken = crypto.randomBytes(32).toString("hex");
 
-    // Create QR code
-    const qrResult = await client.query(
+    // Create QR code (using ON CONFLICT to handle race conditions)
+    const qrResult = await pool.query(
       `INSERT INTO tool_qr_codes 
        (tool_id, project_id, qr_token, valid_date, generated_by, is_active)
        VALUES ($1, $2, $3, $4, $5, true)
+       ON CONFLICT (tool_id, valid_date) 
+       DO UPDATE SET qr_token = tool_qr_codes.qr_token
        RETURNING *`,
       [toolId, tool.project_id, qrToken, today, engineerId],
     );
 
     const qr = qrResult.rows[0];
+    console.log(`[QR Generation] QR created successfully: ${qr.id}`);
 
-    // Create audit log
-    await client.query(
+    // Create audit log asynchronously (don't block response)
+    pool.query(
       `INSERT INTO audit_logs 
        (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, organization_id, category, change_summary)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -321,20 +336,19 @@ router.post("/:toolId/qr", engineerCheck, async (req, res) => {
           valid_date: today,
         }),
       ],
-    );
+    ).catch((err) => {
+      console.error("Failed to create audit log for QR generation:", err);
+      // Don't block response on audit log failure
+    });
 
-    await client.query("COMMIT");
-
+    console.log(`[QR Generation] Sending response for tool ${toolId}`);
     res.status(201).json({
       message: "QR code generated successfully",
       qr: qr,
     });
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  } finally {
-    client.release();
+    console.error("[QR Generation] Error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 

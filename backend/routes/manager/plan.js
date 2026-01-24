@@ -501,4 +501,116 @@ router.patch("/plan-items/:id/priority", managerCheck, async (req, res) => {
   }
 });
 
+/* ---------------- UPDATE PLAN ITEM STATUS ---------------- */
+router.patch("/plan-items/:id/status", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const planItemId = req.params.id;
+    const { status, delay_info } = req.body;
+
+    // Validate status
+    const validStatuses = ["PENDING", "IN_PROGRESS", "COMPLETED", "BLOCKED"];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: `status must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    // Get plan item and verify manager access
+    const planItemCheck = await pool.query(
+      `SELECT pi.*, p.project_id 
+       FROM plan_items pi
+       JOIN plans p ON pi.plan_id = p.id
+       WHERE pi.id = $1`,
+      [planItemId],
+    );
+
+    if (planItemCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Plan item not found" });
+    }
+
+    const planItem = planItemCheck.rows[0];
+    const projectId = planItem.project_id;
+
+    // Check if manager is ACTIVE in project or creator
+    const isActive = await managerProjectStatusCheck(managerId, projectId);
+    const isCreator = await isProjectCreator(managerId, projectId);
+
+    if (!isActive && !isCreator) {
+      return res.status(403).json({
+        error: "Access denied. Not an active manager in the project.",
+      });
+    }
+
+    // Get before state for audit
+    const beforeState = planItemCheck.rows[0];
+
+    // Build update query
+    let queryFields = [
+      "status = $1",
+      "updated_by = $2",
+      "updated_by_role = $3",
+    ];
+    let values = [status, managerId, "MANAGER"];
+    let idx = 4;
+
+    // Set completed_at when marking as COMPLETED
+    if (status === "COMPLETED") {
+      queryFields.push(`completed_at = $${idx++}`);
+      values.push(new Date());
+    }
+
+    // Optional delay_info
+    if (delay_info !== undefined) {
+      queryFields.push(`delay_info = $${idx++}`);
+      values.push(JSON.stringify(delay_info));
+    }
+
+    values.push(planItemId);
+
+    // Update plan item
+    const updateResult = await pool.query(
+      `UPDATE plan_items 
+       SET ${queryFields.join(", ")} 
+       WHERE id = $${idx} 
+       RETURNING *`,
+      values,
+    );
+
+    const afterState = updateResult.rows[0];
+
+    // If marked COMPLETED, also update task_subcontractors.task_completed_at
+    if (status === "COMPLETED") {
+      await pool.query(
+        `UPDATE task_subcontractors 
+         SET task_completed_at = NOW() 
+         WHERE task_id = $1 AND task_completed_at IS NULL`,
+        [planItemId],
+      );
+    }
+
+    // Audit log
+    const organizationId = await getOrganizationIdFromProject(projectId);
+    await logAudit({
+      entityType: "PLAN_ITEM",
+      entityId: planItemId,
+      category: "PLAN_ITEM",
+      action: "UPDATE",
+      before: beforeState,
+      after: afterState,
+      user: req.user,
+      projectId: projectId,
+      organizationId,
+    });
+
+    res.json({
+      message: "Status updated successfully",
+      plan_item: afterState,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
