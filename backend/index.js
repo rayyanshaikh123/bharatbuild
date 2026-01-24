@@ -75,31 +75,44 @@ app.use((req, res, next) => {
   // Set a server-side timeout to prevent indefinite hangs (fails safely before Flutter times out)
   res.setTimeout(25000, () => {
     if (!res.headersSent) {
-      console.error(`[Timeout] Request ${req.method} ${req.url} timed out after 25s (RID: ${requestId})`);
-      res.status(503).json({ error: "request_timeout", message: "Server took too long to respond." });
+      console.error(
+        `[Timeout] Request ${req.method} ${req.url} timed out after 25s (RID: ${requestId})`,
+      );
+      res
+        .status(503)
+        .json({
+          error: "request_timeout",
+          message: "Server took too long to respond.",
+        });
     }
   });
 
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Started (RID: ${requestId}, SID: ${req.sessionID || 'undefined'})`);
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.url} - Started (RID: ${requestId}, SID: ${req.sessionID || "undefined"})`,
+  );
 
   if (req.user) {
-    console.log(`[Auth Debug] User: ${req.user.id} (${req.user.role}) (RID: ${requestId})`);
+    console.log(
+      `[Auth Debug] User: ${req.user.id} (${req.user.role}) (RID: ${requestId})`,
+    );
   }
 
-  res.on('finish', () => {
+  res.on("finish", () => {
     const duration = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms) (RID: ${requestId})`);
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms) (RID: ${requestId})`,
+    );
   });
   next();
 });
 
 // Global error handlers
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
 });
 
 /* ---------------- AUTH ROUTES ---------------- */
@@ -162,6 +175,7 @@ app.use("/manager/dpr", require("./routes/manager/dpr"));
 app.use("/manager/material", require("./routes/manager/material"));
 app.use("/manager/wages", require("./routes/manager/wages"));
 app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
+app.use("/manager/working-hours", require("./routes/manager/workingHours"));
 app.use("/manager/analytics", require("./routes/manager/analytics"));
 app.use("/manager/audit", require("./routes/manager/audit"));
 app.use("/manager/reports", require("./routes/manager/reports"));
