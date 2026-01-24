@@ -3,6 +3,9 @@ const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 const uploadGRNImages = require("../../middleware/uploadGRNImages");
+const {
+  validateUserInsideProjectGeofence,
+} = require("../../util/geofenceValidator");
 
 /* ---------------- CREATE GOODS RECEIPT NOTE ---------------- */
 router.post(
@@ -22,6 +25,8 @@ router.post(
         purchaseOrderId,
         materialRequestId,
         receivedItems: receivedItemsRaw,
+        latitude,
+        longitude,
       } = req.body;
 
       // Validate required fields
@@ -42,6 +47,28 @@ router.post(
         return res.status(400).json({
           error: "Both bill_image and delivery_proof_image are required",
         });
+      }
+
+      // Geo-fence validation (if coordinates provided)
+      if (latitude !== undefined && longitude !== undefined) {
+        try {
+          await validateUserInsideProjectGeofence({
+            projectId,
+            userId: siteEngineerId,
+            userRole: "SITE_ENGINEER",
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude),
+            client,
+          });
+        } catch (err) {
+          if (err.code === "OUTSIDE_PROJECT_GEOFENCE") {
+            return res.status(403).json({
+              error: err.code,
+              message: err.message,
+            });
+          }
+          throw err;
+        }
       }
 
       // Parse receivedItems (comes as string from multipart/form-data)

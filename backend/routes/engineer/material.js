@@ -7,6 +7,9 @@ const {
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
 const { verifyEngineerAccess } = require("../../util/engineerPermissions");
+const {
+  validateUserInsideProjectGeofence,
+} = require("../../util/geofenceValidator");
 
 /* ---------------- CREATE MATERIAL REQUEST ---------------- */
 router.post("/request", engineerCheck, async (req, res) => {
@@ -21,10 +24,34 @@ router.post("/request", engineerCheck, async (req, res) => {
       description,
       request_image,
       request_image_mime,
+      latitude,
+      longitude,
     } = req.body;
 
     const isActive = await verifyEngineerAccess(engineerId, project_id);
-    if (!isActive.allowed) return res.status(403).json({ error: isActive.error });
+    if (!isActive.allowed)
+      return res.status(403).json({ error: isActive.error });
+
+    // Geo-fence validation (if coordinates provided)
+    if (latitude !== undefined && longitude !== undefined) {
+      try {
+        await validateUserInsideProjectGeofence({
+          projectId: project_id,
+          userId: engineerId,
+          userRole: "SITE_ENGINEER",
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+        });
+      } catch (err) {
+        if (err.code === "OUTSIDE_PROJECT_GEOFENCE") {
+          return res.status(403).json({
+            error: err.code,
+            message: err.message,
+          });
+        }
+        throw err;
+      }
+    }
 
     // Check standalone request limit if no DPR linked
     if (!dpr_id) {
@@ -298,10 +325,34 @@ router.post("/upload-bill", engineerCheck, async (req, res) => {
       bill_image,
       bill_image_mime,
       category,
+      latitude,
+      longitude,
     } = req.body;
 
     const isActive = await verifyEngineerAccess(engineerId, project_id);
-    if (!isActive.allowed) return res.status(403).json({ error: isActive.error });
+    if (!isActive.allowed)
+      return res.status(403).json({ error: isActive.error });
+
+    // Geo-fence validation (if coordinates provided)
+    if (latitude !== undefined && longitude !== undefined) {
+      try {
+        await validateUserInsideProjectGeofence({
+          projectId: project_id,
+          userId: engineerId,
+          userRole: "SITE_ENGINEER",
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+        });
+      } catch (err) {
+        if (err.code === "OUTSIDE_PROJECT_GEOFENCE") {
+          return res.status(403).json({
+            error: err.code,
+            message: err.message,
+          });
+        }
+        throw err;
+      }
+    }
 
     // Validate: if material_request_id provided, it must be APPROVED
     if (material_request_id) {

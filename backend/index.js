@@ -163,6 +163,7 @@ app.use("/owner/delays", require("./routes/owner/delays"));
 app.use("/owner/timeline", require("./routes/owner/timeline"));
 app.use("/owner/purchase-orders", require("./routes/owner/purchaseOrders"));
 app.use("/owner", require("./routes/owner/grn"));
+app.use("/owner/dangerous-work", require("./routes/owner/dangerousWork"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -209,6 +210,7 @@ app.use(
   "/manager/goods-receipt-notes",
   require("./routes/manager/goodsReceiptNotes"),
 );
+app.use("/manager/dangerous-work", require("./routes/manager/dangerousWork"));
 
 /* ---------------- PURCHASE MANAGER ROUTES ---------------- */
 app.use(
@@ -265,6 +267,10 @@ app.use(
   "/engineer/goods-receipt-notes",
   require("./routes/engineer/goodsReceiptNotes"),
 );
+app.use(
+  "/engineer/dangerous-tasks",
+  require("./routes/engineer/dangerousTasks"),
+);
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
@@ -278,6 +284,10 @@ app.use("/labour/address", require("./routes/labour/address"));
 app.use("/labour/sync", require("./routes/labour/sync"));
 app.use("/labour/fast", require("./routes/labour/fast/graphql"));
 app.use("/labour/user", require("./routes/labour/user"));
+app.use(
+  "/labour/dangerous-task-requests",
+  require("./routes/labour/dangerousTaskRequests"),
+);
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
 /* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */
