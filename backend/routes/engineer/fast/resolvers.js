@@ -27,7 +27,7 @@ const engineerResolvers = {
     // Verify engineer has access to project
     const accessCheck = await pool.query(
       `SELECT 1 FROM project_site_engineers 
-       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'APPROVED'`,
       [engineerId, project_id],
     );
 
@@ -78,7 +78,7 @@ const engineerResolvers = {
     // Verify engineer has access to project
     const accessCheck = await pool.query(
       `SELECT 1 FROM project_site_engineers 
-       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'APPROVED'`,
       [engineerId, project_id],
     );
 
@@ -129,7 +129,7 @@ const engineerResolvers = {
     // Verify engineer has access to project
     const accessCheck = await pool.query(
       `SELECT 1 FROM project_site_engineers 
-       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+       WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'APPROVED'`,
       [engineerId, project_id],
     );
 

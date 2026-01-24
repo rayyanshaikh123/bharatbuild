@@ -17,10 +17,6 @@ router.get("/project/:projectId", async (req, res) => {
     const projectId = req.params.projectId;
     const managerId = req.user.id;
 
-    if (isNaN(projectId)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
-
     // Verify manager is ACTIVE on project
     const managerCheck = await pool.query(
       `SELECT 1 FROM project_managers
@@ -49,12 +45,8 @@ router.get("/project/:projectId", async (req, res) => {
  */
 router.patch("/plan-items/:id/status", async (req, res) => {
   try {
-    const itemId = parseInt(req.params.id);
+    const itemId = req.params.id;
     const managerId = req.user.id;
-
-    if (isNaN(itemId)) {
-      return res.status(400).json({ error: "Invalid plan item ID" });
-    }
 
     // Validate request body
     const { status, completed_at, delay } = req.body;
@@ -63,9 +55,10 @@ router.patch("/plan-items/:id/status", async (req, res) => {
       return res.status(400).json({ error: "Status is required" });
     }
 
-    if (!["PENDING", "COMPLETED", "DELAYED"].includes(status)) {
+    if (!["PENDING", "IN_PROGRESS", "COMPLETED", "BLOCKED"].includes(status)) {
       return res.status(400).json({
-        error: "Invalid status. Must be PENDING, COMPLETED, or DELAYED",
+        error:
+          "Invalid status. Must be PENDING, IN_PROGRESS, COMPLETED, or BLOCKED",
       });
     }
 
