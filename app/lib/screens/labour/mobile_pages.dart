@@ -23,6 +23,7 @@ import 'jobs_map_screen.dart';
 import 'shift_status_screen.dart';
 import 'projects_map_screen.dart';
 import 'live_tracking_map_screen.dart';
+import 'tools_screen.dart';
 import 'package:intl/intl.dart';
 import '../../providers/wage_provider.dart';
 import '../../providers/location_provider.dart';

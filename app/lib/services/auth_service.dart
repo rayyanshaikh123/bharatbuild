@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -978,5 +979,269 @@ class AuthService {
       return body['grns'] as List<dynamic>;
     }
     throw Exception('Failed to fetch GRNs: ${res.body}');
+  }
+
+  // ==================== TOOLS MANAGEMENT ====================
+  
+  /// Create a new tool
+  Future<Map<String, dynamic>> createTool(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/tools');
+    try {
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to create tool: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Tool creation took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get all tools for a project
+  Future<List<dynamic>> getProjectTools({required String projectId, String? status}) async {
+    final queryParams = {'projectId': projectId};
+    if (status != null) queryParams['status'] = status;
+    
+    final uri = Uri.parse('$_base/engineer/tools')
+        .replace(queryParameters: queryParams);
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['tools'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tools: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching tools took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete a tool
+  Future<void> deleteTool(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId');
+    try {
+      final res = await _client.delete(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) {
+        throw Exception('Failed to delete tool: ${res.body}');
+      }
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Tool deletion took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Generate QR code for a tool
+  Future<Map<String, dynamic>> generateToolQR(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId/qr');
+    try {
+      print('[AuthService] Generating QR for tool: $toolId');
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+      
+      print('[AuthService] Response status: ${res.statusCode}');
+      print('[AuthService] Response body length: ${res.body.length}');
+      
+      if (res.statusCode == 201 || res.statusCode == 200) {
+        if (res.body.isEmpty) {
+          throw Exception('Empty response from server');
+        }
+        
+        try {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          print('[AuthService] Parsed QR data keys: ${body.keys}');
+          
+          // Validate response structure
+          if (!body.containsKey('qr')) {
+            throw Exception('Invalid response: missing "qr" field');
+          }
+          
+          return body;
+        } catch (e) {
+          print('[AuthService] JSON decode error: $e');
+          print('[AuthService] Response body: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
+          throw Exception('Failed to parse QR response: $e');
+        }
+      }
+      
+      // Try to extract error message
+      String errorMsg = 'Failed to generate QR';
+      try {
+        final errorBody = jsonDecode(res.body) as Map<String, dynamic>;
+        errorMsg = errorBody['error'] ?? errorBody['message'] ?? res.body;
+      } catch (_) {
+        errorMsg = res.body.isNotEmpty ? res.body : 'Unknown error';
+      }
+      
+      throw Exception(errorMsg);
+    } on SocketException catch (e) {
+      print('[AuthService] SocketException: ${e.message}');
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      print('[AuthService] ClientException: ${e.message}');
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      print('[AuthService] TimeoutException');
+      throw Exception('Request timeout: QR generation took too long');
+    } catch (e) {
+      print('[AuthService] Generic error: $e');
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get transaction history for a tool
+  Future<List<dynamic>> getToolHistory(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId/history');
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['transactions'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tool history: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching history took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  // ==================== LABOUR TOOLS MANAGEMENT ====================
+  
+  /// Scan QR code to issue/return tool
+  Future<Map<String, dynamic>> scanToolQR(String qrToken) async {
+    final uri = Uri.parse('$_base/labour/tools/scan');
+    try {
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'qrToken': qrToken}),
+          )
+          .timeout(const Duration(seconds: 30));
+      
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      
+      String errorMsg = 'Failed to scan QR code';
+      try {
+        final errorBody = jsonDecode(res.body) as Map<String, dynamic>;
+        errorMsg = errorBody['error'] ?? errorBody['message'] ?? res.body;
+      } catch (_) {
+        errorMsg = res.body.isNotEmpty ? res.body : 'Unknown error';
+      }
+      
+      throw Exception(errorMsg);
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: QR scan took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get my issued tools
+  Future<List<dynamic>> getMyIssuedTools() async {
+    final uri = Uri.parse('$_base/labour/tools/my-tools');
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['tools'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch issued tools: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching tools took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get my tool history
+  Future<List<dynamic>> getMyToolHistory({String? projectId, String? status}) async {
+    final queryParams = <String, String>{};
+    if (projectId != null) queryParams['projectId'] = projectId;
+    if (status != null) queryParams['status'] = status;
+    
+    final uri = Uri.parse('$_base/labour/tools/my-history')
+        .replace(queryParameters: queryParams);
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['transactions'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tool history: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching history took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
   }
 }
