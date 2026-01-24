@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { managerDPR } from "@/lib/api/manager";
+import { managerDpr } from "@/lib/api/dpr";
 import { Button } from "@/components/ui/Button";
 import { 
   ArrowLeft, 
@@ -41,7 +41,7 @@ export default function DprReviewPage() {
     const fetchDpr = async () => {
       try {
         setIsLoading(true);
-        const res = await managerDPR.getById(dprId);
+        const res = await managerDpr.getById(dprId);
         setDpr(res.dpr);
         setRemarks(res.dpr.remarks || "");
       } catch (err) {
@@ -63,7 +63,7 @@ export default function DprReviewPage() {
       const fetchImage = async () => {
         try {
           setIsLoadingImage(true);
-          const blob = await managerDPR.getImage(dpr.id);
+          const blob = await managerDpr.getImage(dpr.id);
           const url = URL.createObjectURL(blob);
           setImageUrl(url);
         } catch (err) {
@@ -83,7 +83,7 @@ export default function DprReviewPage() {
   const handleReview = async (status: "APPROVED" | "REJECTED") => {
     try {
       setIsReviewing(true);
-      await managerDPR.review(dprId, status, remarks);
+      await managerDpr.review(dprId, status, remarks);
       toast.success(`DPR ${status === 'APPROVED' ? 'Approved' : 'Rejected'} Successfully`);
       router.push("/manager/dprs");
     } catch (err) {

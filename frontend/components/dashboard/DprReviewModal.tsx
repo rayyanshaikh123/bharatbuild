@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, CheckCircle, AlertCircle, Loader2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { managerDPR } from "@/lib/api/manager";
+import { managerDpr } from "@/lib/api/dpr";
 
 interface DprReviewModalProps {
   dpr: any;
@@ -22,7 +22,7 @@ export function DprReviewModal({ dpr, onClose, onReview, isReviewing }: DprRevie
       const fetchImage = async () => {
         try {
           setIsLoadingImage(true);
-          const blob = await managerDPR.getImage(dpr.id);
+          const blob = await managerDpr.getImage(dpr.id);
           const url = URL.createObjectURL(blob);
           setImageUrl(url);
         } catch (err) {
