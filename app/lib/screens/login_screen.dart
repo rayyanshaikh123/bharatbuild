@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _role = 'engineer';
   bool _didInitArgs = false;
   bool _otpSent = false;
+  bool _obscurePassword = true;
 
   bool _isLoading = false;
 
@@ -188,8 +189,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16.0),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: InputDecoration(hintText: 'password'.tr()),
-                            obscureText: true,
+                            decoration: InputDecoration(
+                              hintText: 'password'.tr(),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                            ),
+                            obscureText: _obscurePassword,
                             validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
                           ),
                         ],

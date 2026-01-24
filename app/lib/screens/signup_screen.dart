@@ -18,6 +18,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordController = TextEditingController();
   String _role = 'engineer';
   bool _initialized = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -118,8 +119,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           if (_role != 'labour')
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(hintText: 'password'.tr()),
-              obscureText: true,
+              decoration: InputDecoration(
+                hintText: 'password'.tr(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    // color: theme.colorScheme.onSurface.withOpacity(0.6), // Using default color or theme if unspecified
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+              ),
+              obscureText: _obscurePassword,
             ),
           const SizedBox(height: 32),
           ElevatedButton(

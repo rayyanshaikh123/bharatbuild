@@ -185,11 +185,13 @@ class AuthService {
   /// Fetch labour profile from backend (requires session cookie)
   Future<Map<String, dynamic>?> getLabourProfile() async {
     final uri = Uri.parse('$_base/labour/profile');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['labour'] as Map<String, dynamic>?;
-    }
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['labour'] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -202,7 +204,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return data['labour'] as Map<String, dynamic>?;
@@ -213,10 +215,14 @@ class AuthService {
   /// Fetch engineer profile from backend (requires session cookie)
   Future<Map<String, dynamic>?> getEngineerProfile() async {
     final uri = Uri.parse('$_base/engineer/profile');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['engineer'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['engineer'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or network error
     }
     return null;
   }
@@ -230,7 +236,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return data['engineer'] as Map<String, dynamic>?;
