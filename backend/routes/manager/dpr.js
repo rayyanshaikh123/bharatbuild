@@ -104,17 +104,32 @@ router.patch("/dprs/:dprId/review", managerCheck, async (req, res) => {
 
     // Create notification for site engineer
     try {
-      const { createNotification } = require("../../services/notification.service");
+      const {
+        createNotification,
+      } = require("../../services/notification.service");
       await createNotification({
         userId: updatedDpr.site_engineer_id,
-        userRole: 'SITE_ENGINEER',
+        userRole: "SITE_ENGINEER",
         title: `DPR ${status}`,
         message: `Your DPR for ${new Date(updatedDpr.report_date).toLocaleDateString()} has been ${status.toLowerCase()}.`,
-        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
-        projectId: updatedDpr.project_id
+        type: status === "APPROVED" ? "SUCCESS" : "ERROR",
+        projectId: updatedDpr.project_id,
       });
     } catch (notifErr) {
       console.error("Failed to create DPR review notification:", notifErr);
+    }
+
+    // Check for orphan DPR and send owner alert if approved
+    if (status === "APPROVED") {
+      try {
+        const {
+          checkAndAlertOrphanDPR,
+        } = require("../../services/ownerAlert.service");
+        await checkAndAlertOrphanDPR(updatedDpr);
+      } catch (alertErr) {
+        console.error("Failed to check orphan DPR alert:", alertErr);
+        // Don't block the response
+      }
     }
 
     res.json({ dpr: updatedDpr });

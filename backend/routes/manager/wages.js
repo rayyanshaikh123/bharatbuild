@@ -227,6 +227,19 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Check for budget exceeded and send owner alert (if approved)
+    if (status === "APPROVED") {
+      try {
+        const {
+          checkAndAlertBudgetExceeded,
+        } = require("../../services/ownerAlert.service");
+        await checkAndAlertBudgetExceeded(project_id, "Wage Approval", client);
+      } catch (alertErr) {
+        console.error("Failed to check budget exceeded alert:", alertErr);
+        // Don't block the response
+      }
+    }
+
     res.json({ wage: afterState });
   } catch (err) {
     await client.query("ROLLBACK");
