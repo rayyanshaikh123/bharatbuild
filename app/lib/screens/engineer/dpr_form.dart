@@ -100,11 +100,41 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
         mimeType = 'image/jpeg';
       }
 
+      // Determine primary plan_id and plan_item_id for this DPR
+      // Strategy: Use the plan_id from the first reported item, or most common plan_id if multiple items
+      String? primaryPlanId;
+      String? primaryPlanItemId;
+      
+      if (_reportedItems.isNotEmpty) {
+        // Count plan_id occurrences to find the most common one
+        final planIdCounts = <String, int>{};
+        for (var item in _reportedItems) {
+          final planId = item['plan_id']?.toString();
+          if (planId != null) {
+            planIdCounts[planId] = (planIdCounts[planId] ?? 0) + 1;
+          }
+        }
+        
+        // Get the most common plan_id, or first one if all are unique
+        if (planIdCounts.isNotEmpty) {
+          primaryPlanId = planIdCounts.entries
+              .reduce((a, b) => a.value > b.value ? a : b)
+              .key;
+        } else {
+          // Fallback to first item's plan_id
+          primaryPlanId = _reportedItems.first['plan_id']?.toString();
+        }
+        
+        // Use the first reported item's plan_item_id as the primary task
+        // This represents the main task this DPR is reporting on
+        primaryPlanItemId = _reportedItems.first['plan_item_id']?.toString();
+      }
+
       final payload = {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'plan_id': _reportedItems.isNotEmpty ? _reportedItems.first['plan_id'] : null,
-        'plan_item_id': _reportedItems.isNotEmpty ? _reportedItems.first['plan_item_id'] : null,
+        'plan_id': primaryPlanId,
+        'plan_item_id': primaryPlanItemId,
         'report_date': DateFormat('yyyy-MM-dd').format(_reportDate),
         'report_image': base64Image,
         'report_image_mime': mimeType,
@@ -232,7 +262,6 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final planItemsAsync = ref.watch(projectPlanItemsProvider);
-    final stockAsync = ref.watch(projectStockProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -257,56 +286,6 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // STOCK DISPLAY SECTION
-              Text(
-                'Available Stock',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              stockAsync.when(
-                data: (stock) {
-                  if (stock.isEmpty) return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text('No stock data available', style: theme.textTheme.bodySmall),
-                  );
-                  return Container(
-                    height: 90,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: stock.length,
-                      separatorBuilder: (_,__) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final item = stock[index];
-                        return Container(
-                          width: 120,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.1)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(item['material_name'] ?? 'Item', 
-                                   style: const TextStyle(fontWeight: FontWeight.bold),
-                                   maxLines: 1, overflow: TextOverflow.ellipsis),
-                              const SizedBox(height: 4),
-                              Text('${item['current_stock']} ${item['unit'] ?? ''}',
-                                   style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-                loading: () => const LinearProgressIndicator(),
-                error: (_,__) => const Text('Failed to load stock'),
-              ),
-
               Text(
                 'report_details'.tr(),
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),

@@ -6,7 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../../theme/app_colors.dart';
 import '../../services/face_verification_service.dart';
-import 'manual_attendance_screen.dart'; // To access the provider & model
+import '../../services/manual_attendance_service.dart';
+import '../../providers/current_project_provider.dart';
 
 class AddLabourScreen extends ConsumerStatefulWidget {
   const AddLabourScreen({super.key});
@@ -20,11 +21,14 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   final _faceService = FaceVerificationService();
+  final _attendanceService = ManualAttendanceService();
   final _picker = ImagePicker();
   
   XFile? _photo;
   Face? _detectedFace;
+  FaceFeatures? _faceFeatures;
   bool _isProcessing = false;
+  bool _isSubmitting = false;
   String? _detectionError;
 
   @override
@@ -32,16 +36,15 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
     _nameController.dispose();
     _categoryController.dispose();
     _faceService.dispose();
+    _attendanceService.dispose();
     super.dispose();
   }
 
   Future<void> _takePhoto() async {
     final picked = await _picker.pickImage(
       source: ImageSource.camera, 
-      maxWidth: 1000, // Higher res for better detection
+      maxWidth: 1000,
       imageQuality: 90,
-      preferredCameraDevice: CameraDevice.front, // Manual attendance usually front/selfie? Or rear?
-      // Actually site engineer takes photos, so Rear is better default, but MLKit handles both.
     );
     
     if (picked != null) {
@@ -49,13 +52,13 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
          _photo = picked;
          _isProcessing = true;
          _detectedFace = null;
+         _faceFeatures = null;
          _detectionError = null;
       });
 
       // Detect face immediately
       try {
         final imageFile = File(picked.path);
-        // Ensure file exists
         if (!await imageFile.exists()) throw "Image capture failed";
 
         final faces = await _faceService.detectFaces(imageFile);
@@ -66,8 +69,11 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
         } else if (faces.length > 1) {
           setState(() => _detectionError = "Multiple faces detected. Only one person allowed.");
         } else {
+          final face = faces.first;
+          final features = _faceService.extractFaceFeatures(face);
           setState(() {
-             _detectedFace = faces.first;
+             _detectedFace = face;
+             _faceFeatures = features;
              _detectionError = null;
           });
         }
@@ -79,32 +85,62 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
     if (_photo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('take_photo_required'.tr())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('take_photo_required'.tr())),
+      );
       return;
     }
-    if (_detectedFace == null) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Valid face required for check-in.')));
-       return;
+    
+    if (_detectedFace == null || _faceFeatures == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Valid face required for check-in.')),
+      );
+      return;
     }
 
-    final newRecord = AttendanceRecord(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text.trim(),
-      category: _categoryController.text.trim(),
-      status: 'CHECKED_IN',
-      checkInPhoto: File(_photo!.path),
-      checkInFace: _detectedFace,
-      checkInTime: DateTime.now(),
-    );
+    final project = ref.read(currentProjectProvider);
+    final projectId = project?['project_id'] ?? project?['id'];
+    
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a project first.')),
+      );
+      return;
+    }
 
-    final currentList = ref.read(attendanceRecordsProvider);
-    ref.read(attendanceRecordsProvider.notifier).state = [newRecord, ...currentList];
+    setState(() => _isSubmitting = true);
 
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('labour_checked_in'.tr())));
+    try {
+      await _attendanceService.checkIn(
+        projectId: projectId.toString(),
+        name: _nameController.text.trim(),
+        category: _categoryController.text.trim(),
+        faceImage: File(_photo!.path),
+        faceFeatures: _faceFeatures!,
+      );
+
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('labour_checked_in'.tr()), backgroundColor: Colors.green),
+      );
+      
+      Navigator.pop(context, true); // Return true to indicate success
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Check-in failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -119,8 +155,14 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'New Labour Check-in',
+                'Local Labour Check-in',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'For labours who do not use the app',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -134,11 +176,16 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _detectedFace != null ? Colors.green : (_detectionError != null ? Colors.red : Colors.grey),
+                      color: _detectedFace != null 
+                          ? Colors.green 
+                          : (_detectionError != null ? Colors.red : Colors.grey),
                       width: 2,
                     ),
                     image: _photo != null 
-                        ? DecorationImage(image: FileImage(File(_photo!.path)), fit: BoxFit.cover) 
+                        ? DecorationImage(
+                            image: FileImage(File(_photo!.path)), 
+                            fit: BoxFit.cover,
+                          ) 
                         : null,
                   ),
                   child: _photo == null
@@ -147,7 +194,10 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
                           children: [
                             Icon(Icons.camera_enhance, size: 64, color: Colors.grey[400]),
                             const SizedBox(height: 16),
-                            const Text('Tap to Capture Photo', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                            const Text(
+                              'Tap to Capture Photo',
+                              style: TextStyle(color: Colors.grey, fontSize: 16),
+                            ),
                           ],
                         )
                       : null,
@@ -156,29 +206,45 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
               const SizedBox(height: 16),
               
               // Status Indicator
-              if (_isProcessing)
+              if (_isProcessing && _photo != null)
                 const Center(child: CircularProgressIndicator())
               else if (_detectionError != null)
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Row(
                     children: [
                       const Icon(Icons.error_outline, color: Colors.red),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(_detectionError!, style: const TextStyle(color: Colors.red))),
+                      Expanded(
+                        child: Text(
+                          _detectionError!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ],
                   ),
                 )
-              else if (_detectedFace != null)
+              else if (_detectedFace != null && _faceFeatures != null)
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Row(
                     children: [
                       const Icon(Icons.check_circle, color: Colors.green),
                       const SizedBox(width: 12),
-                      const Expanded(child: Text("Face Detected Successfully", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                      const Expanded(
+                        child: Text(
+                          "Face Detected Successfully",
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -211,9 +277,26 @@ class _AddLabourScreenState extends ConsumerState<AddLabourScreen> {
               SizedBox(
                 height: 56,
                 child: ElevatedButton.icon(
-                  onPressed: (_detectedFace == null || _isProcessing) ? null : _submit,
-                  icon: const Icon(Icons.check),
-                  label: const Text('CONFIRM CHECK-IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  onPressed: (_detectedFace == null || 
+                              _faceFeatures == null || 
+                              _isProcessing || 
+                              _isSubmitting) 
+                      ? null 
+                      : _submit,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check),
+                  label: Text(
+                    _isSubmitting ? 'CHECKING IN...' : 'CONFIRM CHECK-IN',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
