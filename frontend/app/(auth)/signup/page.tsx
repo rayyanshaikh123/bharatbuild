@@ -34,7 +34,12 @@ export default function SignupPage() {
     try {
       await register(selectedRole, formData);
       // Redirect to role-based dashboard
-      router.push(selectedRole === "OWNER" ? "/owner" : "/manager");
+      const dashboardRoutes: Record<UserRole, string> = {
+        OWNER: "/owner",
+        MANAGER: "/manager",
+        PO_MANAGER: "/po-manager",
+      };
+      router.push(dashboardRoutes[selectedRole] || "/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -75,34 +80,48 @@ export default function SignupPage() {
 
             {/* Role Selector Tabs */}
             <div className="flex mb-6 p-1.5 bg-muted/50 rounded-xl border border-border/30">
-              {(["OWNER", "MANAGER"] as const).map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setSelectedRole(role)}
-                  className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-300 ${
-                    selectedRole === role
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
+              {(["OWNER", "MANAGER", "PO_MANAGER"] as const).map((role) => {
+                const roleLabels: Record<string, string> = {
+                  OWNER: "Owner",
+                  MANAGER: "Manager", 
+                  PO_MANAGER: "Purchase Manager",
+                };
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setSelectedRole(role)}
+                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-300 ${
+                      selectedRole === role
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {roleLabels[role]}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Role Description */}
             <div className="mb-6 p-4 bg-muted/30 border border-border/30 rounded-xl">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {selectedRole === "OWNER" ? (
+                {selectedRole === "OWNER" && (
                   <>
                     <span className="font-bold text-foreground">Owner/Contractor:</span>{" "}
                     Create organization, approve managers, view dashboards & reports.
                   </>
-                ) : (
+                )}
+                {selectedRole === "MANAGER" && (
                   <>
                     <span className="font-bold text-foreground">Project Manager:</span>{" "}
                     Request to join an organization, manage projects, review DPRs & approvals.
+                  </>
+                )}
+                {selectedRole === "PO_MANAGER" && (
+                  <>
+                    <span className="font-bold text-foreground">Purchase Manager:</span>{" "}
+                    Join organization & projects, process approved material requests, generate & send purchase orders.
                   </>
                 )}
               </p>

@@ -7,6 +7,7 @@ const pool = require("../../db");
 require("./managerPassport");
 require("./engineerPassport");
 require("./labourPassport");
+require("./purchaseManagerPassport");
 
 // Configure owner-local strategy
 passport.use(
@@ -60,6 +61,9 @@ passport.deserializeUser(async (key, done) => {
     } else if (role === "LABOUR") {
       table = "labours";
       columns = "id, name, phone, role";
+    } else if (role === "PURCHASE_MANAGER") {
+      table = "purchase_managers";
+      columns = "id, name, email, phone, role";
     } else return done(null, false);
 
     const result = await pool.query(

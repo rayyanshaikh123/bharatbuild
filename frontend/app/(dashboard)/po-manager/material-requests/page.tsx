@@ -6,7 +6,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { poManagerRequests, poManagerProjects, MaterialRequest, Project } from "@/lib/api/po-manager";
-import { Loader2, Package, Filter, FileText, Plus } from "lucide-react";
+import { Loader2, Package, Filter, FileText, Plus, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 
@@ -61,13 +61,19 @@ export default function MaterialRequestsPage() {
 
   // Fetch requests when project changes
   useEffect(() => {
+    if (!selectedProjectId) {
+      setRequests([]);
+      return;
+    }
+    
     const fetchRequests = async () => {
       try {
         setIsLoadingRequests(true);
-        const res = await poManagerRequests.getApproved(selectedProjectId || undefined);
+        const res = await poManagerRequests.getApproved(selectedProjectId);
         setRequests(res.requests);
       } catch (err) {
         console.error("Failed to fetch requests:", err);
+        setRequests([]);
       } finally {
         setIsLoadingRequests(false);
       }
@@ -108,14 +114,23 @@ export default function MaterialRequestsPage() {
         render: (value: string) => <span className="text-sm">{value}</span>,
       },
       {
-        key: "status",
-        label: "Status",
-        width: "120px",
-        render: (value: string) => (
-          <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-            {value}
-          </Badge>
-        ),
+        key: "has_po",
+        label: "PO Status",
+        width: "140px",
+        render: (_: unknown, row: MaterialRequest) => {
+          if (row.has_po) {
+            return (
+              <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                PO: {row.po_number} ({row.po_status})
+              </Badge>
+            );
+          }
+          return (
+            <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+              Pending PO
+            </Badge>
+          );
+        },
       },
       {
         key: "created_at",
@@ -127,14 +142,26 @@ export default function MaterialRequestsPage() {
         key: "actions",
         label: "Actions",
         width: "120px",
-        render: (_: unknown, row: MaterialRequest) => (
-          <Link href={`/po-manager/purchase-orders/create?requestId=${row.id}`}>
-            <Button size="sm" className="gap-1">
-              <Plus size={14} />
-              Create PO
-            </Button>
-          </Link>
-        ),
+        render: (_: unknown, row: MaterialRequest) => {
+          if (row.has_po) {
+            return (
+              <Link href={`/po-manager/purchase-orders`}>
+                <Button size="sm" variant="outline" className="gap-1">
+                  <Eye size={14} />
+                  View PO
+                </Button>
+              </Link>
+            );
+          }
+          return (
+            <Link href={`/po-manager/purchase-orders/create?requestId=${row.id}&projectId=${row.project_id}`}>
+              <Button size="sm" className="gap-1">
+                <Plus size={14} />
+                Create PO
+              </Button>
+            </Link>
+          );
+        },
       },
     ],
     []
@@ -176,7 +203,13 @@ export default function MaterialRequestsPage() {
       </div>
 
       {/* Requests Table */}
-      {isLoadingRequests ? (
+      {!selectedProjectId ? (
+        <div className="glass-card rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+          <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Select a Project</h3>
+          <p className="text-muted-foreground">Please select a project from the filter above to view material requests.</p>
+        </div>
+      ) : isLoadingRequests ? (
         <div className="glass-card rounded-2xl p-12 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="ml-2 text-muted-foreground">Loading requests...</span>
@@ -187,7 +220,7 @@ export default function MaterialRequestsPage() {
           columns={columns}
           searchable
           searchKeys={["title", "project_name", "engineer_name", "category"]}
-          emptyMessage="No approved material requests found."
+          emptyMessage="No approved material requests found for this project."
           itemsPerPage={15}
         />
       )}

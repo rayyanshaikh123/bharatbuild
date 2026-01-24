@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -36,7 +36,7 @@ function ProjectSelector({
   );
 }
 
-// Upload Modal
+// Upload Modal - Now prompts for URL since backend stores URL
 function UploadModal({ 
   po, 
   onClose, 
@@ -46,22 +46,21 @@ function UploadModal({
   onClose: () => void;
   onUploaded: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [pdfUrl, setPdfUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!pdfUrl.trim()) return;
 
     try {
       setIsUploading(true);
-      await poManagerPurchaseOrders.uploadPDF(po.id, file);
-      toast.success("PO PDF uploaded successfully!");
+      await poManagerPurchaseOrders.uploadPDF(po.id, pdfUrl);
+      toast.success("PO PDF URL saved successfully!");
       onUploaded();
       onClose();
     } catch (err) {
       console.error("Upload failed:", err);
-      toast.error("Failed to upload PDF");
+      toast.error("Failed to save PDF URL");
     } finally {
       setIsUploading(false);
     }
@@ -70,29 +69,21 @@ function UploadModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Upload PO PDF</h3>
+        <h3 className="text-lg font-bold mb-4">Add PO PDF URL</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Upload the Purchase Order PDF for <strong>{po.po_number}</strong>
+          Enter the URL for the Purchase Order PDF for <strong>{po.po_number}</strong>
         </p>
 
-        <div 
-          className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-          <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-          {file ? (
-            <p className="text-sm font-medium text-primary">{file.name}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">Click to select PDF file</p>
-          )}
-        </div>
+        <input
+          type="url"
+          value={pdfUrl}
+          onChange={(e) => setPdfUrl(e.target.value)}
+          placeholder="https://example.com/po-document.pdf"
+          className="w-full h-10 px-3 bg-background/50 border border-border rounded-lg text-sm"
+        />
+        <p className="text-xs text-muted-foreground mt-2">
+          Upload your PDF to a cloud storage and paste the public URL here.
+        </p>
 
         <div className="flex gap-3 mt-6">
           <Button variant="outline" onClick={onClose} className="flex-1" disabled={isUploading}>
@@ -101,9 +92,9 @@ function UploadModal({
           <Button 
             onClick={handleUpload} 
             className="flex-1" 
-            disabled={!file || isUploading}
+            disabled={!pdfUrl.trim() || isUploading}
           >
-            {isUploading ? <Loader2 className="animate-spin" size={16} /> : "Upload"}
+            {isUploading ? <Loader2 className="animate-spin" size={16} /> : "Save URL"}
           </Button>
         </div>
       </div>
@@ -226,20 +217,25 @@ export default function PurchaseOrdersPage() {
                 Upload
               </Button>
             )}
-            {row.status === "DRAFT" && row.po_pdf_url && (
-              <Button 
-                size="sm" 
-                className="gap-1"
-                onClick={async () => {
-                  await poManagerPurchaseOrders.markSent(row.id);
-                  toast.success("PO marked as sent!");
-                  fetchPOs();
-                }}
-              >
-                <Send size={14} />
-                Send
-              </Button>
-            )}
+              {row.status === "DRAFT" && row.po_pdf_url && (
+                <Button 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={async () => {
+                    try {
+                      await poManagerPurchaseOrders.send(row.id);
+                      toast.success("PO sent to site engineer!");
+                      fetchPOs();
+                    } catch (err) {
+                      console.error("Send failed:", err);
+                      toast.error("Failed to send PO");
+                    }
+                  }}
+                >
+                  <Send size={14} />
+                  Send
+                </Button>
+              )}
           </div>
         ),
       },

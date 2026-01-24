@@ -20,6 +20,7 @@ interface CheckAuthResponse {
   authenticated: boolean;
   owner?: User;
   manager?: User;
+  user?: User; // Used by PO_MANAGER check-auth
 }
 
 interface RegisterData {
@@ -34,37 +35,48 @@ interface LoginData {
   password: string;
 }
 
+// ==================== HELPER ====================
+
+function getAuthEndpoint(role: UserRole, action: string): string {
+  if (role === "OWNER") return `/auth/owner/${action}`;
+  if (role === "PO_MANAGER") return `/auth/purchase-manager/${action}`;
+  return `/auth/manager/${action}`;
+}
+
+function getCheckAuthEndpoint(role: UserRole): string {
+  if (role === "OWNER") return "/owner/check-auth";
+  if (role === "PO_MANAGER") return "/purchase-manager/check-auth";
+  return "/manager/check-auth";
+}
+
 // ==================== AUTH FUNCTIONS ====================
 
 export const auth = {
   // Login with role-based routing
   login: (role: UserRole, data: LoginData) => {
-    const endpoint = role === "OWNER" ? "/auth/owner/login" : "/auth/manager/login";
-    return api.post<AuthResponse>(endpoint, data);
+    return api.post<AuthResponse>(getAuthEndpoint(role, "login"), data);
   },
 
   // Register with role-based routing
   register: (role: UserRole, data: RegisterData) => {
-    const endpoint = role === "OWNER" ? "/auth/owner/register" : "/auth/manager/register";
-    return api.post<AuthResponse>(endpoint, data);
+    return api.post<AuthResponse>(getAuthEndpoint(role, "register"), data);
   },
 
   // Logout with role-based routing
   logout: (role: UserRole) => {
-    const endpoint = role === "OWNER" ? "/auth/owner/logout" : "/auth/manager/logout";
-    return api.post<{ message: string }>(endpoint, {});
+    return api.post<{ message: string }>(getAuthEndpoint(role, "logout"), {});
   },
 
   // Validate session - returns null if invalid
   checkAuth: async (role: UserRole): Promise<User | null> => {
     try {
-      const endpoint = role === "OWNER" ? "/owner/check-auth" : "/manager/check-auth";
-      const response = await api.get<CheckAuthResponse>(endpoint);
+      const response = await api.get<CheckAuthResponse>(getCheckAuthEndpoint(role));
 
       if (response.authenticated) {
-        const user = response.owner || response.manager;
-        if (user) {
-          return { ...user, role };
+        // owner and manager use their specific keys, PO_MANAGER uses 'user'
+        const userData = response.owner || response.manager || response.user;
+        if (userData) {
+          return { ...userData, role };
         }
       }
       return null;
@@ -75,7 +87,6 @@ export const auth = {
 
   // Forgot password
   forgotPassword: async (role: UserRole, email: string): Promise<{ message: string }> => {
-    const endpoint = role === "OWNER" ? "/auth/owner/forgot-password" : "/auth/manager/forgot-password";
-    return api.post<{ message: string }>(endpoint, { email });
+    return api.post<{ message: string }>(getAuthEndpoint(role, "forgot-password"), { email });
   },
 };

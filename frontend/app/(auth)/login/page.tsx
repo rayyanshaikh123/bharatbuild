@@ -26,7 +26,12 @@ export default function LoginPage() {
     try {
       await login(selectedRole, email, password);
       // Redirect to role-based dashboard
-      router.push(selectedRole === "OWNER" ? "/owner" : "/manager");
+      const dashboardRoutes: Record<UserRole, string> = {
+        OWNER: "/owner",
+        MANAGER: "/manager",
+        PO_MANAGER: "/po-manager",
+      };
+      router.push(dashboardRoutes[selectedRole] || "/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -67,20 +72,27 @@ export default function LoginPage() {
 
             {/* Role Selector Tabs */}
             <div className="flex mb-8 p-1.5 bg-muted/50 rounded-xl border border-border/30">
-              {(["OWNER", "MANAGER"] as const).map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setSelectedRole(role)}
-                  className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-300 ${
-                    selectedRole === role
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
+              {(["OWNER", "MANAGER", "PO_MANAGER"] as const).map((role) => {
+                const roleLabels: Record<string, string> = {
+                  OWNER: "Owner",
+                  MANAGER: "Manager",
+                  PO_MANAGER: "Purchase Mgr",
+                };
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setSelectedRole(role)}
+                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-300 ${
+                      selectedRole === role
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {roleLabels[role]}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Login Form */}

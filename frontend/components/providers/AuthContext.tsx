@@ -104,7 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (role: UserRole, email: string, password: string) => {
     const response = await auth.login(role, { email, password });
-    setUser(response.user);
+    // Ensure the role is set from the selected role, not from backend response
+    // (backend may not return role or return it in wrong format)
+    setUser({ ...response.user, role });
   }, []);
 
   const register = useCallback(
@@ -113,7 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { name: string; email: string; phone: string; password: string }
     ) => {
       const response = await auth.register(role, data);
-      setUser(response.user);
+      // Ensure the role is set from the selected role
+      setUser({ ...response.user, role });
     },
     []
   );

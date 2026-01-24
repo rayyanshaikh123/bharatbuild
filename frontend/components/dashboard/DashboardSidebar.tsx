@@ -91,12 +91,21 @@ export function DashboardSidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
+      {/* Mobile menu button with logo */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden p-2 bg-card border border-border rounded-lg shadow-lg"
+        className="fixed top-4 left-4 z-50 md:hidden flex items-center gap-2 p-2 bg-card border border-border rounded-lg shadow-lg"
       >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        {mobileOpen ? (
+          <X size={20} />
+        ) : (
+          <>
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
+              <Construction size={16} />
+            </div>
+            <Menu size={18} className="text-muted-foreground" />
+          </>
+        )}
       </button>
 
       {/* Mobile overlay */}
@@ -138,7 +147,11 @@ export function DashboardSidebar() {
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+              // For dashboard routes (exact base path), only match exact pathname
+              const isDashboardRoute = item.href === "/owner" || item.href === "/manager" || item.href === "/po-manager";
+              const isActive = isDashboardRoute 
+                ? pathname === item.href 
+                : pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
