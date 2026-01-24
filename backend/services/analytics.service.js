@@ -476,8 +476,8 @@ async function getManagerOverview(managerId) {
         approved: parseInt(materialBills.rows[0].approved),
       },
       total_attendance_hours: parseFloat(
-        attendanceHours.rows[0].total_hours.toFixed(2),
-      ),
+        attendanceHours.rows[0].total_hours || 0,
+      ).toFixed(2),
       total_wages_pending: parseInt(pendingWages.rows[0].count),
     };
   } finally {

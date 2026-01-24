@@ -131,6 +131,29 @@ router.post("/check-in", labourCheck, async (req, res) => {
       }
     }
 
+    // 5. Check if project break is active
+    const breakCheck = await client.query(
+      `SELECT id, ended_at, reason FROM project_breaks 
+       WHERE project_id = $1 AND NOW() BETWEEN started_at AND ended_at
+       LIMIT 1`,
+      [project_id],
+    );
+
+    if (breakCheck.rows.length > 0) {
+      const activeBreak = breakCheck.rows[0];
+      const endTime = new Date(activeBreak.ended_at);
+      const remainingMinutes = Math.ceil((endTime - new Date()) / (1000 * 60));
+
+      return res.status(403).json({
+        status: "BREAK_ACTIVE",
+        error: "Project break is currently active",
+        message: `Project break active. Attendance paused until ${endTime.toLocaleTimeString()}`,
+        break_ends_at: activeBreak.ended_at,
+        remaining_minutes: remainingMinutes,
+        reason: activeBreak.reason,
+      });
+    }
+
     await client.query("BEGIN");
 
     // 4. Get or create attendance record for today
@@ -466,7 +489,30 @@ router.post("/track", labourCheck, async (req, res) => {
     const orgId = attendance.org_id;
     const maxAllowedExits = attendance.max_allowed_exits || 3;
 
-    // 2. Check if already blacklisted (within 3 days)
+    // 2. Check if project break is active
+    const breakCheck = await pool.query(
+      `SELECT id, ended_at, reason FROM project_breaks 
+       WHERE project_id = $1 AND NOW() BETWEEN started_at AND ended_at
+       LIMIT 1`,
+      [projectId],
+    );
+
+    if (breakCheck.rows.length > 0) {
+      const activeBreak = breakCheck.rows[0];
+      const endTime = new Date(activeBreak.ended_at);
+      const remainingMinutes = Math.ceil((endTime - new Date()) / (1000 * 60));
+
+      return res.json({
+        success: true,
+        status: "BREAK_ACTIVE",
+        message: `Project break active. Attendance paused until ${endTime.toLocaleTimeString()}`,
+        break_ends_at: activeBreak.ended_at,
+        remaining_minutes: remainingMinutes,
+        is_inside: null, // Not tracking during break
+      });
+    }
+
+    // 3. Check if already blacklisted (within 3 days)
     const blacklistCheck = await pool.query(
       `SELECT id, created_at FROM organization_blacklist 
        WHERE org_id = $1 AND labour_id = $2 

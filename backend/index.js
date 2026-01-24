@@ -78,12 +78,10 @@ app.use((req, res, next) => {
       console.error(
         `[Timeout] Request ${req.method} ${req.url} timed out after 25s (RID: ${requestId})`,
       );
-      res
-        .status(503)
-        .json({
-          error: "request_timeout",
-          message: "Server took too long to respond.",
-        });
+      res.status(503).json({
+        error: "request_timeout",
+        message: "Server took too long to respond.",
+      });
     }
   });
 
@@ -209,6 +207,7 @@ app.use("/engineer/ledger", require("./routes/engineer/ledger"));
 app.use("/engineer/ai", require("./routes/engineer/ai"));
 app.use("/engineer/audits", require("./routes/engineer/audit"));
 app.use("/engineer/notifications", require("./routes/engineer/notifications"));
+app.use("/engineer", require("./routes/engineer/projectBreak"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

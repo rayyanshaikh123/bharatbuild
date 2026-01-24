@@ -246,14 +246,14 @@ async function generateAttendancePDF(reportData, filters) {
       const summary = reportData.summary;
       doc.fontSize(11).fillColor("#2C3E50");
 
-      addKeyValue(doc, "Total Hours", summary.total_hours.toFixed(2));
+      addKeyValue(doc, "Total Hours", (summary.total_hours || 0).toFixed(2));
       addKeyValue(doc, "Unique Labours", summary.unique_labours);
       addKeyValue(doc, "Total Records", summary.total_records);
       addKeyValue(doc, "Manual Entries", summary.manual_entries);
       addKeyValue(
         doc,
         "Avg Hours/Labour",
-        summary.avg_hours_per_labour.toFixed(2),
+        (summary.avg_hours_per_labour || 0).toFixed(2),
       );
 
       doc.moveDown(2);
