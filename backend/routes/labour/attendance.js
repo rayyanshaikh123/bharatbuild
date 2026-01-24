@@ -91,6 +91,46 @@ router.post("/check-in", labourCheck, async (req, res) => {
       });
     }
 
+    // 4. Check attendance creation time window (check_in_time + 2 hours buffer)
+    const projectRes = await client.query(
+      `SELECT check_in_time, check_out_time FROM projects WHERE id = $1`,
+      [project_id],
+    );
+
+    if (projectRes.rows.length > 0) {
+      const projectCheckInTime = projectRes.rows[0].check_in_time;
+
+      if (projectCheckInTime) {
+        // Parse project check-in time (format: HH:MM:SS)
+        const [checkInHour, checkInMinute] = projectCheckInTime
+          .split(":")
+          .map(Number);
+
+        // Get current time in IST
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Calculate allowed check-in time (project check-in + 2 hours)
+        let allowedHour = checkInHour + 2;
+        let allowedMinute = checkInMinute;
+
+        // Convert current time and allowed time to minutes for comparison
+        const currentTimeInMinutes = currentHour * 60 + currentMinute;
+        const allowedTimeInMinutes = allowedHour * 60 + allowedMinute;
+
+        if (currentTimeInMinutes < allowedTimeInMinutes) {
+          const allowedTimeStr = `${String(allowedHour).padStart(2, "0")}:${String(allowedMinute).padStart(2, "0")}`;
+          return res.status(403).json({
+            error: "Attendance creation not allowed yet",
+            message: `Attendance can only be created after ${allowedTimeStr}`,
+            project_check_in_time: projectCheckInTime,
+            allowed_from: allowedTimeStr,
+          });
+        }
+      }
+    }
+
     await client.query("BEGIN");
 
     // 4. Get or create attendance record for today

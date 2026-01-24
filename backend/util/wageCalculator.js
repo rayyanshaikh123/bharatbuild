@@ -10,11 +10,13 @@ const pool = require("../db");
  * @returns {Object} { worked_hours, hourly_rate, total_amount, is_ready_for_payment, category, skill_type }
  */
 async function calculateWageForAttendance(client, attendanceId) {
-  // 1. Get attendance details with labour info
+  // 1. Get attendance details with labour info and project working hours
   const attendanceRes = await client.query(
-    `SELECT a.*, a.check_out_time, l.skill_type, l.categories[1] as category
+    `SELECT a.*, a.check_out_time, l.skill_type, l.categories[1] as category,
+            p.check_in_time as project_check_in, p.check_out_time as project_check_out
      FROM attendance a
      JOIN labours l ON a.labour_id = l.id
+     JOIN projects p ON a.project_id = p.id
      WHERE a.id = $1`,
     [attendanceId],
   );
@@ -24,9 +26,16 @@ async function calculateWageForAttendance(client, attendanceId) {
   }
 
   const attendance = attendanceRes.rows[0];
-  const { project_id, check_out_time, skill_type, is_manual, status } =
-    attendance;
+  const {
+    project_id,
+    check_out_time,
+    skill_type,
+    is_manual,
+    status,
+    attendance_date,
+  } = attendance;
   const category = attendance.category;
+  const projectCheckOut = attendance.project_check_out;
 
   // 2. Manual attendance must be APPROVED before wage calculation
   if (is_manual && status !== "APPROVED") {
@@ -41,41 +50,66 @@ async function calculateWageForAttendance(client, attendanceId) {
     };
   }
 
-  // 3. Calculate worked hours from attendance_sessions
-  let worked_hours = 0;
+  // 3. Determine effective checkout time - cap at project check_out_time (max 18:00)
+  let effectiveCheckoutTime = null;
 
   if (check_out_time) {
-    // Attendance is complete - use stored work_hours (already calculated)
-    worked_hours = parseFloat(attendance.work_hours || 0);
+    effectiveCheckoutTime = new Date(check_out_time);
   } else {
-    // Attendance is active - calculate from sessions
-    const sessionsRes = await client.query(
-      `SELECT 
-        SUM(worked_minutes) FILTER (WHERE check_out_time IS NOT NULL) as completed_minutes,
-        MAX(check_in_time) FILTER (WHERE check_out_time IS NULL) as active_session_start
-       FROM attendance_sessions
-       WHERE attendance_id = $1`,
-      [attendanceId],
-    );
-
-    const completedMinutes = parseFloat(
-      sessionsRes.rows[0].completed_minutes || 0,
-    );
-    const activeSessionStart = sessionsRes.rows[0].active_session_start;
-
-    // Add completed session time
-    worked_hours = completedMinutes / 60;
-
-    // Add current active session time (if any)
-    if (activeSessionStart) {
-      const now = new Date();
-      const sessionStart = new Date(activeSessionStart);
-      const activeMinutes = (now - sessionStart) / 60000; // milliseconds to minutes
-      worked_hours += activeMinutes / 60;
+    const today = new Date(attendance_date);
+    if (projectCheckOut) {
+      const [hour, minute, second] = projectCheckOut.split(":").map(Number);
+      effectiveCheckoutTime = new Date(today);
+      effectiveCheckoutTime.setHours(hour, minute, second || 0, 0);
+    } else {
+      effectiveCheckoutTime = new Date(today);
+      effectiveCheckoutTime.setHours(18, 0, 0, 0);
     }
   }
 
-  // 4. Fetch hourly rate from wage_rates
+  // Ensure checkout doesn't exceed 18:00
+  const sixPM = new Date(attendance_date);
+  sixPM.setHours(18, 0, 0, 0);
+  if (effectiveCheckoutTime > sixPM) {
+    effectiveCheckoutTime = sixPM;
+  }
+
+  // 4. Calculate worked hours from sessions, capped by effective checkout
+  let worked_hours = 0;
+
+  if (check_out_time) {
+    worked_hours = parseFloat(attendance.work_hours || 0);
+  } else {
+    const sessionsRes = await client.query(
+      `SELECT check_in_time, check_out_time
+       FROM attendance_sessions
+       WHERE attendance_id = $1
+       ORDER BY check_in_time`,
+      [attendanceId],
+    );
+
+    for (const session of sessionsRes.rows) {
+      const sessionStart = new Date(session.check_in_time);
+      let sessionEnd;
+
+      if (session.check_out_time) {
+        sessionEnd = new Date(session.check_out_time);
+      } else {
+        const now = new Date();
+        sessionEnd = now < effectiveCheckoutTime ? now : effectiveCheckoutTime;
+      }
+
+      if (sessionEnd > effectiveCheckoutTime) {
+        sessionEnd = effectiveCheckoutTime;
+      }
+
+      const durationMs = sessionEnd - sessionStart;
+      const durationHours = Math.max(0, durationMs / (1000 * 60 * 60));
+      worked_hours += durationHours;
+    }
+  }
+
+  // 5. Fetch hourly rate from wage_rates
   const rateRes = await client.query(
     `SELECT hourly_rate FROM wage_rates
      WHERE project_id = $1 AND skill_type = $2 AND category = $3`,
@@ -91,7 +125,7 @@ async function calculateWageForAttendance(client, attendanceId) {
   const hourly_rate = parseFloat(rateRes.rows[0].hourly_rate);
   const total_amount = worked_hours * hourly_rate;
 
-  // 5. Determine if ready for payment
+  // 6. Determine if ready for payment
   const is_ready_for_payment = check_out_time !== null && status === "APPROVED";
 
   return {
