@@ -16,6 +16,10 @@ CREATE TABLE "attendance" (
 	"max_allowed_exits" integer DEFAULT 3,
 	"last_event_at" timestamp,
 	"source" text DEFAULT 'ONLINE',
+	"geofence_breach_count" integer DEFAULT 0,
+	"last_known_lat" numeric,
+	"last_known_lng" numeric,
+	"is_currently_breached" boolean DEFAULT false,
 	CONSTRAINT "attendance_project_id_labour_id_attendance_date_key" UNIQUE("project_id","labour_id","attendance_date"),
 	CONSTRAINT "attendance_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
@@ -182,6 +186,26 @@ CREATE TABLE "material_requests" (
 	"request_image_mime" text,
 	CONSTRAINT "material_requests_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
+CREATE TABLE "notifications" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"user_id" uuid NOT NULL,
+	"user_role" text NOT NULL,
+	"title" text NOT NULL,
+	"message" text NOT NULL,
+	"type" text DEFAULT 'INFO',
+	"is_read" boolean DEFAULT false,
+	"created_at" timestamp DEFAULT now(),
+	"project_id" uuid,
+	"metadata" jsonb
+);
+CREATE TABLE "organization_blacklist" (
+	"id" serial PRIMARY KEY,
+	"org_id" integer NOT NULL UNIQUE,
+	"labour_id" integer NOT NULL UNIQUE,
+	"reason" text,
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT "organization_blacklist_org_id_labour_id_key" UNIQUE("org_id","labour_id")
+);
 CREATE TABLE "organization_managers" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"org_id" uuid UNIQUE,
@@ -212,7 +236,8 @@ CREATE TABLE "organizations" (
 	"owner_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"latitude" numeric,
-	"longitude" numeric
+	"longitude" numeric,
+	"geofence" jsonb
 );
 CREATE TABLE "otp_logs" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -263,7 +288,7 @@ CREATE TABLE "plan_items" (
 	CONSTRAINT "plan_items_period_type_check" CHECK (CHECK ((period_type = ANY (ARRAY['WEEK'::text, 'MONTH'::text])))),
 	CONSTRAINT "plan_items_priority_check" CHECK (CHECK (((priority >= 0) AND (priority <= 5)))),
 	CONSTRAINT "plan_items_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'IN_PROGRESS'::text, 'COMPLETED'::text, 'BLOCKED'::text])))),
-	CONSTRAINT "plan_items_updated_by_role_check" CHECK (CHECK ((updated_by_role = 'MANAGER'::text)))
+	CONSTRAINT "plan_items_updated_by_role_check" CHECK (CHECK ((updated_by_role = ANY (ARRAY['MANAGER'::text, 'SITE_ENGINEER'::text]))))
 );
 CREATE TABLE "plans" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -289,7 +314,7 @@ CREATE TABLE "project_site_engineers" (
 	"status" text DEFAULT 'PENDING',
 	"assigned_at" timestamp DEFAULT now(),
 	CONSTRAINT "project_site_engineers_project_id_site_engineer_id_key" UNIQUE("project_id","site_engineer_id"),
-	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REMOVED'::text, 'REJECTED'::text]))))
+	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "projects" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -322,7 +347,9 @@ CREATE TABLE "site_engineers" (
 	"password_hash" text NOT NULL,
 	"role" text DEFAULT 'SITE_ENGINEER' NOT NULL,
 	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now()
+	"updated_at" timestamp DEFAULT now(),
+	"push_notifications_enabled" boolean DEFAULT true,
+	"email_notifications_enabled" boolean DEFAULT false
 );
 CREATE TABLE "sync_action_log" (
 	"id" uuid PRIMARY KEY,
@@ -457,6 +484,9 @@ CREATE UNIQUE INDEX "material_bills_pkey" ON "material_bills" ("id");
 CREATE UNIQUE INDEX "material_ledger_pkey" ON "material_ledger" ("id");
 CREATE INDEX "idx_material_req_status" ON "material_requests" ("status");
 CREATE UNIQUE INDEX "material_requests_pkey" ON "material_requests" ("id");
+CREATE UNIQUE INDEX "notifications_pkey" ON "notifications" ("id");
+CREATE UNIQUE INDEX "organization_blacklist_org_id_labour_id_key" ON "organization_blacklist" ("org_id","labour_id");
+CREATE UNIQUE INDEX "organization_blacklist_pkey" ON "organization_blacklist" ("id");
 CREATE UNIQUE INDEX "organization_managers_org_id_manager_id_key" ON "organization_managers" ("org_id","manager_id");
 CREATE UNIQUE INDEX "organization_managers_pkey" ON "organization_managers" ("id");
 CREATE UNIQUE INDEX "organization_site_engineers_org_id_site_engineer_id_key" ON "organization_site_engineers" ("org_id","site_engineer_id");
@@ -480,6 +510,7 @@ CREATE UNIQUE INDEX "project_site_engineers_project_id_site_engineer_id_key" ON 
 CREATE INDEX "idx_projects_org" ON "projects" ("org_id");
 CREATE INDEX "idx_projects_status" ON "projects" ("status");
 CREATE UNIQUE INDEX "projects_pkey" ON "projects" ("id");
+CREATE INDEX "IDX_session_expire" ON "session" ("expire");
 CREATE UNIQUE INDEX "session_pkey" ON "session" ("sid");
 CREATE INDEX "idx_site_engineer_email" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_email_key" ON "site_engineers" ("email");

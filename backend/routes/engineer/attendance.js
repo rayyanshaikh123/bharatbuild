@@ -45,6 +45,9 @@ router.get("/today", engineerCheck, async (req, res) => {
 });
 
 /* ---------------- MARK MANUAL ATTENDANCE ---------------- */
+// EXCEPTION MODE ONLY: Manual attendance is only allowed when geo-fence is not possible
+// Requires: Labour must have applied to labour request
+// Status: PENDING (requires site engineer approval)
 router.post("/mark", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
@@ -54,13 +57,30 @@ router.post("/mark", engineerCheck, async (req, res) => {
     const access = await verifyEngineerAccess(engineerId, projectId);
     if (!access.allowed) return res.status(403).json({ error: access.error });
 
+    // Verify labour has applied to a labour request for this project
+    const participantCheck = await pool.query(
+      `SELECT lrp.id 
+       FROM labour_request_participants lrp
+       JOIN labour_requests lr ON lrp.labour_request_id = lr.id
+       WHERE lrp.labour_id = $1 AND lr.project_id = $2 AND lrp.status = 'APPROVED'`,
+      [labourId, projectId],
+    );
+
+    if (participantCheck.rows.length === 0) {
+      return res.status(403).json({
+        error:
+          "Labour must be approved for a labour request before manual attendance can be marked",
+      });
+    }
+
+    // Manual attendance is created with PENDING status (requires approval)
     const result = await pool.query(
-      `INSERT INTO attendance (project_id, labour_id, site_engineer_id, attendance_date, status, approved_by, approved_at, is_manual)
-       VALUES ($1, $2, $3, $4, $5, $3, NOW(), true)
+      `INSERT INTO attendance (project_id, labour_id, site_engineer_id, attendance_date, status, is_manual)
+       VALUES ($1, $2, $3, $4, 'PENDING', true)
        ON CONFLICT (project_id, labour_id, attendance_date) 
-       DO UPDATE SET status = $5, approved_by = $3, approved_at = NOW(), is_manual = true
+       DO UPDATE SET status = 'PENDING', site_engineer_id = $3, is_manual = true
        RETURNING *`,
-      [projectId, labourId, engineerId, reportDate, status],
+      [projectId, labourId, engineerId, reportDate],
     );
 
     res.json({ attendance: result.rows[0] });
