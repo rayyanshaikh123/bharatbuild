@@ -876,7 +876,30 @@ class _ApplicationCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _buildStatusBadge(context, status),
+                  Row(
+                    children: [
+                      _buildStatusBadge(context, status),
+                      if (application['current_count'] != null && 
+                          application['required_count'] != null && 
+                          (application['current_count'] as int) >= (application['required_count'] as int))
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.withOpacity(0.2)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.group_off, size: 12, color: Colors.red),
+                              SizedBox(width: 4),
+                              Text('FULL', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 12),

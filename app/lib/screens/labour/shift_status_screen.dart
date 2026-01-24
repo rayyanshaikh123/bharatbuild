@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/auth_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../offline_sync/sync_service.dart';
+import '../../storage/sqlite_service.dart';
 
 class ShiftStatusScreen extends ConsumerStatefulWidget {
   const ShiftStatusScreen({super.key});
@@ -17,20 +20,30 @@ class ShiftStatusScreen extends ConsumerStatefulWidget {
 class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
   Timer? _ticker;
   Duration _elapsed = Duration.zero;
-  StreamSubscription<Position>? _positionStream;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  bool _isOffline = false;
+  int _localBreachCount = 0;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
-    _startLocationTracking();
+    _checkConnectivity();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      setState(() => _isOffline = results.isEmpty || results.contains(ConnectivityResult.none));
+    });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
-    _positionStream?.cancel();
+    _connectivitySub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final results = await Connectivity().checkConnectivity();
+    setState(() => _isOffline = results.isEmpty || results.contains(ConnectivityResult.none));
   }
 
   void _startTimer() {
@@ -42,19 +55,6 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
           _elapsed = DateTime.now().difference(start);
         });
       }
-    });
-  }
-
-  void _startLocationTracking() {
-    const locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 50, // Track every 50 meters
-    );
-    _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) {
-      // Send to backend
-      ref.read(authServiceProvider).trackLocation(position.latitude, position.longitude);
-      // Refresh status to see if we breached
-      ref.invalidate(liveStatusProvider);
     });
   }
 
@@ -72,6 +72,30 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          if (_isOffline)
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.orange),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off, size: 16, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('OFFLINE', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            ),
+        ],
+      ),
+      extendBodyBehindAppBar: true,
       body: statusAsync.when(
         data: (data) => _buildContent(context, data, theme),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -84,6 +108,7 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
     final isWorking = data['status'] == 'WORKING';
     final isInside = data['is_inside'] ?? true;
     final breachCount = data['breach_count'] ?? 0;
+    final maxExits = 3; // From backend logic
 
     return Container(
       decoration: BoxDecoration(
@@ -118,10 +143,10 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-                    child: const Icon(Icons.notifications_none, color: Colors.white),
+                  IconButton(
+                    onPressed: () => ref.read(syncServiceProvider).performManualSync(),
+                    icon: const Icon(Icons.sync, color: Colors.white),
+                    tooltip: 'Manual Sync',
                   ),
                 ],
               ),
@@ -171,7 +196,25 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
               ),
             ),
             
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+
+            // Request Attendance Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                onPressed: _handleRequestAttendance,
+                icon: const Icon(Icons.touch_app),
+                label: const Text('Request Attendance'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  backgroundColor: theme.colorScheme.secondary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 32),
             
             // Stats Row
             Padding(
@@ -210,15 +253,24 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.red.withOpacity(0.2)),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'geofence_breach_warning'.tr(args: [breachCount.toString()]),
-                          style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
-                        ),
+                      Row(
+                        children: [
+                          const Icon(Icons.report_problem, color: Colors.red, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Breach Alert: $breachCount / $maxExits warnings used.',
+                              style: const TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'WARNING: Exactly 3 breaches will result in automatic blacklisting and work session termination.',
+                        style: TextStyle(color: Colors.red, fontSize: 11),
                       ),
                     ],
                   ),
@@ -232,11 +284,9 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
               padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
-                  // Lunch Break Button (Placeholder logic)
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        // In reality, this might trigger a specific lunch session
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('lunch_mode_coming_soon'.tr())),
                         );
@@ -249,7 +299,6 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Check Out Button
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -303,6 +352,16 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleRequestAttendance() async {
+    // Manually trigger a TRACK action or re-check
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Requesting attendance update...')),
+    );
+    // This will be picked up by TrackingService in its next loop, or we can force it
+    // For now, refreshing the provider
+    ref.invalidate(liveStatusProvider);
   }
 
   Future<void> _handleCheckOut(BuildContext context) async {

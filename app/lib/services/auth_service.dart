@@ -716,6 +716,23 @@ class AuthService {
   }
 
   /* ---------------- OFFLINE SYNC ---------------- */
+  Future<Map<String, dynamic>> syncBatch(String role, List<Map<String, dynamic>> actions) async {
+    final endpoint = role == 'LABOUR' ? '/sync/labour' : '/sync/engineer';
+    final uri = Uri.parse('$_base$endpoint');
+    
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'actions': actions}),
+    );
+
+    if (res.statusCode >= 400) {
+      throw Exception('Batch sync failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   Future<void> syncQueueItem({
     required String endpoint,
     required String method,
