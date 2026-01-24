@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:intl/intl.dart';
 import 'persistent_client.dart';
 import '../config.dart';
@@ -890,5 +892,91 @@ class AuthService {
     if (res.statusCode != 200) {
       throw Exception('Failed to mark notification as read: ${res.body}');
     }
+  }
+
+  /* ---------------- PURCHASE ORDERS (ENGINEER) ---------------- */
+  Future<List<dynamic>> getSentPurchaseOrders(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/sent/list')
+        .replace(queryParameters: {'projectId': projectId});
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['purchase_orders'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch purchase orders: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getPurchaseOrder(String poId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/$poId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch purchase order: ${res.body}');
+  }
+
+  /* ---------------- GRN (ENGINEER) ---------------- */
+  Future<Map<String, dynamic>> createGRN({
+    required String projectId,
+    required String purchaseOrderId,
+    required String materialRequestId,
+    required List<Map<String, dynamic>> receivedItems,
+    String? remarks,
+    required File billImage,
+    required File proofImage,
+  }) async {
+    final uri = Uri.parse('$_base/engineer/grns');
+    
+    // Create multipart request
+    final request = http.MultipartRequest('POST', uri);
+    
+    // Add images
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'bill_image',
+        billImage.path,
+        filename: 'bill.jpg',
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+    
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'proof_image',
+        proofImage.path,
+        filename: 'proof.jpg',
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+
+    // Add form fields
+    request.fields['projectId'] = projectId;
+    request.fields['purchaseOrderId'] = purchaseOrderId;
+    request.fields['materialRequestId'] = materialRequestId;
+    request.fields['receivedItems'] = jsonEncode(receivedItems);
+    if (remarks != null && remarks.isNotEmpty) {
+      request.fields['remarks'] = remarks;
+    }
+
+    // Send request
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 201) {
+      _throwError('GRN creation failed', response);
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> getGRNs(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/grns')
+        .replace(queryParameters: {'projectId': projectId});
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['grns'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch GRNs: ${res.body}');
   }
 }
