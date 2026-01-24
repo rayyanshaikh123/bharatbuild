@@ -224,7 +224,7 @@ export default function ManagerWagesPage() {
                 activeTab === tab ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "rates" ? "Wage Rates" : tab === "processing" ? "Process Wages" : tab === "history" ? "History" : "Weekly Cost"}
+              {tab === "rates" ? "Wage Rates" : tab === "processing" ? "Process Wages" : tab === "history" ? "History" : "Weekly Payouts"}
             </button>
           ))}
         </div>

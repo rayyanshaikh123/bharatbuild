@@ -61,6 +61,7 @@ const managerNavItems: NavItem[] = [
   { label: "Timeline", href: "/manager/timeline", icon: Clock },
   { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
+  {label: "Purchase-orders", href: "/manager/purchase-orders", icon: FileText },
   { label: "Materials", href: "/manager/materials", icon: Package },
   { label: "GRN", href: "/manager/grn", icon: ClipboardCheck },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },

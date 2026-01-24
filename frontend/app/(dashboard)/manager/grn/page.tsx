@@ -6,42 +6,27 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { managerGrn, managerProjects, managerOrganization, Project } from "@/lib/api/manager";
-import { Loader2, Package, CheckCircle2, XCircle, Clock, Filter, CheckSquare } from "lucide-react";
+import { Loader2, Package, CheckCircle2, XCircle, Clock, Filter, CheckSquare, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-// Reuse Types (should be imported but defining here for speed if not exported from po-manager api)
+// Reuse Types
 interface GRN {
   id: string;
   project_id: string;
   purchase_order_id: string;
   material_request_id: string;
-  site_engineer_id: string;
-  grn_number: string;
-  challan_number?: string;
-  challan_photo?: string;
-  item_photo?: string;
-  vehicle_number?: string;
-  received_at: string;
-  remarks?: string;
-  quality_check_status: "PENDING" | "PASSED" | "FAILED";
-  quality_check_remarks?: string;
-  status: "PENDING" | "VERIFIED" | "REJECTED";
-  verified_by?: string;
-  verified_at?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;
-  // Joins
-  project_name?: string;
-  po_number?: string;
-  vendor_name?: string;
-  material_request_title?: string;
-  engineer_name?: string;
-  verified_by_name?: string;
-  quantity_received?: number;
-  unit?: string;
+  po_number: string;
+  vendor_name: string;
+  material_request_title: string;
+  received_by_name: string;
+  reviewed_by_name?: string;
+  manager_feedback?: string;
 }
 
-// Project Selector Component (Reused logic)
+// Project Selector Component
 function ProjectSelector({
   projects,
   selectedId,
@@ -78,12 +63,12 @@ function ProjectSelector({
 
 export default function ManagerGRNPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [grns, setGRNs] = useState<GRN[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingGRNs, setIsLoadingGRNs] = useState(false);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -96,9 +81,11 @@ export default function ManagerGRNPage() {
         
         if (approvedOrg?.org_id) {
           const res = await managerProjects.getMyProjects(approvedOrg.org_id);
-          setProjects(res.projects || []);
-          if (res.projects && res.projects.length > 0) {
-            setSelectedProjectId(res.projects[0].id);
+          // Filter only active projects
+          const activeProjects = (res.projects || []).filter(p => p.my_status === 'ACTIVE' || p.is_creator);
+          setProjects(activeProjects);
+          if (activeProjects.length > 0) {
+            setSelectedProjectId(activeProjects[0].id);
           }
         }
       } catch (err) {
@@ -128,35 +115,16 @@ export default function ManagerGRNPage() {
     fetchGRNs();
   }, [selectedProjectId]);
 
-  const handleVerify = async (grnId: string) => {
-    const remarks = window.prompt("Enter remarks for verification (optional):");
-    if (remarks === null) return; // Cancelled
-
-    setVerifyingId(grnId);
-    try {
-      await managerGrn.verify(grnId, remarks);
-      toast.success("GRN Verified Successfully");
-      // Refresh list
-      const res = await managerGrn.getProjectGrns(selectedProjectId!);
-      setGRNs(res.grns || []);
-    } catch (err: any) {
-      console.error("Failed to verify:", err);
-      toast.error(err.response?.data?.error || "Failed to verify GRN");
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
   const columns: Column<GRN>[] = useMemo(() => [
     {
-      key: "grn_number",
-      label: "GRN Number",
-      render: (value, row) => <span className="font-mono font-medium">{row.grn_number}</span>,
-    },
-    {
       key: "po_number",
-      label: "PO Number",
-      render: (value, row) => <span className="font-mono text-sm">{row.po_number}</span>,
+      label: "PO Details",
+      render: (value, row) => (
+        <div>
+          <p className="font-mono font-medium">{row.po_number}</p>
+          <p className="text-xs text-muted-foreground">{row.vendor_name}</p>
+        </div>
+      ),
     },
     {
       key: "material_request_title",
@@ -164,57 +132,62 @@ export default function ManagerGRNPage() {
       render: (value, row) => (
         <div>
           <p className="font-medium">{row.material_request_title}</p>
-          <p className="text-xs text-muted-foreground">{row.vendor_name}</p>
+          <p className="text-xs text-muted-foreground">Recv by: {row.received_by_name}</p>
         </div>
       ),
     },
     {
-      key: "quantity_received",
-      label: "Status",
-      render: (value, row) => (
-         <div className="flex flex-col gap-1">
-             <span className="text-sm font-semibold">{row.quantity_received} {row.unit}</span>
-             {row.quality_check_status === "PASSED" ? (
-                <span className="text-[10px] text-green-500 font-bold flex items-center gap-1">
-                    <CheckCircle2 size={10} /> QC Passed
-                </span>
-             ) : row.quality_check_status === "FAILED" ? (
-                <span className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-                    <XCircle size={10} /> QC Failed
-                </span>
-             ) : (
-                <span className="text-[10px] text-yellow-500 font-bold flex items-center gap-1">
-                    <Clock size={10} /> QC Pending
-                </span>
-             )}
-         </div>
-      ),
+      key: "created_at",
+      label: "Date",
+      render: (value) => new Date(value).toLocaleDateString(),
     },
     {
       key: "status",
-      label: "Verification",
+      label: "Status",
       render: (value, row) => {
-         if (row.status === "VERIFIED") {
+         if (row.status === "APPROVED") {
              return (
-                 <Badge className="bg-green-500/10 text-green-600 gap-1 hover:bg-green-500/20">
-                     <CheckCircle2 size={12} /> Verified
+                 <Badge className="bg-green-500/10 text-green-600 gap-1 hover:bg-green-500/20 pointer-events-none">
+                     <CheckCircle2 size={12} /> Approved
                  </Badge>
              );
          }
+         if (row.status === "REJECTED") {
+            return (
+                <Badge className="bg-red-500/10 text-red-600 gap-1 hover:bg-red-500/20 pointer-events-none">
+                    <XCircle size={12} /> Rejected
+                </Badge>
+            );
+        }
          return (
-             <Button 
-                size="sm" 
-                onClick={() => handleVerify(row.id)}
-                disabled={!!verifyingId}
-                className="h-7 text-xs bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary border-0"
-             >
-                 {verifyingId === row.id ? <Loader2 size={12} className="animate-spin mr-1"/> : <CheckSquare size={12} className="mr-1"/>}
-                 Verify
-             </Button>
+             <Badge className="bg-yellow-500/10 text-yellow-600 gap-1 hover:bg-yellow-500/20 pointer-events-none">
+                 <Clock size={12} /> Pending Review
+             </Badge>
          );
       }
     },
-  ], [verifyingId]);
+    {
+      key: "id",
+      label: "Action",
+      render: (value, row) => (
+        <Button 
+          size="sm"
+          className={row.status === "PENDING" ? "bg-primary" : "bg-muted hover:bg-muted/80 text-foreground"}
+          onClick={() => router.push(`/manager/grn/${row.id}`)}
+        >
+          {row.status === "PENDING" ? (
+            <>
+              <CheckSquare size={14} className="mr-2" /> Verify
+            </>
+          ) : (
+            <>
+              <Eye size={14} className="mr-2" /> View
+            </>
+          )}
+        </Button>
+      )
+    },
+  ], [router]);
 
   if (isLoading) {
     return (
@@ -228,13 +201,13 @@ export default function ManagerGRNPage() {
     <div className="space-y-6 pt-12 md:pt-0 pb-12">
       <DashboardHeader
         userName={user?.name?.split(" ")[0]}
-        title="GRN Verification"
+        title="Good Receipt Notes (GRN)"
       />
 
       {projects.length === 0 ? (
         <div className="glass-card rounded-2xl p-12 text-center">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-bold text-muted-foreground mb-2">No Projects</h3>
+          <h3 className="text-lg font-bold text-muted-foreground mb-2">No Active Projects</h3>
           <p className="text-sm text-muted-foreground">
             Join or create a project to manage GRNs.
           </p>
@@ -257,15 +230,17 @@ export default function ManagerGRNPage() {
               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-bold text-muted-foreground mb-2">No GRNs Found</h3>
               <p className="text-sm text-muted-foreground">
-                No items pending verification.
+                No items found for this project.
               </p>
             </div>
           ) : (
-            <DataTable
-              data={grns}
-              columns={columns}
-              searchKeys={["grn_number", "po_number", "material_request_title", "vendor_name"]}
-            />
+            <div className="glass-card rounded-2xl p-6">
+                <DataTable
+                data={grns}
+                columns={columns}
+                searchKeys={["po_number", "material_request_title", "vendor_name"]}
+                />
+            </div>
           )}
         </>
       )}

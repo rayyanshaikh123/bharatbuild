@@ -73,7 +73,7 @@ router.get("/:poId", managerCheck, async (req, res) => {
               po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
               mr.description AS material_request_description,
-              mr.items AS material_request_items,
+              mr.quantity AS material_request_quantity,
               p.name AS project_name,
               pm.name AS created_by_name
        FROM purchase_orders po

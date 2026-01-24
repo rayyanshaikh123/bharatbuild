@@ -530,11 +530,48 @@ export const managerPurchaseManagerRequests = {
 // ==================== MANAGER GRN API ====================
 
 export const managerGrn = {
-  getProjectGrns: (projectId: string) =>
-    api.get<{ grns: any[] }>(`/manager/grn/grns?projectId=${projectId}`),
+  // Get GRNs by project (using new correct route)
+  getProjectGrns: (projectId: string, status?: string) => {
+    const params = new URLSearchParams();
+    params.append('projectId', projectId);
+    if (status) params.append('status', status);
+    return api.get<{ grns: any[] }>(`/manager/goods-receipt-notes?${params.toString()}`);
+  },
 
-  verify: (grnId: string, remarks?: string) =>
-    api.patch<{ message: string; grn: any }>(`/manager/grn/grns/${grnId}/verify`, { remarks }),
+  // Get GRN Details
+  getById: (grnId: string) =>
+    api.get<{ grn: any }>(`/manager/goods-receipt-notes/${grnId}`),
+
+  // Approve GRN
+  approve: (grnId: string, managerFeedback?: string) =>
+    api.patch<{ message: string; grn: any }>(`/manager/goods-receipt-notes/${grnId}/approve`, { managerFeedback }),
+
+  // Reject GRN
+  reject: (grnId: string, managerFeedback: string) =>
+    api.patch<{ message: string; grn: any }>(`/manager/goods-receipt-notes/${grnId}/reject`, { managerFeedback }),
+
+  // Get Images (Streaming)
+  getBillImage: (grnId: string) => 
+    api.getBlob(`/manager/goods-receipt-notes/${grnId}/bill-image`),
+    
+  getDeliveryProofImage: (grnId: string) => 
+    api.getBlob(`/manager/goods-receipt-notes/${grnId}/delivery-proof-image`),
+};
+
+// ==================== MANAGER PURCHASE ORDERS API ====================
+
+export const managerPurchaseOrders = {
+  // Get all POs for a project
+  getAll: (projectId: string) =>
+    api.get<{ purchase_orders: any[] }>(`/manager/purchase-orders?projectId=${projectId}`),
+
+  // Get Single PO
+  getById: (poId: string) =>
+    api.get<{ purchase_order: any }>(`/manager/purchase-orders/${poId}`),
+
+  // Get PO PDF
+  getPdf: (poId: string) =>
+    api.getBlob(`/manager/purchase-orders/${poId}/pdf`),
 };
 
 
