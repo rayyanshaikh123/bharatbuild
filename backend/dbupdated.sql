@@ -512,6 +512,15 @@ CREATE TABLE "site_engineers" (
 	"push_notifications_enabled" boolean DEFAULT true,
 	"email_notifications_enabled" boolean DEFAULT false
 );
+CREATE TABLE "subcontractors" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"name" text NOT NULL,
+	"specialization" text,
+	"contact_name" text,
+	"contact_phone" text,
+	"contact_email" text,
+	"created_at" timestamp DEFAULT now()
+);
 CREATE TABLE "sync_action_log" (
 	"id" uuid PRIMARY KEY,
 	"user_id" uuid NOT NULL,
@@ -533,6 +542,35 @@ CREATE TABLE "sync_errors" (
 	"reason" text,
 	"payload" jsonb,
 	"created_at" timestamp DEFAULT now()
+);
+CREATE TABLE "task_quality_reviews" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_quality_reviews_task_id_key" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"rating" integer NOT NULL,
+	"remarks" text,
+	"reviewed_by" uuid NOT NULL,
+	"reviewed_at" timestamp DEFAULT now(),
+	CONSTRAINT "task_quality_reviews_rating_check" CHECK (CHECK (((rating >= 1) AND (rating <= 5))))
+);
+CREATE TABLE "task_speed_ratings" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_speed_ratings_task_id_key" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"rating" integer NOT NULL,
+	"derived_from_duration" boolean DEFAULT false,
+	"rated_by" uuid NOT NULL,
+	"rated_at" timestamp DEFAULT now(),
+	CONSTRAINT "task_speed_ratings_rating_check" CHECK (CHECK (((rating >= 1) AND (rating <= 5))))
+);
+CREATE TABLE "task_subcontractors" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_sub_unique" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"assigned_by" uuid NOT NULL,
+	"assigned_at" timestamp DEFAULT now(),
+	"task_start_date" date,
+	"task_completed_at" timestamp
 );
 CREATE TABLE "tool_qr_codes" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -657,6 +695,12 @@ ALTER TABLE "projects" ADD CONSTRAINT "projects_org_id_fkey" FOREIGN KEY ("org_i
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "purchase_managers"("id") ON DELETE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_material_request_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE RESTRICT;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "task_quality_reviews" ADD CONSTRAINT "fk_quality_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_quality_reviews" ADD CONSTRAINT "fk_quality_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
+ALTER TABLE "task_speed_ratings" ADD CONSTRAINT "fk_speed_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_speed_ratings" ADD CONSTRAINT "fk_speed_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
+ALTER TABLE "task_subcontractors" ADD CONSTRAINT "fk_task_sub_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_subcontractors" ADD CONSTRAINT "fk_task_sub_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
 ALTER TABLE "wage_rates" ADD CONSTRAINT "wage_rates_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "managers"("id");
 ALTER TABLE "wage_rates" ADD CONSTRAINT "wage_rates_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "wages" ADD CONSTRAINT "wages_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "managers"("id");
@@ -762,8 +806,18 @@ CREATE INDEX "idx_site_engineer_email" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_email_key" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_phone_key" ON "site_engineers" ("phone");
 CREATE UNIQUE INDEX "site_engineers_pkey" ON "site_engineers" ("id");
+CREATE UNIQUE INDEX "subcontractors_pkey" ON "subcontractors" ("id");
 CREATE UNIQUE INDEX "sync_action_log_pkey" ON "sync_action_log" ("id");
 CREATE UNIQUE INDEX "sync_errors_pkey" ON "sync_errors" ("id");
+CREATE INDEX "idx_quality_reviews_sub" ON "task_quality_reviews" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_quality_reviews_pkey" ON "task_quality_reviews" ("id");
+CREATE UNIQUE INDEX "task_quality_reviews_task_id_key" ON "task_quality_reviews" ("task_id");
+CREATE INDEX "idx_speed_ratings_sub" ON "task_speed_ratings" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_speed_ratings_pkey" ON "task_speed_ratings" ("id");
+CREATE UNIQUE INDEX "task_speed_ratings_task_id_key" ON "task_speed_ratings" ("task_id");
+CREATE INDEX "idx_task_subcontractors_sub" ON "task_subcontractors" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_sub_unique" ON "task_subcontractors" ("task_id");
+CREATE UNIQUE INDEX "task_subcontractors_pkey" ON "task_subcontractors" ("id");
 CREATE UNIQUE INDEX "tool_qr_codes_pkey" ON "tool_qr_codes" ("id");
 CREATE UNIQUE INDEX "tool_qr_codes_qr_token_key" ON "tool_qr_codes" ("qr_token");
 CREATE UNIQUE INDEX "tool_qr_unique_day" ON "tool_qr_codes" ("tool_id","valid_date");

@@ -128,6 +128,7 @@ app.use("/auth/manager", require("./routes/auth/managerAuth"));
 app.use("/auth/engineer", require("./routes/auth/engineerAuth"));
 app.use("/auth/labour", require("./routes/auth/labourAuth"));
 app.use("/auth/purchase-manager", require("./routes/auth/purchaseManagerAuth"));
+app.use("/auth/qa-engineer", require("./routes/auth/qaEngineerAuth"));
 
 /* ---------------- OWNER ROUTES ---------------- */
 app.use("/owner", require("./routes/owner/owner"));
@@ -164,6 +165,7 @@ app.use("/owner/timeline", require("./routes/owner/timeline"));
 app.use("/owner/purchase-orders", require("./routes/owner/purchaseOrders"));
 app.use("/owner", require("./routes/owner/grn"));
 app.use("/owner/dangerous-work", require("./routes/owner/dangerousWork"));
+app.use("/owner/subcontractors", require("./routes/owner/subcontractors"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -211,6 +213,12 @@ app.use(
   require("./routes/manager/goodsReceiptNotes"),
 );
 app.use("/manager/dangerous-work", require("./routes/manager/dangerousWork"));
+app.use("/manager/subcontractors", require("./routes/manager/subcontractors"));
+app.use("/manager/tasks", require("./routes/manager/taskSubcontractors"));
+app.use(
+  "/manager/qa-engineer-requests",
+  require("./routes/manager/qaEngineerRequests"),
+);
 
 /* ---------------- PURCHASE MANAGER ROUTES ---------------- */
 app.use(
@@ -288,6 +296,10 @@ app.use(
   "/labour/dangerous-task-requests",
   require("./routes/labour/dangerousTaskRequests"),
 );
+
+/* ---------------- QA ENGINEER ROUTES ---------------- */
+app.use("/qa-engineer", require("./routes/qa-engineer/qaEngineer"));
+app.use("/qa-engineer/tasks", require("./routes/qa-engineer/qualityReview"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
 /* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */
