@@ -127,6 +127,7 @@ app.use("/auth/owner", require("./routes/auth/ownerAuth"));
 app.use("/auth/manager", require("./routes/auth/managerAuth"));
 app.use("/auth/engineer", require("./routes/auth/engineerAuth"));
 app.use("/auth/labour", require("./routes/auth/labourAuth"));
+app.use("/auth/purchase-manager", require("./routes/auth/purchaseManagerAuth"));
 
 /* ---------------- OWNER ROUTES ---------------- */
 app.use("/owner", require("./routes/owner/owner"));
@@ -192,6 +193,14 @@ app.use("/manager/ai", require("./routes/manager/ai"));
 app.use("/manager/ledger", require("./routes/manager/ledger"));
 app.use("/manager/delays", require("./routes/manager/delays"));
 app.use("/manager/timeline", require("./routes/manager/timeline"));
+
+/* ---------------- PURCHASE MANAGER ROUTES ---------------- */
+app.use("/purchase-manager", require("./routes/purchase-manager/purchaseManager"));
+app.use("/purchase-manager/dashboard", require("./routes/purchase-manager/dashboard"));
+app.use("/purchase-manager", require("./routes/purchase-manager/organization"));
+app.use("/purchase-manager", require("./routes/purchase-manager/project"));
+app.use("/purchase-manager/material-requests", require("./routes/purchase-manager/materialRequests"));
+app.use("/purchase-manager/purchase-orders", require("./routes/purchase-manager/purchaseOrders"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));

@@ -37,7 +37,10 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     if (allowedRoles && allowedRoles.length > 0) {
       if (!allowedRoles.includes(user.role)) {
         // Redirect to correct dashboard based on role
-        const correctPath = user.role === "OWNER" ? "/owner" : "/manager";
+        let correctPath = "/manager";
+        if (user.role === "OWNER") correctPath = "/owner";
+        else if (user.role === "PO_MANAGER") correctPath = "/po-manager";
+        
         if (pathname !== correctPath) {
           router.push(correctPath);
         }
@@ -77,4 +80,8 @@ export function OwnerGuard({ children }: { children: React.ReactNode }) {
 
 export function ManagerGuard({ children }: { children: React.ReactNode }) {
   return <AuthGuard allowedRoles={["MANAGER"]}>{children}</AuthGuard>;
+}
+
+export function POManagerGuard({ children }: { children: React.ReactNode }) {
+  return <AuthGuard allowedRoles={["PO_MANAGER"]}>{children}</AuthGuard>;
 }
