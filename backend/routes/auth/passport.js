@@ -18,7 +18,7 @@ passport.use(
       try {
         const result = await pool.query(
           "SELECT id, name, email, phone, password_hash, role FROM owners WHERE email = $1",
-          [email]
+          [email],
         );
         if (result.rows.length === 0)
           return done(null, false, { message: "User not found" });
@@ -32,11 +32,11 @@ passport.use(
       } catch (err) {
         return done(err);
       }
-    }
-  )
+    },
+  ),
 );
 
-// Session handling (supports OWNER, MANAGER, SITE_ENGINEER)
+// Session handling (supports OWNER, MANAGER, SITE_ENGINEER, LABOUR, PURCHASE_MANAGER)
 passport.serializeUser((user, done) => {
   // store role with id so we can fetch from correct table
   done(null, { id: user.id, role: user.role });
@@ -68,7 +68,7 @@ passport.deserializeUser(async (key, done) => {
 
     const result = await pool.query(
       `SELECT ${columns} FROM ${table} WHERE id = $1`,
-      [key.id]
+      [key.id],
     );
     if (result.rows.length === 0) return done(null, false);
     done(null, result.rows[0]);

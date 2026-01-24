@@ -462,6 +462,60 @@ CREATE TABLE "wages" (
 	CONSTRAINT "wages_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))),
 	CONSTRAINT "wages_wage_type_check" CHECK (CHECK ((wage_type = ANY (ARRAY['DAILY'::text, 'HOURLY'::text]))))
 );
+CREATE TABLE grns (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  project_id UUID NOT NULL,
+  purchase_order_id UUID NOT NULL,
+  material_request_id UUID NOT NULL,
+
+  site_engineer_id UUID NOT NULL,
+
+  received_items JSONB NOT NULL,
+  -- example:
+  -- [{ material_name, category, quantity_received, unit, remarks }]
+
+  received_at TIMESTAMP NOT NULL DEFAULT now(),
+  remarks TEXT,
+
+  status TEXT DEFAULT 'CREATED',
+  -- CREATED → VERIFIED
+
+  verified_by UUID,
+  verified_at TIMESTAMP,
+
+  created_at TIMESTAMP DEFAULT now(),
+
+  CONSTRAINT grn_status_check
+    CHECK (status IN ('CREATED', 'VERIFIED'))
+);
+
+-- Foreign Keys
+ALTER TABLE grns
+  ADD CONSTRAINT grn_project_fkey
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+ALTER TABLE grns
+  ADD CONSTRAINT grn_po_fkey
+  FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE RESTRICT;
+
+ALTER TABLE grns
+  ADD CONSTRAINT grn_material_request_fkey
+  FOREIGN KEY (material_request_id) REFERENCES material_requests(id) ON DELETE RESTRICT;
+
+ALTER TABLE grns
+  ADD CONSTRAINT grn_site_engineer_fkey
+  FOREIGN KEY (site_engineer_id) REFERENCES site_engineers(id) ON DELETE CASCADE;
+
+ALTER TABLE grns
+  ADD CONSTRAINT grn_verified_by_fkey
+  FOREIGN KEY (verified_by) REFERENCES managers(id);
+
+-- Indexes
+CREATE INDEX idx_grn_project ON grns(project_id);
+CREATE INDEX idx_grn_po ON grns(purchase_order_id);
+CREATE INDEX idx_grn_status ON grns(status);
+
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
