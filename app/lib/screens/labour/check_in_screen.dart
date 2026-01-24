@@ -8,8 +8,10 @@ import '../../providers/attendance_provider.dart';
 import '../../providers/auth_providers.dart';
 import '../../services/auth_service.dart';
 import '../../map/geofence_service.dart';
+import '../../providers/user_provider.dart';
 import '../../widgets/site_map_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../services/tracking_service.dart';
 import 'shift_status_screen.dart';
 
 class CheckInScreen extends ConsumerStatefulWidget {
@@ -141,6 +143,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        // Start tracking
+        final user = ref.read(currentUserProvider);
+        if (user != null) {
+          TrackingService().startTracking(
+            project: jobDetails,
+            userRole: 'LABOUR',
+            userId: user['id'].toString(),
+          );
+        }
+
         // Navigate to shift status screen
         Navigator.pushReplacement(
           context,

@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'persistent_client.dart';
+import '../config.dart';
 
 class AuthService {
-  // Update this to your backend address when running on device/emulator
-  // Backend is running on localhost:3001; for Android emulator use 10.0.2.2
-  static const String _base = 'http://192.168.0.101:3001';
+  static final String _base = API_BASE_URL;
 
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();
@@ -717,6 +716,23 @@ class AuthService {
   }
 
   /* ---------------- OFFLINE SYNC ---------------- */
+  Future<Map<String, dynamic>> syncBatch(String role, List<Map<String, dynamic>> actions) async {
+    final endpoint = role == 'LABOUR' ? '/sync/labour' : '/sync/engineer';
+    final uri = Uri.parse('$_base$endpoint');
+    
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'actions': actions}),
+    );
+
+    if (res.statusCode >= 400) {
+      throw Exception('Batch sync failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   Future<void> syncQueueItem({
     required String endpoint,
     required String method,

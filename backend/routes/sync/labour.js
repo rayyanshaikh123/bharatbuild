@@ -18,7 +18,7 @@ router.post("/", labourCheck, async (req, res) => {
     }
 
     // Filter and validate labour actions only
-    const labourActions = ["CHECK_IN", "CHECK_OUT"];
+    const labourActions = ["CHECK_IN", "CHECK_OUT", "TRACK"];
     const validActions = [];
     const invalidActions = [];
 
