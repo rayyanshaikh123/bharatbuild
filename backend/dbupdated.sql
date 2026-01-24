@@ -383,6 +383,17 @@ CREATE TABLE "project_site_engineers" (
 	CONSTRAINT "project_site_engineers_project_id_site_engineer_id_key" UNIQUE("project_id","site_engineer_id"),
 	CONSTRAINT "project_site_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
+CREATE TABLE "project_tools" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"tool_code" text NOT NULL CONSTRAINT "project_tools_tool_code_key" UNIQUE,
+	"description" text,
+	"status" text DEFAULT 'AVAILABLE',
+	"created_by" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "project_tools_status_check" CHECK (CHECK ((status = ANY (ARRAY['AVAILABLE'::text, 'ISSUED'::text, 'DAMAGED'::text, 'LOST'::text]))))
+);
 CREATE TABLE "projects" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"org_id" uuid,
@@ -471,6 +482,30 @@ CREATE TABLE "sync_errors" (
 	"payload" jsonb,
 	"created_at" timestamp DEFAULT now()
 );
+CREATE TABLE "tool_qr_codes" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"tool_id" uuid NOT NULL UNIQUE,
+	"project_id" uuid NOT NULL,
+	"qr_token" text NOT NULL CONSTRAINT "tool_qr_codes_qr_token_key" UNIQUE,
+	"valid_date" date NOT NULL UNIQUE,
+	"generated_by" uuid NOT NULL,
+	"generated_at" timestamp DEFAULT now(),
+	"is_active" boolean DEFAULT true,
+	CONSTRAINT "tool_qr_unique_day" UNIQUE("tool_id","valid_date")
+);
+CREATE TABLE "tool_transactions" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"tool_id" uuid NOT NULL,
+	"project_id" uuid NOT NULL,
+	"labour_id" uuid NOT NULL,
+	"issued_at" timestamp NOT NULL,
+	"returned_at" timestamp,
+	"issued_by" uuid NOT NULL,
+	"returned_by" uuid,
+	"status" text DEFAULT 'ISSUED',
+	"remarks" text,
+	CONSTRAINT "tool_transactions_status_check" CHECK (CHECK ((status = ANY (ARRAY['ISSUED'::text, 'RETURNED'::text]))))
+);
 CREATE TABLE "wage_rates" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"project_id" uuid NOT NULL UNIQUE,
@@ -500,6 +535,64 @@ CREATE TABLE "wages" (
 	CONSTRAINT "wages_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))),
 	CONSTRAINT "wages_wage_type_check" CHECK (CHECK ((wage_type = ANY (ARRAY['DAILY'::text, 'HOURLY'::text]))))
 );
+CREATE TABLE goods_receipt_notes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  project_id UUID NOT NULL,
+  purchase_order_id UUID NOT NULL,
+  material_request_id UUID NOT NULL,
+
+  received_items JSONB NOT NULL,
+  -- example:
+  -- [{ material_name, quantity_received, unit }]
+
+  received_at TIMESTAMP DEFAULT now(),
+  received_by UUID NOT NULL, -- site_engineer_id
+
+  bill_image BYTEA,
+  bill_image_mime TEXT,
+
+  delivery_proof_image BYTEA,
+  delivery_proof_image_mime TEXT,
+
+  status TEXT DEFAULT 'PENDING',
+  manager_feedback TEXT,
+  reviewed_by UUID,
+  reviewed_at TIMESTAMP,
+
+  created_at TIMESTAMP DEFAULT now(),
+
+  CONSTRAINT grn_status_check
+    CHECK (status IN ('PENDING','APPROVED','REJECTED'))
+);
+ALTER TABLE goods_receipt_notes
+ADD CONSTRAINT grn_project_fkey
+FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+ALTER TABLE goods_receipt_notes
+ADD CONSTRAINT grn_po_fkey
+FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE RESTRICT;
+
+ALTER TABLE goods_receipt_notes
+ADD CONSTRAINT grn_material_request_fkey
+FOREIGN KEY (material_request_id) REFERENCES material_requests(id) ON DELETE RESTRICT;
+
+ALTER TABLE goods_receipt_notes
+ADD CONSTRAINT grn_received_by_fkey
+FOREIGN KEY (received_by) REFERENCES site_engineers(id);
+
+ALTER TABLE goods_receipt_notes
+ADD CONSTRAINT grn_reviewed_by_fkey
+FOREIGN KEY (reviewed_by) REFERENCES managers(id);
+ALTER TABLE material_bills
+ADD COLUMN grn_id UUID;
+
+ALTER TABLE material_bills
+ADD CONSTRAINT material_bills_grn_fkey
+FOREIGN KEY (grn_id) REFERENCES goods_receipt_notes(id) ON DELETE SET NULL;
+ALTER TABLE purchase_orders
+ADD COLUMN grn_created BOOLEAN DEFAULT false;
+
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_manual_labour_id_fkey" FOREIGN KEY ("manual_labour_id") REFERENCES "manual_attendance_labours"("id") ON DELETE SET NULL;
@@ -640,6 +733,8 @@ CREATE UNIQUE INDEX "ppm_unique" ON "project_purchase_managers" ("project_id","p
 CREATE UNIQUE INDEX "project_purchase_managers_pkey" ON "project_purchase_managers" ("id");
 CREATE UNIQUE INDEX "project_site_engineers_pkey" ON "project_site_engineers" ("id");
 CREATE UNIQUE INDEX "project_site_engineers_project_id_site_engineer_id_key" ON "project_site_engineers" ("project_id","site_engineer_id");
+CREATE UNIQUE INDEX "project_tools_pkey" ON "project_tools" ("id");
+CREATE UNIQUE INDEX "project_tools_tool_code_key" ON "project_tools" ("tool_code");
 CREATE INDEX "idx_projects_lat_lng" ON "projects" ("latitude","longitude");
 CREATE INDEX "idx_projects_org" ON "projects" ("org_id");
 CREATE INDEX "idx_projects_status" ON "projects" ("status");
@@ -660,6 +755,10 @@ CREATE UNIQUE INDEX "site_engineers_phone_key" ON "site_engineers" ("phone");
 CREATE UNIQUE INDEX "site_engineers_pkey" ON "site_engineers" ("id");
 CREATE UNIQUE INDEX "sync_action_log_pkey" ON "sync_action_log" ("id");
 CREATE UNIQUE INDEX "sync_errors_pkey" ON "sync_errors" ("id");
+CREATE UNIQUE INDEX "tool_qr_codes_pkey" ON "tool_qr_codes" ("id");
+CREATE UNIQUE INDEX "tool_qr_codes_qr_token_key" ON "tool_qr_codes" ("qr_token");
+CREATE UNIQUE INDEX "tool_qr_unique_day" ON "tool_qr_codes" ("tool_id","valid_date");
+CREATE UNIQUE INDEX "tool_transactions_pkey" ON "tool_transactions" ("id");
 CREATE UNIQUE INDEX "wage_rates_pkey" ON "wage_rates" ("id");
 CREATE UNIQUE INDEX "wage_rates_project_id_skill_type_category_key" ON "wage_rates" ("project_id","skill_type","category");
 CREATE INDEX "idx_wages_status" ON "wages" ("status");
