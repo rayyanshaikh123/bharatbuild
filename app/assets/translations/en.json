@@ -290,5 +290,11 @@
     "unpaid": "Unpaid",
     "payment_history": "Payment History",
     "no_earnings_yet": "No earnings recorded yet",
-    "weekly_overview": "Weekly Overview"
+    "weekly_overview": "Weekly Overview",
+    "explore_work": "Explore Work",
+    "nearby_sites_and_jobs": "Nearby Sites & Opportunities",
+    "openings": "OPENINGS",
+    "no_active_openings": "No active openings at this site.",
+    "no_work_nearby": "No sites or jobs found nearby.",
+    "address_deleted": "Address deleted successfully"
 }

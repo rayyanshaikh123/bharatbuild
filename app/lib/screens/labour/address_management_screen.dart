@@ -105,26 +105,76 @@ class _AddressCard extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(address['address_text'], style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: () => ref.read(deleteAddressProvider(address['id'].toString()).future),
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: Text('delete'.tr()),
-                style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-              ),
-              if (!isPrimary)
-                TextButton.icon(
-                  onPressed: () => ref.read(setPrimaryAddressProvider(address['id'].toString()).future),
-                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: Text('set_primary'.tr()),
-                ),
-            ],
-          ),
+          _AddressActionRow(address: address, isPrimary: isPrimary),
         ],
       ),
     );
+  }
+}
+
+class _AddressActionRow extends StatefulWidget {
+  final dynamic address;
+  final bool isPrimary;
+  const _AddressActionRow({required this.address, required this.isPrimary});
+
+  @override
+  State<_AddressActionRow> createState() => _AddressActionRowState();
+}
+
+class _AddressActionRowState extends State<_AddressActionRow> {
+  bool _isDeleting = false;
+  bool _isSettingPrimary = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Consumer(builder: (context, ref, _) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (_isDeleting)
+            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            TextButton.icon(
+              onPressed: _isSettingPrimary ? null : () async {
+                setState(() => _isDeleting = true);
+                try {
+                  await ref.read(deleteAddressProvider(widget.address['id'].toString()).future);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('address_deleted'.tr())));
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
+                } finally {
+                  if (mounted) setState(() => _isDeleting = false);
+                }
+              },
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: Text('delete'.tr()),
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+            ),
+          const SizedBox(width: 8),
+          if (!widget.isPrimary)
+            if (_isSettingPrimary)
+              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              TextButton.icon(
+                onPressed: _isDeleting ? null : () async {
+                  setState(() => _isSettingPrimary = true);
+                  try {
+                    await ref.read(setPrimaryAddressProvider(widget.address['id'].toString()).future);
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('primary_address_updated'.tr())));
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
+                  } finally {
+                    if (mounted) setState(() => _isSettingPrimary = false);
+                  }
+                },
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: Text('set_primary'.tr()),
+              ),
+        ],
+      );
+    });
   }
 }
 

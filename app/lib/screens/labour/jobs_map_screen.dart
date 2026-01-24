@@ -5,16 +5,20 @@ import 'package:latlong2/latlong.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_colors.dart';
 import 'job_details_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../providers/location_provider.dart';
+import '../../providers/user_provider.dart';
 
-class JobsMapScreen extends StatefulWidget {
+class JobsMapScreen extends ConsumerStatefulWidget {
   final List<dynamic> jobs;
   const JobsMapScreen({super.key, required this.jobs});
 
   @override
-  State<JobsMapScreen> createState() => _JobsMapScreenState();
+  ConsumerState<JobsMapScreen> createState() => _JobsMapScreenState();
 }
 
-class _JobsMapScreenState extends State<JobsMapScreen> {
+class _JobsMapScreenState extends ConsumerState<JobsMapScreen> {
   final MapController _mapController = MapController();
 
   @override
@@ -148,10 +152,32 @@ class _JobsMapScreenState extends State<JobsMapScreen> {
       isScrollControlled: true,
       builder: (context) {
         final theme = Theme.of(context);
+        final userPos = ref.watch(locationProvider).value;
+        final userProfile = ref.watch(currentUserProvider);
         final canApply = job['can_apply'] == true;
-        final distance = job['distance_meters'] != null
-            ? (double.tryParse(job['distance_meters'].toString()) ?? 0).round()
-            : null;
+        
+        double? distValue;
+        if (job['distance_meters'] != null) {
+          distValue = double.tryParse(job['distance_meters'].toString());
+        } else if (job['latitude'] != null && job['longitude'] != null) {
+          double? uLat;
+          double? uLon;
+          
+          if (userProfile != null) {
+            uLat = userProfile['primary_latitude'] != null ? double.tryParse(userProfile['primary_latitude'].toString()) : null;
+            uLon = userProfile['primary_longitude'] != null ? double.tryParse(userProfile['primary_longitude'].toString()) : null;
+          }
+          if (uLat == null && userPos != null) {
+            uLat = userPos.latitude;
+            uLon = userPos.longitude;
+          }
+
+          if (uLat != null && uLon != null) {
+            distValue = Geolocator.distanceBetween(uLat, uLon, double.parse(job['latitude'].toString()), double.parse(job['longitude'].toString()));
+          }
+        }
+
+        final distance = distValue?.round();
 
         return Container(
           decoration: const BoxDecoration(

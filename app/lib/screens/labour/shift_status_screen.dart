@@ -9,6 +9,7 @@ import '../../providers/auth_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../offline_sync/sync_service.dart';
 import '../../storage/sqlite_service.dart';
+import 'live_tracking_map_screen.dart';
 
 class ShiftStatusScreen extends ConsumerStatefulWidget {
   const ShiftStatusScreen({super.key});
@@ -210,6 +211,32 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                   backgroundColor: theme.colorScheme.secondary,
                   foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+
+            // Track on Map Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LiveTrackingMapScreen(project: data),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Track on Map'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  foregroundColor: Colors.blue,
+                  elevation: 0,
                 ),
               ),
             ),
