@@ -49,7 +49,6 @@ function CreatePOContent() {
   
   // Upload State
   const [poPdfFile, setPoPdfFile] = useState<File | null>(null);
-  const [poPdfBase64, setPoPdfBase64] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
@@ -141,33 +140,27 @@ function CreatePOContent() {
           return;
       }
 
-      if (file.size > 25 * 1024 * 1024) { // 25MB safety limit
-          toast.error("File size must be less than 25MB");
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit (matches backend)
+          toast.error("File size must be less than 10MB");
           return;
       }
 
       setPoPdfFile(file);
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          setPoPdfBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // No Base64 conversion needed for FormData upload
   };
 
   const handleUploadFile = async () => {
-    if (!createdPO || !poPdfBase64) return;
+    if (!createdPO || !poPdfFile) return;
 
     try {
       setIsUploading(true);
-      // Send Base64 string as URL (backend stores it in TEXT column)
-      await poManagerPurchaseOrders.uploadPDF(createdPO.id, poPdfBase64);
+      await poManagerPurchaseOrders.uploadPDF(createdPO.id, poPdfFile);
       
-      setCreatedPO({ ...createdPO, po_pdf_url: "PDF_UPLOADED" }); // optimizing local state
+      setCreatedPO({ ...createdPO, po_pdf_mime: "application/pdf" }); 
       toast.success("PDF Uploaded Successfully");
     } catch (err: any) {
       console.error("Failed to upload PDF:", err);
-      toast.error("Failed to upload PDF");
+      toast.error(err.message || "Failed to upload PDF");
     } finally {
       setIsUploading(false);
     }
@@ -181,6 +174,8 @@ function CreatePOContent() {
     try {
         setIsSubmitting(true);
         await poManagerPurchaseOrders.send(createdPO.id);
+        
+        setCreatedPO({ ...createdPO, status: "SENT" }); // Immediate UI update
         toast.success("PO Sent Successfully!");
         router.push("/po-manager/purchase-orders");
     } catch (err: any) {
@@ -373,7 +368,7 @@ function CreatePOContent() {
                             <h3>Upload Signed PO (PDF)</h3>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Please upload the signed Purchase Order PDF. Max size: 25MB.
+                            Please upload the signed Purchase Order PDF. Max size: 10MB.
                         </p>
                         
                         <div className="flex gap-2 items-center">
@@ -381,18 +376,18 @@ function CreatePOContent() {
                                 type="file"
                                 accept="application/pdf"
                                 onChange={handleFileChange}
-                                disabled={!!createdPO.po_pdf_url && createdPO.po_pdf_url !== "PDF_UPLOADED" && !isUploading}
+                                disabled={!!createdPO.po_pdf_mime || createdPO.status === "SENT" || isUploading}
                                 className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                              />
                              <Button 
                                 onClick={handleUploadFile} 
-                                disabled={isUploading || !poPdfBase64 || !!createdPO.po_pdf_url}
+                                disabled={isUploading || !poPdfFile || !!createdPO.po_pdf_mime || createdPO.status === "SENT"}
                              >
                                 {isUploading ? <Loader2 className="animate-spin" /> : "Upload PDF"}
                              </Button>
                         </div>
                         
-                        {createdPO.po_pdf_url && (
+                        {createdPO.po_pdf_mime && (
                              <div className="bg-muted/30 p-2 rounded text-xs flex items-center gap-2 text-green-600">
                                  <FileText size={12} /> PDF Uploaded
                              </div>
@@ -412,7 +407,7 @@ function CreatePOContent() {
                             className="w-full" 
                             size="lg" 
                             onClick={handleSendPO}
-                            disabled={!createdPO.po_pdf_url || isSubmitting || createdPO.status !== "DRAFT"}
+                            disabled={!createdPO.po_pdf_mime || isSubmitting || createdPO.status !== "DRAFT"}
                         >
                              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" size={18} />}
                              Send Purchase Order
