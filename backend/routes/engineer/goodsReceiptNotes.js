@@ -4,13 +4,13 @@ const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 const uploadGRNImages = require("../../middleware/uploadGRNImages");
 
-/* ---------------- CREATE GRN ---------------- */
+/* ---------------- CREATE GOODS RECEIPT NOTE ---------------- */
 router.post(
-  "/grns",
+  "/",
   engineerCheck,
   uploadGRNImages.fields([
     { name: "bill_image", maxCount: 1 },
-    { name: "proof_image", maxCount: 1 },
+    { name: "delivery_proof_image", maxCount: 1 },
   ]),
   async (req, res) => {
     const client = await pool.connect();
@@ -22,7 +22,6 @@ router.post(
         purchaseOrderId,
         materialRequestId,
         receivedItems: receivedItemsRaw,
-        remarks,
       } = req.body;
 
       // Validate required fields
@@ -39,9 +38,9 @@ router.post(
       }
 
       // Validate images are uploaded
-      if (!req.files?.bill_image || !req.files?.proof_image) {
+      if (!req.files?.bill_image || !req.files?.delivery_proof_image) {
         return res.status(400).json({
-          error: "Both bill_image and proof_image are required",
+          error: "Both bill_image and delivery_proof_image are required",
         });
       }
 
@@ -58,11 +57,21 @@ router.post(
         });
       }
 
-      // Validate receivedItems is array
+      // Validate receivedItems is array with required fields
       if (!Array.isArray(receivedItems) || receivedItems.length === 0) {
         return res.status(400).json({
           error: "receivedItems must be a non-empty array",
         });
+      }
+
+      // Validate each item has required fields
+      for (const item of receivedItems) {
+        if (!item.material_name || !item.quantity_received || !item.unit) {
+          return res.status(400).json({
+            error:
+              "Each receivedItem must have: material_name, quantity_received, unit",
+          });
+        }
       }
 
       await client.query("BEGIN");
@@ -135,28 +144,32 @@ router.post(
         });
       }
 
-      // Create GRN with images
+      const billImageFile = req.files.bill_image[0];
+      const deliveryProofFile = req.files.delivery_proof_image[0];
+
+      // Create Goods Receipt Note with status = PENDING (no auto-approval)
       const grnResult = await client.query(
-        `INSERT INTO grns 
-       (project_id, purchase_order_id, material_request_id, site_engineer_id, received_items, remarks, status, 
-        bill_image, bill_image_mime, proof_image, proof_image_mime)
-       VALUES ($1, $2, $3, $4, $5, $6, 'CREATED', $7, $8, $9, $10)
-       RETURNING id, project_id, purchase_order_id, material_request_id, site_engineer_id, status, created_at, received_at`,
+        `INSERT INTO goods_receipt_notes 
+       (project_id, purchase_order_id, material_request_id, received_by, received_items, status, 
+        bill_image, bill_image_mime, delivery_proof_image, delivery_proof_image_mime)
+       VALUES ($1, $2, $3, $4, $5, 'PENDING', $6, $7, $8, $9)
+       RETURNING id, project_id, purchase_order_id, material_request_id, received_by, status, created_at, received_at`,
         [
           projectId,
           purchaseOrderId,
           materialRequestId,
           siteEngineerId,
           JSON.stringify(receivedItems),
-          remarks,
-          req.files.bill_image[0].buffer,
-          req.files.bill_image[0].mimetype,
-          req.files.proof_image[0].buffer,
-          req.files.proof_image[0].mimetype,
+          billImageFile.buffer,
+          billImageFile.mimetype,
+          deliveryProofFile.buffer,
+          deliveryProofFile.mimetype,
         ],
       );
 
-      const grn = grnResult.rows[0]; // Get organization ID for audit log
+      const grn = grnResult.rows[0];
+
+      // Get organization ID for audit log
       const orgResult = await client.query(
         `SELECT org_id FROM projects WHERE id = $1`,
         [projectId],
@@ -169,74 +182,46 @@ router.post(
        (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, organization_id, category, change_summary)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
-          "GRN",
+          "GOODS_RECEIPT_NOTE",
           grn.id,
-          "GRN_CREATED_WITH_IMAGES",
+          "GRN_CREATED",
           "SITE_ENGINEER",
           siteEngineerId,
           projectId,
           orgId,
           "PROCUREMENT",
           JSON.stringify({
-            po_id: purchaseOrderId,
+            purchase_order_id: purchaseOrderId,
+            material_request_id: materialRequestId,
             items_count: receivedItems.length,
-            bill_image_size: req.files.bill_image[0].size,
-            bill_image_mime: req.files.bill_image[0].mimetype,
-            proof_image_size: req.files.proof_image[0].size,
-            proof_image_mime: req.files.proof_image[0].mimetype,
+            bill_image_size: billImageFile.size,
+            delivery_proof_size: deliveryProofFile.size,
           }),
         ],
-      ); // Notify active project managers
-      const managersResult = await client.query(
-        `SELECT manager_id FROM project_managers 
-       WHERE project_id = $1 AND status = 'ACTIVE'`,
-        [projectId],
       );
-
-      for (const manager of managersResult.rows) {
-        await client.query(
-          `INSERT INTO notifications 
-         (user_id, user_role, title, message, type, project_id, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            manager.manager_id,
-            "MANAGER",
-            "New GRN Created",
-            "A site engineer has created a Goods Receipt Note for review",
-            "INFO",
-            projectId,
-            JSON.stringify({ grn_id: grn.id, po_id: purchaseOrderId }),
-          ],
-        );
-      }
 
       await client.query("COMMIT");
 
       res.status(201).json({
-        message: "GRN created successfully with images",
+        message:
+          "Goods Receipt Note created successfully. Pending manager approval.",
         grn: grn,
       });
     } catch (err) {
       await client.query("ROLLBACK");
       console.error(err);
-
-      // Handle multer errors
-      if (err.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({
-          error: "File too large. Maximum size is 5MB per image",
-        });
-      }
-
       res.status(500).json({ error: "Server error" });
     } finally {
       client.release();
     }
   },
-); /* ---------------- GET GRNs BY PROJECT ---------------- */
-router.get("/grns", engineerCheck, async (req, res) => {
+);
+
+/* ---------------- GET GRNs BY PROJECT (SITE ENGINEER) ---------------- */
+router.get("/", engineerCheck, async (req, res) => {
   try {
     const siteEngineerId = req.user.id;
-    const { projectId } = req.query;
+    const { projectId, status } = req.query;
 
     if (!projectId) {
       return res.status(400).json({
@@ -257,25 +242,31 @@ router.get("/grns", engineerCheck, async (req, res) => {
       });
     }
 
-    // Get GRNs for this project (exclude BYTEA columns for performance)
-    const result = await pool.query(
-      `SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
-              g.site_engineer_id, g.status, g.received_items, g.remarks, 
-              g.verified_by, g.created_at, g.received_at, g.verified_at,
-              g.bill_image_mime, g.proof_image_mime,
-              p.name AS project_name,
-              po.po_number,
-              mr.title AS material_request_title,
-              m.name AS verified_by_name
-       FROM grns g
-       JOIN projects p ON g.project_id = p.id
-       JOIN purchase_orders po ON g.purchase_order_id = po.id
-       JOIN material_requests mr ON g.material_request_id = mr.id
-       LEFT JOIN managers m ON g.verified_by = m.id
-       WHERE g.project_id = $1
-       ORDER BY g.created_at DESC`,
-      [projectId],
-    );
+    let query = `
+      SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
+             g.received_by, g.status, g.received_items, g.manager_feedback,
+             g.reviewed_by, g.created_at, g.received_at, g.reviewed_at,
+             g.bill_image_mime, g.delivery_proof_image_mime,
+             po.po_number, po.vendor_name,
+             mr.title AS material_request_title,
+             m.name AS reviewed_by_name
+      FROM goods_receipt_notes g
+      JOIN purchase_orders po ON g.purchase_order_id = po.id
+      JOIN material_requests mr ON g.material_request_id = mr.id
+      LEFT JOIN managers m ON g.reviewed_by = m.id
+      WHERE g.project_id = $1
+    `;
+
+    const params = [projectId];
+
+    if (status) {
+      query += ` AND g.status = $2`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY g.created_at DESC`;
+
+    const result = await pool.query(query, params);
 
     res.json({ grns: result.rows });
   } catch (err) {
@@ -284,108 +275,121 @@ router.get("/grns", engineerCheck, async (req, res) => {
   }
 });
 
-/* ---------------- GET GRN BILL IMAGE ---------------- */
-router.get("/grns/:grnId/bill-image", engineerCheck, async (req, res) => {
+/* ---------------- GET SINGLE GRN ---------------- */
+router.get("/:grnId", engineerCheck, async (req, res) => {
   try {
     const siteEngineerId = req.user.id;
     const { grnId } = req.params;
 
-    // Get GRN with bill image
+    // Get GRN with access check
     const result = await pool.query(
-      `SELECT g.id, g.project_id, g.bill_image, g.bill_image_mime
-     FROM grns g
-     WHERE g.id = $1`,
-      [grnId],
+      `SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
+              g.received_by, g.status, g.received_items, g.manager_feedback,
+              g.reviewed_by, g.created_at, g.received_at, g.reviewed_at,
+              g.bill_image_mime, g.delivery_proof_image_mime,
+              po.po_number, po.vendor_name, po.items AS po_items, po.total_amount,
+              mr.title AS material_request_title, mr.requested_items,
+              m.name AS reviewed_by_name,
+              se.name AS received_by_name
+       FROM goods_receipt_notes g
+       JOIN purchase_orders po ON g.purchase_order_id = po.id
+       JOIN material_requests mr ON g.material_request_id = mr.id
+       JOIN site_engineers se ON g.received_by = se.id
+       LEFT JOIN managers m ON g.reviewed_by = m.id
+       JOIN project_site_engineers pse ON g.project_id = pse.project_id
+       WHERE g.id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
+      [grnId, siteEngineerId],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        error: "GRN not found",
+        error: "GRN not found or you do not have access",
       });
     }
 
-    const grn = result.rows[0];
-
-    // Verify site engineer has access to this project
-    const accessCheck = await pool.query(
-      `SELECT id FROM project_site_engineers 
-     WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'APPROVED'`,
-      [siteEngineerId, grn.project_id],
-    );
-
-    if (accessCheck.rows.length === 0) {
-      return res.status(403).json({
-        error: "You do not have access to this GRN's project",
-      });
-    }
-
-    if (!grn.bill_image) {
-      return res.status(404).json({
-        error: "Bill image not available for this GRN",
-      });
-    }
-
-    // Stream image with correct headers
-    res.setHeader("Content-Type", grn.bill_image_mime || "image/jpeg");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="GRN_${grnId}_bill.jpg"`,
-    );
-    res.send(grn.bill_image);
+    res.json({ grn: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ---------------- GET GRN PROOF IMAGE ---------------- */
-router.get("/grns/:grnId/proof-image", engineerCheck, async (req, res) => {
+/* ---------------- GET BILL IMAGE ---------------- */
+router.get("/:grnId/bill-image", engineerCheck, async (req, res) => {
   try {
     const siteEngineerId = req.user.id;
     const { grnId } = req.params;
 
-    // Get GRN with proof image
+    // Get image with access check
     const result = await pool.query(
-      `SELECT g.id, g.project_id, g.proof_image, g.proof_image_mime
-     FROM grns g
-     WHERE g.id = $1`,
-      [grnId],
+      `SELECT g.bill_image, g.bill_image_mime
+       FROM goods_receipt_notes g
+       JOIN project_site_engineers pse ON g.project_id = pse.project_id
+       WHERE g.id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
+      [grnId, siteEngineerId],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        error: "GRN not found",
+        error: "GRN not found or you do not have access",
       });
     }
 
-    const grn = result.rows[0];
+    const { bill_image, bill_image_mime } = result.rows[0];
 
-    // Verify site engineer has access to this project
-    const accessCheck = await pool.query(
-      `SELECT id FROM project_site_engineers 
-     WHERE site_engineer_id = $1 AND project_id = $2 AND status = 'APPROVED'`,
-      [siteEngineerId, grn.project_id],
-    );
-
-    if (accessCheck.rows.length === 0) {
-      return res.status(403).json({
-        error: "You do not have access to this GRN's project",
-      });
-    }
-
-    if (!grn.proof_image) {
+    if (!bill_image) {
       return res.status(404).json({
-        error: "Proof image not available for this GRN",
+        error: "Bill image not found for this GRN",
       });
     }
 
-    // Stream image with correct headers
-    res.setHeader("Content-Type", grn.proof_image_mime || "image/jpeg");
+    res.setHeader("Content-Type", bill_image_mime);
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="GRN_${grnId}_proof.jpg"`,
+      `inline; filename="grn-bill-${grnId}.${bill_image_mime.split("/")[1]}"`,
     );
-    res.send(grn.proof_image);
+    res.send(bill_image);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET DELIVERY PROOF IMAGE ---------------- */
+router.get("/:grnId/delivery-proof-image", engineerCheck, async (req, res) => {
+  try {
+    const siteEngineerId = req.user.id;
+    const { grnId } = req.params;
+
+    // Get image with access check
+    const result = await pool.query(
+      `SELECT g.delivery_proof_image, g.delivery_proof_image_mime
+       FROM goods_receipt_notes g
+       JOIN project_site_engineers pse ON g.project_id = pse.project_id
+       WHERE g.id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
+      [grnId, siteEngineerId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "GRN not found or you do not have access",
+      });
+    }
+
+    const { delivery_proof_image, delivery_proof_image_mime } = result.rows[0];
+
+    if (!delivery_proof_image) {
+      return res.status(404).json({
+        error: "Delivery proof image not found for this GRN",
+      });
+    }
+
+    res.setHeader("Content-Type", delivery_proof_image_mime);
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="grn-delivery-proof-${grnId}.${delivery_proof_image_mime.split("/")[1]}"`,
+    );
+    res.send(delivery_proof_image);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
