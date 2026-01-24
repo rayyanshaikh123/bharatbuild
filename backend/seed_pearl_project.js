@@ -2,29 +2,30 @@
  * ========================================
  * SEED SCRIPT FOR "PEARL" PROJECT
  * ========================================
- * 
+ *
  * PURPOSE:
  * Creates realistic test data for development/testing of the "pearl" project
  * including organization, owner, manager, site engineer, labourers, attendance,
  * wage rates, and wages.
- * 
+ *
  * EXECUTION:
  * node seed_pearl_project.js
- * 
+ *
  * REQUIREMENTS:
  * - PostgreSQL database running
  * - Database connection configured in ../db.js
  * - bcrypt package installed (npm install bcrypt)
- * 
+ *
  * SAFETY:
  * - Re-runnable (checks existence before insert)
  * - Uses transactions (rolls back on error)
  * - Development/testing only
- * 
+ *
  * ⚠️ WARNING: DO NOT RUN IN PRODUCTION
  */
 
-const pool = require("../db");
+require("dotenv").config(); // Load environment variables
+const pool = require("./db");
 const bcrypt = require("bcrypt");
 
 // Configuration
@@ -204,11 +205,7 @@ function formatTimestamp(date, hours, minutes) {
  */
 async function seedPearlProject() {
   const client = await pool.connect();
-  let ownerId,
-    orgId,
-    managerId,
-    engineerId,
-    projectId;
+  let ownerId, orgId, managerId, engineerId, projectId;
 
   try {
     console.log("🌱 Starting seed script for PEARL project...\n");
@@ -282,8 +279,8 @@ async function seedPearlProject() {
     // ========================================
     console.log("\n3️⃣  Creating Manager...");
     const managerCheck = await client.query(
-      "SELECT id FROM managers WHERE email = $1",
-      [CREDENTIALS.manager.email],
+      "SELECT id FROM managers WHERE email = $1 OR phone = $2",
+      [CREDENTIALS.manager.email, CREDENTIALS.manager.phone],
     );
 
     if (managerCheck.rows.length > 0) {
@@ -356,7 +353,7 @@ async function seedPearlProject() {
           "2026-12-31",
           50000000, // 5 Crore budget
           "ACTIVE",
-          ownerId,
+          managerId, // created_by should be manager, not owner
           "06:00:00",
           "18:00:00",
         ],
@@ -387,8 +384,8 @@ async function seedPearlProject() {
     // ========================================
     console.log("\n5️⃣  Creating Site Engineer...");
     const engineerCheck = await client.query(
-      "SELECT id FROM site_engineers WHERE email = $1",
-      [CREDENTIALS.engineer.email],
+      "SELECT id FROM site_engineers WHERE email = $1 OR phone = $2",
+      [CREDENTIALS.engineer.email, CREDENTIALS.engineer.phone],
     );
 
     if (engineerCheck.rows.length > 0) {
@@ -424,7 +421,7 @@ async function seedPearlProject() {
       await client.query(
         `INSERT INTO organization_site_engineers (org_id, site_engineer_id, approved_by, status, approved_at)
          VALUES ($1, $2, $3, 'APPROVED', NOW())`,
-        [orgId, engineerId, ownerId],
+        [orgId, engineerId, managerId], // approved_by should be manager
       );
       console.log(`   ✓ Engineer linked to organization (APPROVED)`);
     } else {
@@ -463,9 +460,7 @@ async function seedPearlProject() {
       let labourId;
       if (labourCheck.rows.length > 0) {
         labourId = labourCheck.rows[0].id;
-        console.log(
-          `   ✓ Labour already exists: ${labour.name} (${labourId})`,
-        );
+        console.log(`   ✓ Labour already exists: ${labour.name} (${labourId})`);
       } else {
         const labourResult = await client.query(
           `INSERT INTO labours (name, phone, role, skill_type, categories, primary_latitude, primary_longitude, travel_radius_meters)
@@ -505,7 +500,13 @@ async function seedPearlProject() {
         await client.query(
           `INSERT INTO wage_rates (project_id, skill_type, category, hourly_rate, created_by)
            VALUES ($1, $2, $3, $4, $5)`,
-          [projectId, rate.skill_type, rate.category, rate.hourly_rate, managerId],
+          [
+            projectId,
+            rate.skill_type,
+            rate.category,
+            rate.hourly_rate,
+            managerId,
+          ],
         );
         console.log(
           `   ✓ ${rate.skill_type} - ${rate.category}: ₹${rate.hourly_rate}/hr`,
@@ -544,7 +545,11 @@ async function seedPearlProject() {
 
         // Random work hours between 8-10 hours
         const workHours = 8 + Math.random() * 2;
-        const checkInTime = formatTimestamp(day, 6, 0 + Math.floor(Math.random() * 30));
+        const checkInTime = formatTimestamp(
+          day,
+          6,
+          0 + Math.floor(Math.random() * 30),
+        );
         const checkOutTime = formatTimestamp(
           day,
           14 + Math.floor(workHours),
@@ -574,7 +579,11 @@ async function seedPearlProject() {
         const attendanceId = attendanceResult.rows[0].id;
 
         // Create attendance sessions
-        const morningCheckIn = formatTimestamp(day, 6, 0 + Math.floor(Math.random() * 30));
+        const morningCheckIn = formatTimestamp(
+          day,
+          6,
+          0 + Math.floor(Math.random() * 30),
+        );
         const lunchOut = formatTimestamp(day, 12, 0);
         const lunchIn = formatTimestamp(day, 13, 0);
         const finalCheckOut = checkOutTime;
@@ -632,7 +641,7 @@ async function seedPearlProject() {
               projectId,
               hourlyRate,
               totalAmount.toFixed(2),
-              engineerId,
+              managerId, // approved_by should be manager
               workHours,
             ],
           );
