@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_providers.dart';
+import 'user_provider.dart';
 
 final addressesProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final authService = ref.watch(authServiceProvider);

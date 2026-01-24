@@ -831,6 +831,8 @@ class _WageCard extends StatelessWidget {
     );
   }
 }
+
+class _ApplicationCard extends StatelessWidget {
   final dynamic application;
 
   const _ApplicationCard({required this.application});

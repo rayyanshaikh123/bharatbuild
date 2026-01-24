@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/auth_providers.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/job_provider.dart';
 
 class ProjectsMapScreen extends ConsumerStatefulWidget {
   const ProjectsMapScreen({super.key});
