@@ -67,12 +67,22 @@ const managerNavItems: NavItem[] = [
   { label: "Reports", href: "/manager/reports", icon: BarChart },
 ];
 
+const poManagerNavItems: NavItem[] = [
+  { label: "Dashboard", href: "/po-manager", icon: LayoutDashboard },
+  { label: "Material Requests", href: "/po-manager/material-requests", icon: Package },
+  { label: "Purchase Orders", href: "/po-manager/purchase-orders", icon: FileText },
+];
+
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = user?.role === "OWNER" ? ownerNavItems : managerNavItems;
+  const navItems = user?.role === "OWNER" 
+    ? ownerNavItems 
+    : user?.role === "PO_MANAGER" 
+      ? poManagerNavItems 
+      : managerNavItems;
 
   const handleLogout = async () => {
     await logout();

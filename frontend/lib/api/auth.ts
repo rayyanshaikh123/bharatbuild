@@ -1,7 +1,7 @@
 import { api } from "../api";
 
 // ==================== TYPES ====================
-export type UserRole = "OWNER" | "MANAGER";
+export type UserRole = "OWNER" | "MANAGER" | "PO_MANAGER";
 
 export interface User {
   id: string;
