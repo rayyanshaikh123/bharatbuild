@@ -134,6 +134,10 @@ app.use("/owner", require("./routes/owner/owner"));
 app.use("/owner/dashboard", require("./routes/owner/dashboard"));
 app.use("/owner/organization", require("./routes/owner/organization"));
 app.use("/owner/requests", require("./routes/owner/organizationReq"));
+app.use(
+  "/owner/purchase-manager-requests",
+  require("./routes/owner/purchaseManagerRequests"),
+);
 app.use("/owner/project", require("./routes/owner/project"));
 app.use(
   "/owner/organization-engineers",
@@ -157,6 +161,8 @@ app.use("/owner/ai", require("./routes/owner/ai"));
 app.use("/owner/ledger", require("./routes/owner/ledger"));
 app.use("/owner/delays", require("./routes/owner/delays"));
 app.use("/owner/timeline", require("./routes/owner/timeline"));
+app.use("/owner/purchase-orders", require("./routes/owner/purchaseOrders"));
+app.use("/owner", require("./routes/owner/grn"));
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
@@ -177,6 +183,10 @@ app.use(
   "/manager/project-engineer-requests",
   require("./routes/manager/projectEngineerReq"),
 );
+app.use(
+  "/manager/project-purchase-manager-requests",
+  require("./routes/manager/purchaseManagerRequests"),
+);
 app.use("/manager/plan", require("./routes/manager/plan"));
 app.use("/manager/labour-request", require("./routes/manager/labourRequest"));
 app.use("/manager/dpr", require("./routes/manager/dpr"));
@@ -193,14 +203,29 @@ app.use("/manager/ai", require("./routes/manager/ai"));
 app.use("/manager/ledger", require("./routes/manager/ledger"));
 app.use("/manager/delays", require("./routes/manager/delays"));
 app.use("/manager/timeline", require("./routes/manager/timeline"));
+app.use("/manager/purchase-orders", require("./routes/manager/purchaseOrders"));
+app.use("/manager", require("./routes/manager/grn"));
 
 /* ---------------- PURCHASE MANAGER ROUTES ---------------- */
-app.use("/purchase-manager", require("./routes/purchase-manager/purchaseManager"));
-app.use("/purchase-manager/dashboard", require("./routes/purchase-manager/dashboard"));
+app.use(
+  "/purchase-manager",
+  require("./routes/purchase-manager/purchaseManager"),
+);
+app.use(
+  "/purchase-manager/dashboard",
+  require("./routes/purchase-manager/dashboard"),
+);
 app.use("/purchase-manager", require("./routes/purchase-manager/organization"));
 app.use("/purchase-manager", require("./routes/purchase-manager/project"));
-app.use("/purchase-manager/material-requests", require("./routes/purchase-manager/materialRequests"));
-app.use("/purchase-manager/purchase-orders", require("./routes/purchase-manager/purchaseOrders"));
+app.use(
+  "/purchase-manager/material-requests",
+  require("./routes/purchase-manager/materialRequests"),
+);
+app.use(
+  "/purchase-manager/purchase-orders",
+  require("./routes/purchase-manager/purchaseOrders"),
+);
+app.use("/purchase-manager", require("./routes/purchase-manager/grn"));
 
 /* ---------------- ENGINEER ROUTES ---------------- */
 app.use("/engineer", require("./routes/engineer/engineer"));
@@ -226,6 +251,11 @@ app.use("/engineer/ai", require("./routes/engineer/ai"));
 app.use("/engineer/audits", require("./routes/engineer/audit"));
 app.use("/engineer/notifications", require("./routes/engineer/notifications"));
 app.use("/engineer", require("./routes/engineer/projectBreak"));
+app.use(
+  "/engineer/purchase-orders",
+  require("./routes/engineer/purchaseOrders"),
+);
+app.use("/engineer", require("./routes/engineer/grn"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));

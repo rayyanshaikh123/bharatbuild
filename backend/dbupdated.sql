@@ -20,7 +20,15 @@ CREATE TABLE "attendance" (
 	"last_known_lat" numeric,
 	"last_known_lng" numeric,
 	"is_currently_breached" boolean DEFAULT false,
+	"check_in_face_image" bytea,
+	"check_in_face_features" jsonb,
+	"check_out_face_image" bytea,
+	"check_out_face_features" jsonb,
+	"face_verification_status" text DEFAULT 'PENDING',
+	"face_verification_confidence" numeric,
+	"manual_labour_id" uuid,
 	CONSTRAINT "attendance_project_id_labour_id_attendance_date_key" UNIQUE("project_id","labour_id","attendance_date"),
+	CONSTRAINT "attendance_face_verification_status_check" CHECK (CHECK ((face_verification_status = ANY (ARRAY['PENDING'::text, 'VERIFIED'::text, 'FAILED'::text])))),
 	CONSTRAINT "attendance_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "attendance_sessions" (
@@ -71,6 +79,25 @@ CREATE TABLE "dprs" (
 	"plan_item_id" uuid,
 	CONSTRAINT "dprs_project_id_site_engineer_id_report_date_key" UNIQUE("project_id","site_engineer_id","report_date"),
 	CONSTRAINT "dprs_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
+);
+CREATE TABLE "grns" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"purchase_order_id" uuid NOT NULL,
+	"material_request_id" uuid NOT NULL,
+	"site_engineer_id" uuid NOT NULL,
+	"received_items" jsonb NOT NULL,
+	"received_at" timestamp DEFAULT now() NOT NULL,
+	"remarks" text,
+	"status" text DEFAULT 'CREATED',
+	"verified_by" uuid,
+	"verified_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	"bill_image" bytea,
+	"bill_image_mime" text,
+	"proof_image" bytea,
+	"proof_image_mime" text,
+	CONSTRAINT "grn_status_check" CHECK (CHECK ((status = ANY (ARRAY['CREATED'::text, 'VERIFIED'::text]))))
 );
 CREATE TABLE "labour_addresses" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -126,6 +153,15 @@ CREATE TABLE "managers" (
 	"role" text DEFAULT 'MANAGER' NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
+);
+CREATE TABLE "manual_attendance_labours" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL UNIQUE,
+	"name" text NOT NULL UNIQUE,
+	"skill" text NOT NULL UNIQUE,
+	"created_at" timestamp DEFAULT now(),
+	"created_by" uuid,
+	CONSTRAINT "manual_attendance_labours_project_id_name_skill_key" UNIQUE("project_id","name","skill")
 );
 CREATE TABLE "material_bills" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -275,7 +311,7 @@ CREATE TABLE "password_reset_tokens" (
 	"expires_at" timestamp NOT NULL,
 	"used" boolean DEFAULT false,
 	"created_at" timestamp DEFAULT now(),
-	CONSTRAINT "password_reset_tokens_user_role_check" CHECK (CHECK ((user_role = ANY (ARRAY['OWNER'::text, 'MANAGER'::text, 'SITE_ENGINEER'::text, 'LABOUR'::text]))))
+	CONSTRAINT "password_reset_tokens_user_role_check" CHECK (CHECK ((user_role = ANY (ARRAY['OWNER'::text, 'MANAGER'::text, 'SITE_ENGINEER'::text, 'LABOUR'::text, 'PURCHASE_MANAGER'::text]))))
 );
 CREATE TABLE "plan_items" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -392,6 +428,8 @@ CREATE TABLE "purchase_orders" (
 	"created_by_role" text DEFAULT 'PURCHASE_MANAGER',
 	"created_at" timestamp DEFAULT now(),
 	"sent_at" timestamp,
+	"po_pdf" bytea,
+	"po_pdf_mime" text,
 	CONSTRAINT "purchase_orders_status_check" CHECK (CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SENT'::text, 'ACKNOWLEDGED'::text]))))
 );
 CREATE TABLE "session" (
@@ -464,6 +502,7 @@ CREATE TABLE "wages" (
 );
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
+ALTER TABLE "attendance" ADD CONSTRAINT "attendance_manual_labour_id_fkey" FOREIGN KEY ("manual_labour_id") REFERENCES "manual_attendance_labours"("id") ON DELETE SET NULL;
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance_sessions" ADD CONSTRAINT "attendance_sessions_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "attendance"("id") ON DELETE CASCADE;
@@ -472,12 +511,19 @@ ALTER TABLE "dpr_items" ADD CONSTRAINT "dpr_items_plan_item_id_fkey" FOREIGN KEY
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
+ALTER TABLE "grns" ADD CONSTRAINT "grn_material_request_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE RESTRICT;
+ALTER TABLE "grns" ADD CONSTRAINT "grn_po_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT;
+ALTER TABLE "grns" ADD CONSTRAINT "grn_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "grns" ADD CONSTRAINT "grn_site_engineer_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id") ON DELETE CASCADE;
+ALTER TABLE "grns" ADD CONSTRAINT "grn_verified_by_fkey" FOREIGN KEY ("verified_by") REFERENCES "managers"("id");
 ALTER TABLE "labour_addresses" ADD CONSTRAINT "labour_addresses_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id") ON DELETE CASCADE;
 ALTER TABLE "labour_request_participants" ADD CONSTRAINT "labour_request_participants_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "labour_request_participants" ADD CONSTRAINT "labour_request_participants_labour_request_id_fkey" FOREIGN KEY ("labour_request_id") REFERENCES "labour_requests"("id") ON DELETE CASCADE;
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_copied_from_fkey" FOREIGN KEY ("copied_from") REFERENCES "labour_requests"("id");
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
+ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "site_engineers"("id");
+ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_material_request_id_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE SET NULL;
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
@@ -521,6 +567,8 @@ ALTER TABLE "wages" ADD CONSTRAINT "wages_labour_id_fkey" FOREIGN KEY ("labour_i
 ALTER TABLE "wages" ADD CONSTRAINT "wages_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 CREATE UNIQUE INDEX "attendance_pkey" ON "attendance" ("id");
 CREATE UNIQUE INDEX "attendance_project_id_labour_id_attendance_date_key" ON "attendance" ("project_id","labour_id","attendance_date");
+CREATE INDEX "idx_attendance_face_verification_status" ON "attendance" ("face_verification_status");
+CREATE INDEX "idx_attendance_manual_labour" ON "attendance" ("manual_labour_id");
 CREATE INDEX "idx_attendance_status" ON "attendance" ("status");
 CREATE UNIQUE INDEX "attendance_sessions_pkey" ON "attendance_sessions" ("id");
 CREATE INDEX "idx_attendance_sessions_attendance" ON "attendance_sessions" ("attendance_id");
@@ -533,6 +581,10 @@ CREATE INDEX "idx_dpr_items_dpr" ON "dpr_items" ("dpr_id");
 CREATE INDEX "idx_dpr_items_plan_item" ON "dpr_items" ("plan_item_id");
 CREATE UNIQUE INDEX "dprs_pkey" ON "dprs" ("id");
 CREATE UNIQUE INDEX "dprs_project_id_site_engineer_id_report_date_key" ON "dprs" ("project_id","site_engineer_id","report_date");
+CREATE UNIQUE INDEX "grns_pkey" ON "grns" ("id");
+CREATE INDEX "idx_grn_po" ON "grns" ("purchase_order_id");
+CREATE INDEX "idx_grn_project" ON "grns" ("project_id");
+CREATE INDEX "idx_grn_status" ON "grns" ("status");
 CREATE UNIQUE INDEX "labour_addresses_pkey" ON "labour_addresses" ("id");
 CREATE UNIQUE INDEX "labour_request_participants_labour_request_id_labour_id_key" ON "labour_request_participants" ("labour_request_id","labour_id");
 CREATE UNIQUE INDEX "labour_request_participants_pkey" ON "labour_request_participants" ("id");
@@ -550,6 +602,9 @@ CREATE INDEX "idx_manager_email" ON "managers" ("email");
 CREATE UNIQUE INDEX "managers_email_key" ON "managers" ("email");
 CREATE UNIQUE INDEX "managers_phone_key" ON "managers" ("phone");
 CREATE UNIQUE INDEX "managers_pkey" ON "managers" ("id");
+CREATE INDEX "idx_manual_attendance_labours_project" ON "manual_attendance_labours" ("project_id");
+CREATE UNIQUE INDEX "manual_attendance_labours_pkey" ON "manual_attendance_labours" ("id");
+CREATE UNIQUE INDEX "manual_attendance_labours_project_id_name_skill_key" ON "manual_attendance_labours" ("project_id","name","skill");
 CREATE INDEX "idx_material_bill_status" ON "material_bills" ("status");
 CREATE UNIQUE INDEX "material_bills_pkey" ON "material_bills" ("id");
 CREATE UNIQUE INDEX "material_ledger_pkey" ON "material_ledger" ("id");
