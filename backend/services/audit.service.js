@@ -7,7 +7,7 @@ const pool = require("../db");
 
 /**
  * Get audit logs for owner (all org audits)
- * @param {number} ownerId - Owner's user ID
+ * @param {string} ownerId - Owner's user ID
  * @param {Object} filters - { project_id, category, start_date, end_date, page, limit }
  * @returns {Object} Audit logs with pagination
  */
@@ -94,7 +94,7 @@ async function getOwnerAudits(ownerId, filters = {}) {
 
 /**
  * Get audit logs for manager (assigned projects only)
- * @param {number} managerId - Manager's user ID
+ * @param {string} managerId - Manager's user ID
  * @param {Object} filters - { project_id, category, start_date, end_date, page, limit }
  * @returns {Object} Audit logs with pagination
  */
@@ -198,6 +198,82 @@ async function getManagerAudits(managerId, filters = {}) {
 }
 
 /**
+ * Get audit logs for engineer (all project activity where they are assigned)
+ */
+async function getEngineerAudits(engineerId, filters = {}) {
+  const client = await pool.connect();
+  try {
+    // Get projects where engineer is assigned
+    const projectsResult = await client.query(
+      `SELECT project_id FROM project_site_engineers WHERE site_engineer_id = $1`,
+      [engineerId],
+    );
+
+    const projectIds = projectsResult.rows.map((r) => r.project_id);
+
+    if (projectIds.length === 0) {
+      return {
+        audits: [],
+        pagination: { page: 1, limit: 50, total: 0, total_pages: 0 },
+        filters: filters,
+      };
+    }
+
+    const {
+      project_id = null,
+      category = null,
+      page = 1,
+      limit = 50,
+    } = filters;
+
+    const offset = (page - 1) * limit;
+
+    // Build query
+    const result = await client.query(
+      `
+        SELECT 
+          al.*,
+          p.name as project_name
+        FROM audit_logs al
+        LEFT JOIN projects p ON al.project_id = p.id
+        WHERE al.project_id = ANY($1)
+          AND ($2::uuid IS NULL OR al.project_id = $2)
+          AND ($3::text IS NULL OR al.category = $3)
+        ORDER BY al.created_at DESC
+        LIMIT $4 OFFSET $5
+      `,
+      [projectIds, project_id, category, limit, offset],
+    );
+
+    // Get total count
+    const countResult = await client.query(
+      `
+        SELECT COUNT(*) as total
+        FROM audit_logs
+        WHERE project_id = ANY($1)
+          AND ($2::uuid IS NULL OR project_id = $2)
+          AND ($3::text IS NULL OR category = $3)
+      `,
+      [projectIds, project_id, category],
+    );
+
+    const total = parseInt(countResult.rows[0].total);
+
+    return {
+      audits: result.rows.map(formatAuditLog),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: total,
+        total_pages: Math.ceil(total / limit),
+      },
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Format audit log for response
  * @param {Object} log - Raw audit log from database
  * @returns {Object} Formatted audit log
@@ -209,14 +285,12 @@ function formatAuditLog(log) {
     entity_id: log.entity_id,
     category: log.category,
     action: log.action,
-    user_id: log.user_id,
-    user_type: log.user_type,
+    acted_by_id: log.acted_by_id,
+    acted_by_role: log.acted_by_role,
     project_id: log.project_id,
     project_name: log.project_name,
     organization_id: log.organization_id,
-    changed_fields: log.changed_fields,
-    before: log.before,
-    after: log.after,
+    change_summary: log.change_summary,
     created_at: log.created_at,
   };
 }
@@ -224,4 +298,5 @@ function formatAuditLog(log) {
 module.exports = {
   getOwnerAudits,
   getManagerAudits,
+  getEngineerAudits,
 };

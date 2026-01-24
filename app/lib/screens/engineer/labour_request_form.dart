@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/labour_request_provider.dart';
+import '../../providers/current_project_provider.dart';
 
 class LabourRequestFormScreen extends ConsumerStatefulWidget {
   const LabourRequestFormScreen({super.key});
@@ -78,12 +79,21 @@ class _LabourRequestFormScreenState extends ConsumerState<LabourRequestFormScree
     }
 
     setState(() => _isLoading = true);
+    final project = ref.read(currentProjectProvider);
+    if (project == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('select_project_first'.tr())),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
 
     try {
       final payload = {
+        'project_id': project['project_id'] ?? project['id'],
         'category': _selectedCategory,
         'required_count': int.parse(_countController.text),
-        'required_date': _selectedDate!.toIso8601String(),
+        'request_date': _selectedDate!.toIso8601String(),
         'notes': _notesController.text.trim(),
       };
 

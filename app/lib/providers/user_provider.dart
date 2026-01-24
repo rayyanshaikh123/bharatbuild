@@ -55,8 +55,10 @@ final profileProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) 
       // Ensure role is preserved if backend doesn't send it back in profile call
       if (updated['role'] == null) updated['role'] = role;
       
-      // Update global state and storage
-      ref.read(currentUserProvider.notifier).setUser(updated);
+      // Update global user state (this also persists to storage)
+      // Future.microtask prevents state update during build
+      Future.microtask(() => ref.read(currentUserProvider.notifier).setUser(updated));
+      
       return updated;
     }
   } catch (e) {

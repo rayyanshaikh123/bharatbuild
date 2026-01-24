@@ -138,10 +138,10 @@ router.put(
         [requestId],
       );
 
-      // Send email notification to site engineer
+      // Create notification for site engineer
       try {
         const notificationData = await pool.query(
-          `SELECT se.email, se.name, p.name as project_name
+          `SELECT se.id, se.name, p.name as project_name
          FROM project_site_engineers pse
          JOIN site_engineers se ON pse.site_engineer_id = se.id
          JOIN projects p ON pse.project_id = p.id
@@ -150,17 +150,20 @@ router.put(
         );
 
         if (notificationData.rows.length > 0) {
-          const { sendNotificationEmail } = require("../../util/mailer");
-          await sendNotificationEmail({
-            to: notificationData.rows[0].email,
-            subject: "Project Request APPROVED",
-            message: `Hello ${notificationData.rows[0].name},\n\nYour request to join project "${notificationData.rows[0].project_name}" has been approved.\n\nBest regards,\nBharat Build Team`,
+          const { createNotification } = require("../../services/notification.service");
+          await createNotification({
+            userId: notificationData.rows[0].id,
+            userRole: 'SITE_ENGINEER',
+            title: "Project Request APPROVED",
+            message: `Your request to join project "${notificationData.rows[0].project_name}" has been approved.`,
+            type: 'SUCCESS',
+            projectId: projectId
           });
         }
-      } catch (emailErr) {
+      } catch (notifErr) {
         console.error(
-          "Failed to send engineer project approval email:",
-          emailErr,
+          "Failed to create engineer project approval notification:",
+          notifErr,
         );
       }
 
@@ -204,10 +207,10 @@ router.put(
         [requestId],
       );
 
-      // Send email notification to site engineer
+      // Create notification for site engineer
       try {
         const notificationData = await pool.query(
-          `SELECT se.email, se.name, p.name as project_name
+          `SELECT se.id, se.name, p.name as project_name
          FROM project_site_engineers pse
          JOIN site_engineers se ON pse.site_engineer_id = se.id
          JOIN projects p ON pse.project_id = p.id
@@ -216,17 +219,20 @@ router.put(
         );
 
         if (notificationData.rows.length > 0) {
-          const { sendNotificationEmail } = require("../../util/mailer");
-          await sendNotificationEmail({
-            to: notificationData.rows[0].email,
-            subject: "Project Request REJECTED",
-            message: `Hello ${notificationData.rows[0].name},\n\nYour request to join project "${notificationData.rows[0].project_name}" has been rejected.\n\nBest regards,\nBharat Build Team`,
+          const { createNotification } = require("../../services/notification.service");
+          await createNotification({
+            userId: notificationData.rows[0].id,
+            userRole: 'SITE_ENGINEER',
+            title: "Project Request REJECTED",
+            message: `Your request to join project "${notificationData.rows[0].project_name}" has been rejected.`,
+            type: 'ERROR',
+            projectId: projectId
           });
         }
-      } catch (emailErr) {
+      } catch (notifErr) {
         console.error(
-          "Failed to send engineer project rejection email:",
-          emailErr,
+          "Failed to create engineer project rejection notification:",
+          notifErr,
         );
       }
 

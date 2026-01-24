@@ -22,6 +22,7 @@ import {
   Package,
   BarChart,
   TrendingUp,
+  ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +42,7 @@ const ownerNavItems: NavItem[] = [
   { label: "Timeline", href: "/owner/timeline", icon: Clock },
   { label: "DPR", href: "/owner/dpr", icon: FileText },
   { label: "Materials", href: "/owner/materials", icon: Package },
+  { label: "Blacklist", href: "/owner/blacklist", icon: ShieldAlert },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
   { label: "Audit Logs", href: "/owner/audits", icon: History },
@@ -54,6 +56,9 @@ const managerNavItems: NavItem[] = [
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
   { label:"Wages", href:"/manager/wages", icon:ReceiptIndianRupeeIcon },
+  { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
+  { label: "Ledger", href: "/manager/ledger", icon: Receipt },
+  { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
   { label: "Materials", href: "/manager/materials", icon: Package },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
@@ -94,9 +99,8 @@ export function DashboardSidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-card border-r border-border z-40 transition-transform duration-300 md:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed left-0 top-0 h-full w-72 bg-card border-r border-border z-40 transition-transform duration-300 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -130,11 +134,10 @@ export function DashboardSidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
                 >
                   <item.icon size={18} />
                   <span className="text-sm font-medium">{item.label}</span>

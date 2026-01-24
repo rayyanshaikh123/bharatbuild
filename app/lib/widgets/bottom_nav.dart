@@ -82,6 +82,18 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
             colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
           ),
           label: 'reports'.tr(),
+        )
+      else
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            chartIcon,
+            colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            chartIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'earnings'.tr(),
         ),
       BottomNavigationBarItem(
         icon: Stack(

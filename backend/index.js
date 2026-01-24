@@ -50,14 +50,15 @@ app.use(
     store: new pgSession({
       pool,
       tableName: "session",
+      createTableIfMissing: false, // Table already exists
     }),
     secret: process.env.SESSION_SECRET || "dev_secret_change_in_production",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24,
-      secure: false, // 1 day
+      secure: false, // For development
       sameSite: "lax",
     },
   }),
@@ -65,6 +66,41 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Detailed logging and timeout prevention
+app.use((req, res, next) => {
+  const start = Date.now();
+  const requestId = Math.random().toString(36).substring(7);
+
+  // Set a server-side timeout to prevent indefinite hangs (fails safely before Flutter times out)
+  res.setTimeout(25000, () => {
+    if (!res.headersSent) {
+      console.error(`[Timeout] Request ${req.method} ${req.url} timed out after 25s (RID: ${requestId})`);
+      res.status(503).json({ error: "request_timeout", message: "Server took too long to respond." });
+    }
+  });
+
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Started (RID: ${requestId}, SID: ${req.sessionID || 'undefined'})`);
+
+  if (req.user) {
+    console.log(`[Auth Debug] User: ${req.user.id} (${req.user.role}) (RID: ${requestId})`);
+  }
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms) (RID: ${requestId})`);
+  });
+  next();
+});
+
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
 
 /* ---------------- AUTH ROUTES ---------------- */
 app.use("/auth/owner", require("./routes/auth/ownerAuth"));
@@ -94,6 +130,7 @@ app.use("/owner/wages", require("./routes/owner/wages"));
 app.use("/owner/analytics", require("./routes/owner/analytics"));
 app.use("/owner/audits", require("./routes/owner/audit"));
 app.use("/owner/reports", require("./routes/owner/reports"));
+app.use("/owner/blacklist", require("./routes/owner/blacklist"));
 app.use("/owner/ai", require("./routes/owner/ai-special"));
 app.use("/owner/ai", require("./routes/owner/ai"));
 app.use("/owner/ledger", require("./routes/owner/ledger"));
@@ -128,6 +165,7 @@ app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
 app.use("/manager/analytics", require("./routes/manager/analytics"));
 app.use("/manager/audit", require("./routes/manager/audit"));
 app.use("/manager/reports", require("./routes/manager/reports"));
+app.use("/manager/blacklist", require("./routes/manager/blacklist"));
 app.use("/manager/ai", require("./routes/manager/ai-special"));
 app.use("/manager/ai", require("./routes/manager/ai"));
 app.use("/manager/ledger", require("./routes/manager/ledger"));
@@ -154,14 +192,21 @@ app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
 app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
 app.use("/engineer/ledger", require("./routes/engineer/ledger"));
+app.use("/engineer/ai", require("./routes/engineer/ai"));
+app.use("/engineer/audits", require("./routes/engineer/audit"));
+app.use("/engineer/notifications", require("./routes/engineer/notifications"));
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
 app.use("/labour/jobs", require("./routes/labour/jobs"));
+app.use("/labour/projects", require("./routes/labour/projects"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
+app.use("/labour/wages", require("./routes/labour/wages"));
+app.use("/labour/notifications", require("./routes/labour/notifications"));
 app.use("/labour/address", require("./routes/labour/address"));
 app.use("/labour/sync", require("./routes/labour/sync"));
 app.use("/labour/fast", require("./routes/labour/fast/graphql"));
+app.use("/labour/user", require("./routes/labour/user"));
 
 /* ---------------- PROJECT ROUTES (cross-role) ---------------- */
 /* Note: Project-level routes (ledger, delays, ai, timeline) moved to owner/* and manager/* */

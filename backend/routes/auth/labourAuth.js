@@ -60,7 +60,14 @@ router.post("/otp/request", async (req, res) => {
       [phone, otpHash]
     );
 
-    // await sendOtpSms(phone, otp);
+    // Send actual SMS
+    try {
+      await sendOtpSms(phone, otp);
+    } catch (smsErr) {
+      // If SMS fails, we still allow the request to finish (OTP is logged) 
+      // but we log the error. In production, you might want to return an error to user.
+      console.error("SMS Sending failed:", smsErr.message);
+    }
 
     res.json({ message: "OTP sent successfully" });
   } catch (err) {

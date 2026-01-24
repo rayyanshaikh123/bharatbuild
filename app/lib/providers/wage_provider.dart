@@ -26,3 +26,8 @@ final submitWageProvider = FutureProvider.family<bool, Map<String, dynamic>>((re
     return false;
   }
 });
+
+final myWagesProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final auth = ref.watch(authServiceProvider);
+  return await auth.getLabourWages();
+});

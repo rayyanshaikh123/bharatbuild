@@ -86,7 +86,8 @@ class AppLayout extends ConsumerWidget {
                 // Profile and jobs/organization list might be allowed without project
                 // But generally, the user wants it on "each and every page"
                 // Let's exempt the profile page (usually last) for safety
-                final isProfile = pageIdx == 2 && (role != 'ENGINEER' && role != 'SITE_ENGINEER'); // Profile is 2 for Labour, 3 for Engineer
+                // Profile is the last tab for both Labour (4 tabs) and Engineer (4 tabs)
+                final isProfile = pageIdx == 3;
                 final isEngineerProfile = pageIdx == 3 && isEngineer;
                 
                 if (isEngineer && !isEngineerProfile && selectedProject == null) {

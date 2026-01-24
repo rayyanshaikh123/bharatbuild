@@ -29,5 +29,21 @@ final checkOutProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) 
   final attendance = await authService.checkOut();
   ref.invalidate(todayAttendanceProvider);
   ref.invalidate(attendanceHistoryProvider);
+  ref.invalidate(liveStatusProvider);
   return attendance;
+});
+
+final liveStatusProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final authService = ref.watch(authServiceProvider);
+  // Keep alive to maintain state while screen is backgrounded
+  final link = ref.keepAlive();
+  
+  // Refresh every 30 seconds
+  final timer = Stream.periodic(const Duration(seconds: 30)).listen((_) {
+    ref.invalidateSelf();
+  });
+  
+  ref.onDispose(() => timer.cancel());
+  
+  return await authService.getLiveStatus();
 });

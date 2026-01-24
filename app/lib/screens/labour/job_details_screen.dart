@@ -35,7 +35,10 @@ class JobDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, Map<String, dynamic> job, ThemeData theme) {
+  Widget _buildContent(BuildContext context, Map<String, dynamic> data, ThemeData theme) {
+    final job = data['job'] ?? {};
+    final wageOptions = data['wage_options'] as List<dynamic>? ?? [];
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,8 +52,8 @@ class JobDetailsScreen extends ConsumerWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  theme.colorScheme.primary.withOpacity(0.1),
-                  theme.colorScheme.primary.withOpacity(0.05),
+                  theme.colorScheme.primary.withOpacity(0.12),
+                  theme.colorScheme.primary.withOpacity(0.02),
                 ],
               ),
             ),
@@ -60,28 +63,42 @@ class JobDetailsScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.map_outlined, size: 64, color: theme.colorScheme.primary.withOpacity(0.3)),
-                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.location_on_rounded, size: 48, color: theme.colorScheme.primary),
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        'Location Preview',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary.withOpacity(0.5)),
+                        'site_location'.tr(),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 // Floating Category Badge
                 Positioned(
-                  bottom: 20,
-                  left: 20,
+                  bottom: 24,
+                  left: 24,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
                     ),
                     child: Text(
                       job['category']?.toString().toUpperCase() ?? 'GENERAL',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                     ),
                   ),
                 ),
@@ -98,34 +115,92 @@ class JobDetailsScreen extends ConsumerWidget {
                   job['project_name'] ?? 'Project Name',
                   style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.location_on_outlined, size: 18, color: theme.colorScheme.primary),
+                    Icon(Icons.location_on_outlined, size: 20, color: theme.colorScheme.primary.withOpacity(0.6)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         job['location_text'] ?? 'Unknown location',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 32),
                 
+                _sectionTitle(theme, 'wages_for_category'.tr(args: [job['category']?.toString() ?? ''])),
+                const SizedBox(height: 16),
+                if (wageOptions.isEmpty)
+                  Text('no_wages_set'.tr(), style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey))
+                else
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Column(
+                      children: wageOptions.map((w) {
+                        final isMySkill = w['skill_type'] == job['skill_type'];
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: w == wageOptions.last ? null : Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                            color: isMySkill ? theme.colorScheme.primary.withOpacity(0.05) : null,
+                            borderRadius: isMySkill && w == wageOptions.first 
+                                ? const BorderRadius.vertical(top: Radius.circular(20))
+                                : isMySkill && w == wageOptions.last
+                                    ? const BorderRadius.vertical(bottom: Radius.circular(20))
+                                    : null,
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 4,
+                                backgroundColor: isMySkill ? theme.colorScheme.primary : Colors.grey[400],
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                w['skill_type']?.toString().replaceAll('_', ' ') ?? '',
+                                style: TextStyle(
+                                  fontWeight: isMySkill ? FontWeight.bold : FontWeight.normal,
+                                  color: isMySkill ? theme.colorScheme.primary : Colors.black87,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '₹${w['hourly_rate']}/hr',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: isMySkill ? theme.colorScheme.primary : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                const SizedBox(height: 32),
                 _sectionTitle(theme, 'job_description'.tr()),
                 const SizedBox(height: 12),
                 Text(
                   job['project_description'] ?? 'No description available for this project.',
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.6, color: Colors.black87),
                 ),
                 
                 const SizedBox(height: 32),
                 _sectionTitle(theme, 'requirements'.tr()),
-                const SizedBox(height: 12),
-                _requirementRow(Icons.people_outline, '${job['required_count']} workers needed'),
-                _requirementRow(Icons.calendar_today, 'Starting: ${job['request_date']?.toString().split('T')[0] ?? 'ASAP'}'),
-                _requirementRow(Icons.payments, 'Budget: ₹${job['budget'] ?? 'N/A'}'),
+                const SizedBox(height: 16),
+                _requirementRow(Icons.people_alt_outlined, '${job['required_count']} workers needed'),
+                _requirementRow(Icons.calendar_month_outlined, 'Starting: ${job['request_date']?.toString().split('T')[0] ?? 'ASAP'}'),
                 
                 const SizedBox(height: 100), // Padding for bottom FAB
               ],
@@ -157,20 +232,38 @@ class JobDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildBottomAction(BuildContext context, WidgetRef ref, Map<String, dynamic> job) {
+    final canApply = job['can_apply'] ?? true;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
       ),
-      child: ElevatedButton(
-        onPressed: () => _handleApply(context, ref, job),
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-        child: Text('apply_now'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!canApply)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'too_far_to_apply'.tr(),
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ElevatedButton(
+            onPressed: canApply ? () => _handleApply(context, ref, job) : null,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
+            ),
+            child: Text(
+              canApply ? 'apply_now'.tr() : 'cannot_apply'.tr(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

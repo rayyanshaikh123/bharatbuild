@@ -7,7 +7,7 @@ final projectStockProvider = FutureProvider.autoDispose<List<dynamic>>((ref) asy
   final authRes = ref.watch(authServiceProvider);
   final project = ref.watch(currentProjectProvider);
   if (project == null) return [];
-  final projectId = project['id'] ?? project['project_id'];
+  final projectId = project['project_id'] ?? project['id'];
   return await authRes.getProjectStock(projectId.toString());
 });
 
@@ -15,7 +15,7 @@ final ledgerHistoryProvider = FutureProvider.autoDispose<List<dynamic>>((ref) as
   final authRes = ref.watch(authServiceProvider);
   final project = ref.watch(currentProjectProvider);
   if (project == null) return [];
-  final projectId = project['id'] ?? project['project_id'];
+  final projectId = project['project_id'] ?? project['id'];
   return await authRes.getLedgerHistory(projectId.toString());
 });
 

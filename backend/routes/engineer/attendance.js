@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 // Check if engineer is ACTIVE in project
 async function engineerProjectStatusCheck(engineerId, projectId) {
@@ -25,8 +26,8 @@ router.get("/today", engineerCheck, async (req, res) => {
     if (!projectId)
       return res.status(400).json({ error: "projectId is required" });
 
-    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) return res.status(403).json({ error: access.error });
 
     const result = await pool.query(
       `SELECT a.*, l.name, l.phone, l.skill_type
@@ -50,8 +51,8 @@ router.post("/mark", engineerCheck, async (req, res) => {
     const { labourId, projectId, date, status } = req.body;
     const reportDate = date || new Date().toISOString().split("T")[0];
 
-    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) return res.status(403).json({ error: access.error });
 
     const result = await pool.query(
       `INSERT INTO attendance (project_id, labour_id, site_engineer_id, attendance_date, status, approved_by, approved_at, is_manual)

@@ -22,6 +22,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _didInitArgs = false;
   bool _otpSent = false;
 
+  bool _isLoading = false;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -48,48 +50,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (_role == 'labour') {
-      if (!_otpSent) {
-        final phone = _phoneController.text.trim();
-        if (phone.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
-          return;
-        }
-        try {
+    setState(() => _isLoading = true);
+    try {
+      if (_role == 'labour') {
+        if (!_otpSent) {
+          final phone = _phoneController.text.trim();
+          if (phone.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
+            setState(() => _isLoading = false);
+            return;
+          }
           await ref.read(labourOtpRequestProvider(phone).future);
           setState(() => _otpSent = true);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('otp_requested'.tr())));
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
+          setState(() => _isLoading = false);
+          return;
         }
-        return;
-      }
 
-      final phone = _phoneController.text.trim();
-      final otp = _otpController.text.trim();
-      if (otp.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
-        return;
-      }
-      try {
+        final phone = _phoneController.text.trim();
+        final otp = _otpController.text.trim();
+        if (otp.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('required'.tr())));
+          setState(() => _isLoading = false);
+          return;
+        }
         final res = await ref.read(labourOtpVerifyProvider({'phone': phone, 'otp': otp}).future);
         if (res['user'] != null) {
           ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
         }
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/labour-dashboard');
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
+        return;
       }
-      return;
-    }
 
-    if (!_formKey.currentState!.validate()) return;
+      if (!_formKey.currentState!.validate()) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
       final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
       if (res['user'] != null) {
         ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
@@ -98,7 +98,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/engineer-dashboard');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
+      String errorMsg = e.toString();
+      if (errorMsg.contains('OS Error: Connection timed out') || errorMsg.contains('SocketException')) {
+        errorMsg = "Connection timed out. Please ensure your device is on the same network as the server (192.168.0.101) and Windows Firewall is not blocking the connection.";
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg),
+        duration: const Duration(seconds: 5),
+      ));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -186,11 +195,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                         const SizedBox(height: 24.0),
                         ElevatedButton(
-                          onPressed: _submit,
+                          onPressed: _isLoading ? null : _submit,
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 56),
                           ),
-                          child: Text(_role == 'labour' ? 'continue'.tr() : 'sign_in'.tr()),
+                          child: _isLoading 
+                            ? const SizedBox(
+                                height: 20, 
+                                width: 20, 
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                              )
+                            : Text(_role == 'labour' ? 'continue'.tr() : 'sign_in'.tr()),
                         ),
                         const SizedBox(height: 16.0),
                         if (_role != 'labour')

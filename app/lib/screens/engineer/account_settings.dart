@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/app_config_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/auth_providers.dart';
 import '../../theme/app_colors.dart';
 
 class AccountSettingsScreen extends ConsumerWidget {
@@ -12,81 +14,106 @@ class AccountSettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeProvider);
     final currentLocale = context.locale;
+    final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('account_settings'.tr()),
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const SizedBox(height: 10),
-          
-          // Language Section
-          _buildSectionHeader(context, 'language'.tr()),
-          const SizedBox(height: 12),
-          _buildSettingCard(
-            context,
-            icon: Icons.language,
-            title: 'language'.tr(),
-            subtitle: currentLocale.languageCode == 'en' ? 'english'.tr() : 'hindi'.tr(),
-            onTap: () => _showLanguageDialog(context),
-          ),
-          const SizedBox(height: 24),
+      body: profileAsync.when(
+        data: (profile) {
+          final isPushEnabled = profile?['push_notifications_enabled'] ?? true;
+          final isEmailEnabled = profile?['email_notifications_enabled'] ?? false;
 
-          // Theme Section
-          _buildSectionHeader(context, 'theme'.tr()),
-          const SizedBox(height: 12),
-          _buildSettingCard(
-            context,
-            icon: Icons.palette_outlined,
-            title: 'theme'.tr(),
-            subtitle: themeMode == ThemeMode.dark ? 'dark_mode'.tr() : 'light_mode'.tr(),
-            trailing: Switch(
-              value: themeMode == ThemeMode.dark,
-              onChanged: (value) {
-                ref.read(themeProvider.notifier).state =
-                    value ? ThemeMode.dark : ThemeMode.light;
-              },
-              activeColor: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 24),
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const SizedBox(height: 10),
+              
+              // Language Section
+              _buildSectionHeader(context, 'language'.tr()),
+              const SizedBox(height: 12),
+              _buildSettingCard(
+                context,
+                icon: Icons.language,
+                title: 'language'.tr(),
+                subtitle: currentLocale.languageCode == 'en' ? 'english'.tr() : 'hindi'.tr(),
+                onTap: () => _showLanguageDialog(context),
+              ),
+              const SizedBox(height: 24),
 
-          // Notifications Section
-          _buildSectionHeader(context, 'notifications'.tr()),
-          const SizedBox(height: 12),
-          _buildSettingCard(
-            context,
-            icon: Icons.notifications_outlined,
-            title: 'push_notifications'.tr(),
-            subtitle: 'receive_updates_alerts'.tr(),
-            trailing: Switch(
-              value: true, // TODO: Connect to actual notification settings
-              onChanged: (value) {
-                // TODO: Implement notification toggle
-              },
-              activeColor: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildSettingCard(
-            context,
-            icon: Icons.email_outlined,
-            title: 'email_notifications'.tr(),
-            subtitle: 'receive_email_updates'.tr(),
-            trailing: Switch(
-              value: false, // TODO: Connect to actual notification settings
-              onChanged: (value) {
-                // TODO: Implement email notification toggle
-              },
-              activeColor: AppColors.primary,
-            ),
-          ),
-        ],
+              // Theme Section
+              _buildSectionHeader(context, 'theme'.tr()),
+              const SizedBox(height: 12),
+              _buildSettingCard(
+                context,
+                icon: Icons.palette_outlined,
+                title: 'theme'.tr(),
+                subtitle: themeMode == ThemeMode.dark ? 'dark_mode'.tr() : 'light_mode'.tr(),
+                trailing: Switch(
+                  value: themeMode == ThemeMode.dark,
+                  onChanged: (value) {
+                    ref.read(themeProvider.notifier).state =
+                        value ? ThemeMode.dark : ThemeMode.light;
+                  },
+                  activeColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Notifications Section
+              _buildSectionHeader(context, 'notifications'.tr()),
+              const SizedBox(height: 12),
+              _buildSettingCard(
+                context,
+                icon: Icons.notifications_outlined,
+                title: 'push_notifications'.tr(),
+                subtitle: 'receive_updates_alerts'.tr(),
+                trailing: Switch(
+                  value: isPushEnabled,
+                  onChanged: (value) async {
+                    _updateSettings(ref, {'push_notifications_enabled': value});
+                  },
+                  activeColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildSettingCard(
+                context,
+                icon: Icons.email_outlined,
+                title: 'email_notifications'.tr(),
+                subtitle: 'receive_email_updates'.tr(),
+                trailing: Switch(
+                  value: isEmailEnabled,
+                  onChanged: (value) async {
+                    _updateSettings(ref, {'email_notifications_enabled': value});
+                  },
+                  activeColor: AppColors.primary,
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error loading settings: $err')),
       ),
     );
+  }
+
+  Future<void> _updateSettings(WidgetRef ref, Map<String, dynamic> payload) async {
+    try {
+      final auth = ref.read(authServiceProvider);
+      final updated = await auth.updateEngineerProfile(payload);
+      if (updated != null) {
+        ref.read(currentUserProvider.notifier).setUser(updated);
+        // Also refresh profileProvider so the UI stays consistent
+        ref.invalidate(profileProvider);
+      }
+    } catch (e) {
+      // Just log for now
+      debugPrint('Failed to update settings: $e');
+    }
   }
 
   Widget _buildSectionHeader(BuildContext context, String title) {

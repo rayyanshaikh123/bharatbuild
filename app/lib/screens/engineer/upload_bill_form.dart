@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -20,6 +23,45 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
   final _amountController = TextEditingController();
   final _gstController = TextEditingController(text: '18');
   String? _selectedCategory;
+  bool _isScanning = false;
+  final _picker = ImagePicker();
+
+  Future<void> _scanBill() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    if (image == null) return;
+
+    setState(() => _isScanning = true);
+    
+    try {
+      final bytes = await File(image.path).readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final project = ref.read(currentProjectProvider);
+      
+      final dynamic result = await ref.read(ocrRequestProvider({
+        'image': base64Image,
+        'project_id': project?['project_id'] ?? project?['id'],
+      }).future);
+
+      if (result != null && result['data'] != null) {
+        final data = result['data'] as Map<String, dynamic>;
+        setState(() {
+          if (data['vendor_name'] != null) _vendorController.text = data['vendor_name'].toString();
+          if (data['bill_number'] != null) _billNumberController.text = data['bill_number'].toString();
+          if (data['total_amount'] != null) {
+             final total = double.tryParse(data['total_amount'].toString()) ?? 0.0;
+             final gst = double.tryParse(data['gst_amount']?.toString() ?? '0.0') ?? 0.0;
+             _amountController.text = (total - gst).toStringAsFixed(2);
+             _gstController.text = ((gst / (total - gst)) * 100).toStringAsFixed(0);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('bill_scanned_success'.tr()), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('scan_failed'.tr() + ': $e')));
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
+  }
 
   @override
   void initState() {
@@ -51,7 +93,7 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
 
     final data = {
       'material_request_id': widget.request?['id'],
-      'project_id': selectedProject['id'] ?? selectedProject['project_id'],
+      'project_id': selectedProject['project_id'] ?? selectedProject['id'],
       'vendor_name': _vendorController.text.trim(),
       'bill_number': _billNumberController.text.trim(),
       'bill_amount': amount,
@@ -114,6 +156,19 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
                     ],
                   ),
                 ),
+              
+              OutlinedButton.icon(
+                onPressed: _isScanning ? null : _scanBill,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _isScanning 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.qr_code_scanner),
+                label: Text(_isScanning ? 'scanning'.tr() : 'scan_bill_ai'.tr()),
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _vendorController,
                 decoration: InputDecoration(labelText: 'vendor'.tr()),

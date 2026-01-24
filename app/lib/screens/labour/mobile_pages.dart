@@ -19,6 +19,11 @@ import '../../providers/current_project_provider.dart';
 import '../../map/geofence_service.dart';
 import '../../services/auth_service.dart';
 import 'check_in_screen.dart';
+import 'jobs_map_screen.dart';
+import 'shift_status_screen.dart';
+import 'projects_map_screen.dart';
+import 'package:intl/intl.dart';
+import '../../providers/wage_provider.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
 class LabourDashboardContent extends ConsumerWidget {
@@ -150,6 +155,76 @@ class LabourDashboardContent extends ConsumerWidget {
               orElse: () => const SizedBox.shrink(),
             ),
             
+            // Explore Projects Banner
+            Container(
+              margin: const EdgeInsets.only(bottom: 32),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [theme.colorScheme.primary, theme.colorScheme.tertiary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProjectsMapScreen()),
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.travel_explore, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'explore_projects'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'view_all_sites'.tr(),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
             // Available Jobs Title
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -158,9 +233,25 @@ class LabourDashboardContent extends ConsumerWidget {
                   'available_jobs'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.tune),
-                  onPressed: () {}, // Filter logic
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.map),
+                      onPressed: () {
+                        final jobs = jobsAsync.value ?? [];
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JobsMapScreen(jobs: jobs),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      onPressed: () {}, // Filter logic
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -424,7 +515,322 @@ class ApplicationsContent extends ConsumerWidget {
   }
 }
 
-class _ApplicationCard extends StatelessWidget {
+class EarningsContent extends ConsumerWidget {
+  const EarningsContent({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wagesAsync = ref.watch(myWagesProvider);
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () async => ref.refresh(myWagesProvider.future),
+        child: wagesAsync.when(
+          data: (data) {
+            final wages = data['wages'] as List<dynamic>;
+            final summary = data['summary'] as Map<String, dynamic>;
+            final weeklyStats = data['weekly_stats'] as List<dynamic>;
+
+            if (wages.isEmpty && weeklyStats.isEmpty) {
+              return _buildEmptyState(context);
+            }
+
+            return CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverToBoxAdapter(
+                    child: _EarningsSummary(summary: summary, weeklyStats: weeklyStats),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverToBoxAdapter(
+                    child: Text(
+                      'payment_history'.tr(),
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return _WageCard(wage: wages[index]);
+                      },
+                      childCount: wages.length,
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error: $err')),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.payments_outlined, size: 64, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'no_earnings_yet'.tr(),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EarningsSummary extends StatelessWidget {
+  final Map<String, dynamic> summary;
+  final List<dynamic> weeklyStats;
+
+  const _EarningsSummary({required this.summary, required this.weeklyStats});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final totalEarnings = double.tryParse(summary['total_earnings']?.toString() ?? '0') ?? 0;
+    final unpaidEarnings = double.tryParse(summary['unpaid_earnings']?.toString() ?? '0') ?? 0;
+    final pendingEarnings = double.tryParse(summary['pending_earnings']?.toString() ?? '0') ?? 0;
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [theme.colorScheme.primary, theme.colorScheme.primary.withBlue(200)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'total_earnings'.tr(),
+                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '₹${totalEarnings.toStringAsFixed(0)}',
+                style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              if (weeklyStats.isNotEmpty) ...[
+                Text(
+                  'weekly_overview'.tr(),
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _buildMiniChart(weeklyStats),
+                const SizedBox(height: 24),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _summaryMiniItem('unpaid'.tr(), '₹${unpaidEarnings.toStringAsFixed(0)}'),
+                  _summaryMiniItem('pending'.tr(), '₹${pendingEarnings.toStringAsFixed(0)}'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniChart(List<dynamic> stats) {
+    // Take last 4 weeks and reverse for chronological order
+    final displayStats = stats.reversed.toList();
+    double maxAmount = 0;
+    for (var s in displayStats) {
+      final amt = double.tryParse(s['amount']?.toString() ?? '0') ?? 0;
+      if (amt > maxAmount) maxAmount = amt;
+    }
+    if (maxAmount == 0) maxAmount = 1;
+
+    return SizedBox(
+      height: 60,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: displayStats.map((s) {
+          final amt = double.tryParse(s['amount']?.toString() ?? '0') ?? 0;
+          final heightFactor = amt / maxAmount;
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                width: 40,
+                height: 40 * heightFactor,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'W${displayStats.indexOf(s) + 1}',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _summaryMiniItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+        ),
+        Text(
+          value,
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+}
+
+class _WageCard extends StatelessWidget {
+  final dynamic wage;
+
+  const _WageCard({required this.wage});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final status = wage['status']?.toString().toLowerCase() ?? 'pending';
+    final amount = double.tryParse(wage['total_amount']?.toString() ?? '0') ?? 0;
+    final date = wage['attendance_date']?.toString().split('T')[0] ?? '';
+    final isPaid = wage['paid_at'] != null;
+
+    Color statusColor;
+    IconData statusIcon;
+    switch (status) {
+      case 'approved':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle_outline;
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        statusIcon = Icons.highlight_off;
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending_outlined;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  wage['project_name'] ?? 'Project',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  DateFormat('EEE, dd MMM yyyy').format(DateTime.parse(date)),
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '₹${amount.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              if (isPaid)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('PAID', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                )
+              else if (status == 'approved')
+                Text(
+                  'approved'.tr(),
+                  style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                )
+              else
+                Text(
+                  status.toUpperCase(),
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
   final dynamic application;
 
   const _ApplicationCard({required this.application});

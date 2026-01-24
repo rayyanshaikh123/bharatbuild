@@ -136,10 +136,13 @@ class _TaskCard extends ConsumerWidget {
               Row(
                 children: [
                   Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${item['period_start'] ?? ''} - ${item['period_end'] ?? ''}',
-                    style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${item['period_start'] ?? ''} - ${item['period_end'] ?? ''}',
+                      style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

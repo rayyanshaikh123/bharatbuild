@@ -2,18 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
-
-// Check if engineer is ACTIVE in project
-async function engineerProjectStatusCheck(engineerId, projectId) {
-  const result = await pool.query(
-    `SELECT COUNT(*) FROM project_site_engineers
-     WHERE site_engineer_id = $1 
-       AND project_id = $2 
-       AND status = 'APPROVED'`,
-    [engineerId, projectId],
-  );
-  return parseInt(result.rows[0].count) > 0;
-}
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 /* ---------------- GET WAGE QUEUE (PRESENT LABOURERS) ---------------- */
 router.get("/queue", engineerCheck, async (req, res) => {
@@ -25,8 +14,8 @@ router.get("/queue", engineerCheck, async (req, res) => {
     if (!projectId)
       return res.status(400).json({ error: "projectId is required" });
 
-    const isActive = await engineerProjectStatusCheck(engineerId, projectId);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) return res.status(403).json({ error: access.error });
 
     // Get approved attendance records for which wages aren't set yet
     const result = await pool.query(
@@ -69,8 +58,8 @@ router.post("/submit", engineerCheck, async (req, res) => {
 
     const { project_id, work_hours, skill_type, category } = attCheck.rows[0];
 
-    const isActive = await engineerProjectStatusCheck(engineerId, project_id);
-    if (!isActive) return res.status(403).json({ error: "Access denied." });
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) return res.status(403).json({ error: access.error });
 
     // Fetch hourly rate from wage_rates
     const rateRes = await pool.query(

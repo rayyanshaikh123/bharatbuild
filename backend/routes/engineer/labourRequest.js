@@ -6,6 +6,7 @@ const {
   logAudit,
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
 
 // Check if engineer is APPROVED in organization
 async function engineerOrgStatusCheck(engineerId, projectId) {
@@ -60,27 +61,14 @@ router.post("/", engineerCheck, async (req, res) => {
       project_id = activeProject.rows[0].project_id;
     }
 
+    // Unified Permission Check
+    const access = await verifyEngineerAccess(engineerId, project_id);
+    if (!access.allowed) {
+      return res.status(403).json({ error: access.error });
+    }
+
     // Default search radius if not provided
     if (!search_radius_meters) search_radius_meters = 10000; // 10km
-
-    // Check if engineer is APPROVED in organization
-    const isOrgApproved = await engineerOrgStatusCheck(engineerId, project_id);
-    if (!isOrgApproved) {
-      return res.status(403).json({
-        error: "Access denied. Not an approved engineer in the organization.",
-      });
-    }
-
-    // Check if engineer is ACTIVE in project
-    const isProjectActive = await engineerProjectStatusCheck(
-      engineerId,
-      project_id,
-    );
-    if (!isProjectActive) {
-      return res.status(403).json({
-        error: "Access denied. Not an active engineer in the project.",
-      });
-    }
 
     const result = await pool.query(
       `INSERT INTO labour_requests (project_id, site_engineer_id, category, 
@@ -186,6 +174,18 @@ router.post(
         return res.status(404).json({ error: "Request not found" });
 
       const { project_id, request_date } = reqResult.rows[0];
+
+      // Check if blacklisted by the organization parent of this project
+      const blacklistCheck = await pool.query(
+        `SELECT 1 FROM organization_blacklist ob
+         JOIN projects p ON ob.org_id = p.org_id
+         WHERE ob.labour_id = $1 AND p.id = $2`,
+        [labourId, project_id]
+      );
+
+      if (blacklistCheck.rows.length > 0) {
+        return res.status(403).json({ error: "Cannot approve. Labourer is blacklisted by the organization." });
+      }
 
       // Create entry in attendance table (or update if exists)
       // In this system, "Approval" means we are creating a pending attendance record that allows them to check-in/out

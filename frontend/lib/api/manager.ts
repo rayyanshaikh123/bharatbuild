@@ -165,9 +165,9 @@ export const managerOrgEngineerRequests = {
     ),
 
   updateStatus: (requestId: string, action: "APPROVED" | "REJECTED") =>
-    api.post<{ message: string }>(`/manager/organization-requests/engineer-request-action`, { 
-      requestId, 
-      action 
+    api.post<{ message: string }>(`/manager/organization-requests/engineer-request-action`, {
+      requestId,
+      action
     }),
 };
 
@@ -424,4 +424,28 @@ export const managerProjectManagerRequests = {
   // Approve or reject a manager join request (creator only) - from managerProject.js
   decide: (requestId: string, decision: 'ACTIVE' | 'REJECTED', projectId: string, organizationId: string) =>
     api.put<{ message: string }>(`/manager/projects/manager-requests/${requestId}/decision`, { decision, projectId, organizationId }),
+};
+// ==================== MANAGER BLACKLIST API ====================
+
+export interface BlacklistEntry {
+  id: string;
+  org_id: string;
+  labour_id: string;
+  reason: string;
+  created_at: string;
+  labour_name: string;
+  labour_phone: string;
+  skill_type: string;
+  organization_name: string;
+}
+
+export const managerBlacklist = {
+  getAll: (orgId: string) =>
+    api.get<{ blacklist: BlacklistEntry[] }>(`/manager/blacklist?orgId=${orgId}`),
+
+  add: (orgId: string, labourId: string, reason: string) =>
+    api.post<{ message: string; id: string }>("/manager/blacklist", { orgId, labourId, reason }),
+
+  remove: (id: string, orgId: string) =>
+    api.delete<{ message: string }>(`/manager/blacklist/${id}?orgId=${orgId}`),
 };
