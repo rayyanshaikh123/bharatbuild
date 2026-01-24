@@ -126,7 +126,7 @@ app.use("/manager/material", require("./routes/manager/material"));
 app.use("/manager/wages", require("./routes/manager/wages"));
 app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
 app.use("/manager/analytics", require("./routes/manager/analytics"));
-app.use("/manager/audits", require("./routes/manager/audits"));
+app.use("/manager/audit", require("./routes/manager/audit"));
 app.use("/manager/reports", require("./routes/manager/reports"));
 app.use("/manager/ai", require("./routes/manager/ai-special"));
 app.use("/manager/ai", require("./routes/manager/ai"));

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import {  managerProjects, Project } from "@/lib/api/manager";
+import { managerProjects, managerOrganization, Project } from "@/lib/api/manager";
+import { managerReports } from "@/lib/api/reports";
 import { 
   Loader2, 
   FileText, 
@@ -84,20 +85,27 @@ export default function ManagerReportsPage() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [reportData, setReportData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     const fetchProjects = async () => {
-      if (user?.orgId) {
-        try {
-          const res = await managerProjects.getMyProjects(user.orgId);
+      try {
+        // Use getMyRequests pattern to get org_id
+        const reqsRes = await managerOrganization.getMyRequests();
+        const approved = reqsRes.requests?.find(r => r.status === "APPROVED");
+        
+        if (approved && approved.org_id) {
+          const res = await managerProjects.getMyProjects(approved.org_id);
           setProjects(res.projects || []);
-        } catch (err) {
-          console.error("Failed to fetch projects", err);
         }
+      } catch (err) {
+        console.error("Failed to fetch projects", err);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
     fetchProjects();
-  }, [user]);
+  }, []);
 
   const fetchReport = async (type: string) => {
     setIsLoading(true);

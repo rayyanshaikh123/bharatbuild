@@ -6,13 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { managerProjects, managerProjectJoinRequests, Project } from "@/lib/api/manager";
 import { toast } from "sonner";
 
-interface ExtendedProject extends Project {
-  my_status?: string | null;
-  is_creator?: boolean;
-}
-
 export function JoinProjectList({ organizationId }: { organizationId: string }) {
-  const [projects, setProjects] = useState<ExtendedProject[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
@@ -56,7 +51,7 @@ export function JoinProjectList({ organizationId }: { organizationId: string }) 
   };
 
   // Determine status for each project
-  const getProjectJoinStatus = (project: ExtendedProject) => {
+  const getProjectJoinStatus = (project: Project) => {
     // If already ACTIVE or is creator
     if (project.my_status === 'ACTIVE' || project.is_creator) {
       return 'JOINED';

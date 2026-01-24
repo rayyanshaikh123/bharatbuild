@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ownerAnalytics, ownerProjects, ownerOrganization, Project } from "@/lib/api/owner";
+import { ProjectAnalyticsDetail } from "@/components/dashboard/ProjectAnalyticsDetail";
 import { Loader2, TrendingUp, DollarSign, Activity, Target, AlertCircle } from "lucide-react";
 
 export default function OwnerAnalyticsPage() {
@@ -169,56 +170,32 @@ export default function OwnerAnalyticsPage() {
         <select
           value={selectedProjectId || ""}
           onChange={(e) => setSelectedProjectId(e.target.value || null)}
-          className="w-full h-10 px-3 bg-background/50 border border-border rounded-lg text-sm mb-4"
+          className="w-full md:w-80 h-10 px-3 bg-background/50 border border-border rounded-lg text-sm mb-6"
         >
-          <option value="">Select a project</option>
+          <option value="">Select a project to view analytics</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
+              {p.name} ({p.status})
             </option>
           ))}
         </select>
 
         {isLoadingProject ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading analytics...</span>
           </div>
         ) : projectAnalytics ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-muted/20 rounded-lg">
-              <h4 className="font-semibold mb-2">Project: {projectAnalytics.project_name || selectedProjectId}</h4>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                {projectAnalytics.budget_utilization !== undefined && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Budget Utilization</p>
-                    <p className="text-xl font-bold">{projectAnalytics.budget_utilization}%</p>
-                  </div>
-                )}
-                {projectAnalytics.task_completion !== undefined && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Task Completion</p>
-                    <p className="text-xl font-bold">{projectAnalytics.task_completion}%</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Additional project data */}
-            <details className="p-4 bg-muted/10 rounded-lg">
-              <summary className="cursor-pointer font-medium text-sm">View Raw Data</summary>
-              <pre className="mt-2 text-xs text-muted-foreground overflow-auto max-h-64">
-                {JSON.stringify(projectAnalytics, null, 2)}
-              </pre>
-            </details>
-          </div>
+          <ProjectAnalyticsDetail data={projectAnalytics} />
         ) : selectedProjectId ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <div className="text-center py-12 text-muted-foreground">
+            <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>No analytics data available for this project</p>
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            Select a project to view detailed analytics
+          <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-border rounded-xl">
+            <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p>Select a project above to view detailed analytics</p>
           </div>
         )}
       </div>

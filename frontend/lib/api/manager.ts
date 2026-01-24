@@ -25,6 +25,9 @@ export interface Project {
   status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ON_HOLD";
   created_by: string;
   geofence?: any;
+  // Added from my-projects and all-projects endpoints
+  is_creator?: boolean;
+  my_status?: string | null;
 }
 
 export interface CreateProjectData {
@@ -404,11 +407,11 @@ export const managerMaterials = {
 export const managerProjectJoinRequests = {
   // Request to join a project (from managerProjectReq.js)
   requestJoin: (projectId: string, organizationId: string) =>
-    api.post<{ message: string }>(`/manager/manager-project-requests/join-project`, { projectId, organizationId }),
+    api.post<{ message: string }>(`/manager/project-requests/join-project`, { projectId, organizationId }),
 
   // Get my project join requests (from managerProjectReq.js)
   getMyRequests: () =>
-    api.get<{ requests: any[] }>(`/manager/manager-project-requests/my-project-requests`),
+    api.get<{ requests: any[] }>(`/manager/project-requests/my-project-requests`),
 };
 
 // ==================== MANAGER REQUESTS APPROVAL (for project creators) ====================

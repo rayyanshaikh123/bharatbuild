@@ -146,10 +146,16 @@ router.get("/my-projects", managerCheck, async (req, res) => {
     //   });
     // }
 
-    // Get projects created by this manager
+    // Get projects where manager is creator OR has ACTIVE status (joined)
     const result = await pool.query(
-      `SELECT p.* FROM projects p
-       WHERE p.org_id = $1 AND p.created_by = $2`,
+      `SELECT DISTINCT p.*, 
+              CASE WHEN p.created_by = $2::uuid THEN true ELSE false END as is_creator,
+              pm.status as my_status
+       FROM projects p
+       LEFT JOIN project_managers pm ON p.id = pm.project_id AND pm.manager_id = $2::uuid
+       WHERE p.org_id = $1::uuid 
+         AND (p.created_by = $2::uuid OR pm.status = 'ACTIVE')
+       ORDER BY p.created_at DESC`,
       [organizationId, managerId],
     );
     res.json({ projects: result.rows });

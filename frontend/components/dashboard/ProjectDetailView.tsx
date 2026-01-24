@@ -36,6 +36,7 @@ interface ProjectDetailViewProps {
   editHref?: string;
   showEdit?: boolean;
   userRole: "owner" | "manager";
+  isCreator?: boolean;
 }
 
 const statusStyles = {
@@ -70,6 +71,7 @@ export function ProjectDetailView({
   editHref,
   showEdit = true,
   userRole,
+  isCreator = false,
 }: ProjectDetailViewProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -252,13 +254,15 @@ export function ProjectDetailView({
             </div>
 
             {/* Manager Join Requests (only for project creator) */}
-            <div className="glass-card rounded-2xl p-6">
-              <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
-                <Users size={20} className="text-amber-500" />
-                Manager Join Requests
-              </h3>
-              <ProjectManagerRequestsList projectId={project.id} organizationId={project.org_id} />
-            </div>
+            {isCreator && (
+              <div className="glass-card rounded-2xl p-6">
+                <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Users size={20} className="text-amber-500" />
+                  Manager Join Requests
+                </h3>
+                <ProjectManagerRequestsList projectId={project.id} organizationId={project.org_id} />
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}
