@@ -5,7 +5,9 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { ownerOrganization, ownerProjects, ownerMaterials, Project, MaterialRequest, MaterialBill } from "@/lib/api/owner";
-import { Loader2, Package, FileText, Filter } from "lucide-react";
+import { Loader2, Filter, Eye } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { BillImageModal } from "@/components/dashboard/BillImageModal";
 
 function ProjectSelector({
   projects,
@@ -40,6 +42,7 @@ export default function OwnerMaterialsPage() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [bills, setBills] = useState<MaterialBill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewBill, setViewBill] = useState<MaterialBill | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,15 +74,20 @@ export default function OwnerMaterialsPage() {
   const requestColumns: Column<MaterialRequest>[] = useMemo(
     () => [
       {
-        key: "material_name",
+        key: "title",
         label: "Material",
         sortable: true,
+      },
+      {
+        key: "category",
+        label: "Category",
+        width: "120px",
       },
       {
         key: "quantity",
         label: "Quantity",
         width: "100px",
-        render: (value: number, row: MaterialRequest) => `${value} ${row.unit}`,
+        render: (value: number) => value,
       },
       {
         key: "project_name",
@@ -148,6 +156,21 @@ export default function OwnerMaterialsPage() {
           </span>
         ),
       },
+      {
+        key: "id",
+        label: "Actions",
+        width: "100px",
+        render: (id: string, row: MaterialBill) => (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-3 text-primary border-primary/20 hover:bg-primary/10"
+            onClick={() => setViewBill(row)}
+          >
+            <Eye size={14} className="mr-1" /> View
+          </Button>
+        ),
+      },
     ],
     []
   );
@@ -189,7 +212,7 @@ export default function OwnerMaterialsPage() {
           data={requests}
           columns={requestColumns}
           searchable={true}
-          searchKeys={["material_name", "project_name", "engineer_name"]}
+          searchKeys={["title", "project_name", "engineer_name"]}
           emptyMessage="No material requests found"
           itemsPerPage={15}
         />
@@ -201,6 +224,14 @@ export default function OwnerMaterialsPage() {
           searchKeys={["bill_number", "vendor_name", "category", "project_name"]}
           emptyMessage="No material bills found"
           itemsPerPage={15}
+        />
+      )}
+
+      {/* Bill Image Modal */}
+      {viewBill && (
+        <BillImageModal
+          bill={viewBill}
+          onClose={() => setViewBill(null)}
         />
       )}
     </div>

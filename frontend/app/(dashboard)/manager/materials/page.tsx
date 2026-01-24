@@ -5,9 +5,10 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import {  managerProjects, Project, managerMaterials, managerOrganization } from "@/lib/api/manager";
-import { Loader2, Package, Filter, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Filter, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MaterialReviewModal } from "@/components/dashboard/MaterialReviewModal";
+import { BillImageModal } from "@/components/dashboard/BillImageModal";
 
 // Project selector
 function ProjectSelector({
@@ -39,9 +40,10 @@ function ProjectSelector({
 
 interface MaterialRequest {
   id: string;
-  material_name: string;
+  title: string;
+  category: string;
   quantity: number;
-  unit: string;
+  description?: string;
   project_name: string;
   engineer_name: string;
   created_at: string;
@@ -55,6 +57,8 @@ interface MaterialBill {
   total_amount: number;
   project_name: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  bill_image?: string;
+  bill_image_mime?: string;
 }
 
 export default function ManagerMaterialsPage() {
@@ -70,6 +74,7 @@ export default function ManagerMaterialsPage() {
   const [reviewItem, setReviewItem] = useState<any | null>(null);
   const [reviewType, setReviewType] = useState<"REQUEST" | "BILL">("REQUEST");
   const [isReviewing, setIsReviewing] = useState(false);
+  const [viewBill, setViewBill] = useState<MaterialBill | null>(null);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -149,15 +154,20 @@ export default function ManagerMaterialsPage() {
   const requestColumns: Column<MaterialRequest>[] = useMemo(
     () => [
       {
-        key: "material_name",
+        key: "title",
         label: "Material",
         sortable: true,
       },
       {
+        key: "category",
+        label: "Category",
+        width: "120px",
+      },
+      {
         key: "quantity",
         label: "Qty",
-        width: "100px",
-        render: (val, row) => `${val} ${row.unit}`,
+        width: "80px",
+        render: (val) => val,
       },
       {
         key: "project_name",
@@ -245,12 +255,20 @@ export default function ManagerMaterialsPage() {
         ),
       },
       {
-        key: "id", // Using ID for actions
+        key: "id",
         label: "Actions",
-        width: "150px",
-        render: (id, row) => 
-          row.status === "PENDING" ? (
-            <div className="flex gap-2">
+        width: "180px",
+        render: (id, row) => (
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="h-7 px-2 text-muted-foreground border-border hover:bg-muted/50"
+              onClick={() => setViewBill(row)}
+            >
+              <Eye size={14} className="mr-1" /> View
+            </Button>
+            {row.status === "PENDING" && (
               <Button 
                 size="sm" 
                 variant="outline"
@@ -259,8 +277,9 @@ export default function ManagerMaterialsPage() {
               >
                 Review
               </Button>
-            </div>
-          ) : null,
+            )}
+          </div>
+        ),
       },
     ],
     []
@@ -313,7 +332,7 @@ export default function ManagerMaterialsPage() {
             data={requests}
             columns={requestColumns}
             searchable
-            searchKeys={["material_name", "engineer_name"]}
+            searchKeys={["title", "engineer_name"]}
             emptyMessage="No material requests found"
           />
         ) : (
@@ -335,6 +354,14 @@ export default function ManagerMaterialsPage() {
           onClose={() => setReviewItem(null)}
           onReview={handleModalReview}
           isReviewing={isReviewing}
+        />
+      )}
+
+      {/* Bill Image Modal */}
+      {viewBill && (
+        <BillImageModal
+          bill={viewBill}
+          onClose={() => setViewBill(null)}
         />
       )}
     </div>

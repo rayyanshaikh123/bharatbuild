@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { managerProjects, Project,managerDPR , managerOrganization } from "@/lib/api/manager";
+import { managerProjects, Project, managerOrganization } from "@/lib/api/manager";
+import { managerDpr } from "@/lib/api/dpr";
 import {
   Loader2,
   FileText,
@@ -120,7 +121,7 @@ export default function ManagerDprPage() {
     
     try {
       setIsLoadingDprs(true);
-      const res = await managerDPR.getAll({ projectId: selectedProjectId });
+      const res = await managerDpr.getAll(selectedProjectId);
       setDprs(res.dprs || []);
     } catch (err) {
       console.error("Failed to fetch DPRs:", err);
