@@ -486,8 +486,7 @@ class AuthService {
     final uri = Uri.parse('$_base/labour/jobs/$jobId');
     final res = await _client.get(uri);
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['job'] as Map<String, dynamic>;
+      return jsonDecode(res.body) as Map<String, dynamic>;
     }
     throw Exception('Failed to fetch job details: ${res.body}');
   }
@@ -603,6 +602,19 @@ class AuthService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'latitude': lat, 'longitude': lon}),
     );
+  }
+
+  Future<Map<String, dynamic>> scanQRCode(String qrToken) async {
+    final uri = Uri.parse('$_base/labour/tools/scan');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'qrToken': qrToken}),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Scan failed: ${res.body}');
   }
 
   Future<List<dynamic>> getAttendanceHistory() async {

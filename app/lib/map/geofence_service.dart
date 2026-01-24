@@ -58,7 +58,8 @@ class GeofenceData {
     }
     
     // Handle simple CIRCLE type
-    final type = json['type'] as String? ?? 'NONE';
+    final String rawType = json['type'] as String? ?? 'NONE';
+    final type = rawType.toUpperCase();
     
     if (type == 'CIRCLE') {
       final center = json['center'] as Map<String, dynamic>?;
@@ -107,6 +108,8 @@ class GeofenceService {
     double pointLng,
     GeofenceData geofence,
   ) {
+    // NONE type - no restriction
+    final double graceBuffer = 30.0;
     if (geofence.type == 'CIRCLE') {
       if (geofence.center == null || geofence.radiusMeters == null) {
         return false;
@@ -116,17 +119,17 @@ class GeofenceService {
       if (centerLat == null || centerLng == null) {
         return false;
       }
-      return isPointInsideCircle(
+      final distance = Geolocator.distanceBetween(
         pointLat,
         pointLng,
         centerLat,
         centerLng,
-        geofence.radiusMeters!,
       );
+      return distance <= geofence.radiusMeters! + graceBuffer;
     } else if (geofence.type == 'POLYGON' && geofence.polygon != null) {
-      return isPointInside([pointLat, pointLng], geofence.polygon!);
+       // Polygon validation remains same but we could add a buffer if needed
+       return isPointInside([pointLat, pointLng], geofence.polygon!);
     }
-    // NONE type - no restriction
     return true;
   }
 
@@ -193,11 +196,11 @@ class GeofenceService {
             }).whereType<List<double>>().toList();
             
             if (polygon.isNotEmpty) {
-              final isValid = isPointInside([pointLat, pointLng], polygon);
+              final double graceBuffer = 30.0;
               final distance = _distanceToPolygon(pointLat, pointLng, polygon);
               return {
-                'isValid': isValid,
-                'distance': distance.abs().round(),
+                'isValid': distance <= graceBuffer,
+                'distance': distance.round(),
                 'allowedRadius': 0,
                 'source': 'geofence_geojson',
                 'geofenceType': 'POLYGON',
@@ -216,8 +219,10 @@ class GeofenceService {
               final radius = (properties['radius'] as num?)?.toDouble();
               
               if (centerLat != null && centerLng != null && radius != null) {
-                final isValid = isPointInsideCircle(pointLat, pointLng, centerLat, centerLng, radius);
-                final distance = Geolocator.distanceBetween(pointLat, pointLng, centerLat, centerLng) - radius;
+                final double graceBuffer = 30.0;
+                final distFromCenter = Geolocator.distanceBetween(pointLat, pointLng, centerLat, centerLng);
+                final isValid = distFromCenter <= radius + graceBuffer;
+                final distance = distFromCenter - radius;
                 return {
                   'isValid': isValid,
                   'distance': distance.round(),
@@ -231,18 +236,30 @@ class GeofenceService {
         }
       }
       
-      // Handle simple CIRCLE type
+      // Handle simple CIRCLE/POLYGON type
       final geofence = GeofenceData.fromJson(geofenceJson as Map<String, dynamic>);
       if (geofence.type != 'NONE') {
-        final isValid = isPointInsideGeofence(pointLat, pointLng, geofence);
-        final distance = distanceToGeofence(pointLat, pointLng, geofence);
-        return {
-          'isValid': isValid,
-          'distance': distance.round(),
-          'allowedRadius': geofence.radiusMeters?.round() ?? 0,
-          'source': 'geofence_jsonb',
-          'geofenceType': geofence.type,
-        };
+        const double graceBuffer = 30.0;
+        if (geofence.type == 'CIRCLE') {
+           final isValid = isPointInsideGeofence(pointLat, pointLng, geofence);
+           final distance = distanceToGeofence(pointLat, pointLng, geofence);
+           return {
+             'isValid': isValid,
+             'distance': distance.round(),
+             'allowedRadius': geofence.radiusMeters?.round() ?? 0,
+             'source': 'geofence_jsonb',
+             'geofenceType': 'CIRCLE',
+           };
+        } else if (geofence.type == 'POLYGON' && geofence.polygon != null) {
+           final distance = _distanceToPolygon(pointLat, pointLng, geofence.polygon!);
+           return {
+             'isValid': distance <= graceBuffer,
+             'distance': distance.round(),
+             'allowedRadius': 0,
+             'source': 'geofence_jsonb',
+             'geofenceType': 'POLYGON',
+           };
+        }
       }
     }
 
@@ -251,7 +268,9 @@ class GeofenceService {
     final projLng = projectData?['longitude'] as num?;
     final geofenceRadius = projectData?['geofence_radius'] as num?;
 
-    if (projLat != null && projLng != null && geofenceRadius != null) {
+    if (projLat != null && projLng != null) {
+      final double radius = (geofenceRadius?.toDouble()) ?? 200.0;
+      final double graceBuffer = 30.0; // 30m grace buffer for GPS drift
       final distance = Geolocator.distanceBetween(
         pointLat,
         pointLng,
@@ -259,9 +278,9 @@ class GeofenceService {
         projLng.toDouble(),
       );
       return {
-        'isValid': distance <= geofenceRadius.toDouble(),
+        'isValid': distance <= radius + graceBuffer,
         'distance': distance.round(),
-        'allowedRadius': geofenceRadius.toInt(),
+        'allowedRadius': radius.toInt(),
         'source': 'legacy_fields',
         'geofenceType': 'CIRCLE',
       };

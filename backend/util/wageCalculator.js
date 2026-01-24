@@ -153,7 +153,7 @@ async function checkCategoryCapacity(client, labourId, projectId) {
     `SELECT lr.id as request_id, lr.category, lr.required_count, lrp.status
      FROM labour_request_participants lrp
      JOIN labour_requests lr ON lrp.labour_request_id = lr.id
-     WHERE lrp.labour_id = $1 AND lr.project_id = $2 AND lrp.status = 'APPROVED'
+     WHERE lrp.labour_id = $1 AND lr.project_id = $2 AND lrp.status IN ('APPROVED', 'PENDING')
      ORDER BY lrp.joined_at DESC
      LIMIT 1`,
     [labourId, projectId],

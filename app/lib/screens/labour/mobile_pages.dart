@@ -494,11 +494,9 @@ class _UnifiedProjectCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (hasJobs) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => JobDetailsScreen(jobId: jobs.first['id'].toString())));
-            }
-          },
+          onTap: hasJobs 
+              ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => JobDetailsScreen(jobId: jobs.first['id'].toString())))
+              : null,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -533,74 +531,123 @@ class _UnifiedProjectCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (distText.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(distText, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold, fontSize: 12)),
-                      ),
+                    _buildSideInfo(theme),
                   ],
                 ),
-                if (hasJobs) ...[
-                  const SizedBox(height: 20),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                  Text('openings'.tr(), style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.0, color: Colors.grey[400])),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: jobs.map((j) => _JobChip(job: j)).toList(),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 16),
-                  Text('no_active_openings'.tr(), style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: Colors.grey[400])),
-                ],
+              if (hasJobs) ...[
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+                Text('openings'.tr(), style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.0, color: Colors.grey[400])),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: jobs.map((j) => _JobChip(
+                    job: j, 
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => JobDetailsScreen(jobId: j['id'].toString()))),
+                  )).toList(),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                Text('no_active_openings'.tr(), style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: Colors.grey[400])),
               ],
-            ),
+            ],
           ),
         ),
       ),
+    ),
+  );
+}
+
+  Widget _buildSideInfo(ThemeData theme) {
+    final potentialWage = project['wage'];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (distance.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(distance, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        if (project['budget'] != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '₹${NumberFormat.compact().format(double.tryParse(project['budget'].toString()) ?? 0)}',
+            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.green[700]),
+          ),
+        ],
+        if (potentialWage != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Up to ₹$potentialWage/day',
+            style: TextStyle(fontSize: 9, color: Colors.grey[500], fontWeight: FontWeight.bold),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _JobChip extends StatelessWidget {
   final dynamic job;
-  const _JobChip({required this.job});
+  final VoidCallback onTap;
+  const _JobChip({required this.job, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isFull = (job['current_count'] ?? 0) >= (job['required_count'] ?? 0);
+    final wage = job['wage_rate'];
     
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isFull ? Colors.grey[100] : theme.colorScheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isFull ? Colors.grey[200]! : theme.colorScheme.primary.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            job['category']?.toString().toUpperCase() ?? '',
-            style: TextStyle(
-              color: isFull ? Colors.grey[400] : theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
+    return InkWell(
+      onTap: isFull ? null : onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isFull ? Colors.grey[100] : theme.colorScheme.primary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isFull ? Colors.grey[200]! : theme.colorScheme.primary.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  job['category']?.toString().toUpperCase() ?? '',
+                  style: TextStyle(
+                    color: isFull ? Colors.grey[400] : theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+                if (wage != null)
+                  Text(
+                    '₹$wage/hr',
+                    style: TextStyle(
+                      color: isFull ? Colors.grey[400] : Colors.green[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          if (isFull)
-             Text('FULL', style: TextStyle(color: Colors.red[300], fontSize: 10, fontWeight: FontWeight.bold))
-          else
-            Text('${job['required_count']} positions', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-        ],
+            const SizedBox(width: 8),
+            if (isFull)
+               Text('FULL', style: TextStyle(color: Colors.red[300], fontSize: 10, fontWeight: FontWeight.bold))
+            else
+              Text('${job['required_count']} pos', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+          ],
+        ),
       ),
     );
   }
