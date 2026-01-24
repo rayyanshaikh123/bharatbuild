@@ -153,3 +153,105 @@ export const ownerReports = {
   getAISummary: (reportType: string, filters: ReportFilters = {}) =>
     api.get<any>(`/owner/reports/${reportType}/ai-summary?${buildQueryString(filters)}`),
 };
+
+// ==================== MANAGER REPORTS API ====================
+
+export const managerReports = {
+  // Get financial report
+  getFinancial: (filters: ReportFilters = {}) =>
+    api.get<ReportData>(`/manager/reports/financial?${buildQueryString(filters)}`),
+
+  // Get project progress report
+  getProgress: (filters: ReportFilters = {}) =>
+    api.get<ReportData>(`/manager/reports/project-progress?${buildQueryString(filters)}`),
+
+  // Get attendance & workforce report
+  getAttendance: (filters: ReportFilters = {}) =>
+    api.get<ReportData>(`/manager/reports/attendance?${buildQueryString(filters)}`),
+
+  // Get materials report
+  getMaterials: (filters: ReportFilters = {}) =>
+    api.get<ReportData>(`/manager/reports/materials?${buildQueryString(filters)}`),
+
+  // Get audit & compliance report
+  getAudit: (filters: ReportFilters = {}) =>
+    api.get<ReportData>(`/manager/reports/audit?${buildQueryString(filters)}`),
+
+  // Download PDF reports
+  downloadFinancialPDF: async (filters: ReportFilters = {}) => {
+    const response = await fetch(`${API_URL}/manager/reports/financial/pdf?${buildQueryString(filters)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to download PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `financial-report-${Date.now()}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadProgressPDF: async (filters: ReportFilters = {}) => {
+    const response = await fetch(`${API_URL}/manager/reports/progress/pdf?${buildQueryString(filters)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to download PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `progress-report-${Date.now()}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadAttendancePDF: async (filters: ReportFilters = {}) => {
+    const response = await fetch(`${API_URL}/manager/reports/attendance/pdf?${buildQueryString(filters)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to download PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendance-report-${Date.now()}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadMaterialsPDF: async (filters: ReportFilters = {}) => {
+    const response = await fetch(`${API_URL}/manager/reports/materials/pdf?${buildQueryString(filters)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to download PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `materials-report-${Date.now()}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadAuditPDF: async (filters: ReportFilters = {}) => {
+    const response = await fetch(`${API_URL}/manager/reports/audit/pdf?${buildQueryString(filters)}`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to download PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-report-${Date.now()}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  // AI-powered insights
+  getProjectAIInsights: (projectId: string, filters: ReportFilters = {}) =>
+    api.get<any>(`/manager/reports/project/${projectId}/ai-insights?${buildQueryString(filters)}`),
+
+  getAISummary: (reportType: string, filters: ReportFilters = {}) =>
+    api.get<any>(`/manager/reports/${reportType}/ai-summary?${buildQueryString(filters)}`),
+};

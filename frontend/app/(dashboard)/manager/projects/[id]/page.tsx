@@ -10,6 +10,7 @@ export default function ManagerProjectDetailPage() {
   const projectId = params.id as string;
   
   const [project, setProject] = useState<Project | null>(null);
+  const [isCreator, setIsCreator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +27,19 @@ export default function ManagerProjectDetailPage() {
           return;
         }
 
-        const res = await managerProjects.getById(projectId, approved.org_id);
-        setProject(res.project);
+        // Fetch from my-projects to get is_creator info
+        const myProjectsRes = await managerProjects.getMyProjects(approved.org_id);
+        const foundProject = myProjectsRes.projects?.find(p => p.id === projectId);
+        
+        if (foundProject) {
+          setProject(foundProject);
+          setIsCreator(foundProject.is_creator ?? false);
+        } else {
+          // Fallback to getById if not in my-projects (shouldn't happen normally)
+          const res = await managerProjects.getById(projectId, approved.org_id);
+          setProject(res.project);
+          setIsCreator(false);
+        }
       } catch (err) {
         console.error("Failed to fetch project:", err);
         setError("Failed to load project details");
@@ -47,8 +59,9 @@ export default function ManagerProjectDetailPage() {
         error={error}
         backHref="/manager/projects"
         editHref={`/manager/projects/${projectId}/edit`}
-        showEdit={true}
+        showEdit={isCreator}
         userRole="manager"
+        isCreator={isCreator}
       />
     </div>
   );

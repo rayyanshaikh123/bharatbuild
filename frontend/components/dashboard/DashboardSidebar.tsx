@@ -13,7 +13,9 @@ import {
   ChevronRight,
   Menu,
   X,
-  Receipt,
+  Receipt,ReceiptIndianRupeeIcon
+  ,
+  ReceiptIndianRupee,
   History,
   Calendar,
   Clock,
@@ -52,10 +54,17 @@ const managerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/manager", icon: LayoutDashboard },
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
+  { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
+  { label:"Wages", href:"/manager/wages", icon:ReceiptIndianRupeeIcon },
   { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
   { label: "Ledger", href: "/manager/ledger", icon: Receipt },
   { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
+  { label: "Materials", href: "/manager/materials", icon: Package },
+  { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
+  { label: "Audit Logs", href: "/manager/audit", icon: History },
+  { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },
+  { label: "Reports", href: "/manager/reports", icon: BarChart },
 ];
 
 export function DashboardSidebar() {

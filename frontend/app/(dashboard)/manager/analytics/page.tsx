@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { ownerAnalytics, ownerProjects, ownerOrganization, Project } from "@/lib/api/owner";
+import { managerProjects, managerOrganization, Project } from "@/lib/api/manager";
+import { managerAnalytics } from "@/lib/api/analytics";
 import { ProjectAnalyticsDetail } from "@/components/dashboard/ProjectAnalyticsDetail";
 import { Loader2, TrendingUp, DollarSign, Activity, Target, AlertCircle } from "lucide-react";
 
-export default function OwnerAnalyticsPage() {
+export default function ManagerAnalyticsPage() {
   const { user } = useAuth();
   const [overview, setOverview] = useState<any | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -21,15 +22,18 @@ export default function OwnerAnalyticsPage() {
       try {
         setIsLoadingOverview(true);
         
-        // Get overview
-        const analyticsRes = await ownerAnalytics.getOverview();
-        setOverview(analyticsRes);
-
-        // Get projects for selector
-        const orgRes = await ownerOrganization.get();
-        if (orgRes.organization) {
-          const projectsRes = await ownerProjects.getAll(orgRes.organization.id);
+        // Use getMyRequests pattern to get org_id
+        const reqsRes = await managerOrganization.getMyRequests();
+        const approved = reqsRes.requests?.find(r => r.status === "APPROVED");
+        
+        if (approved && approved.org_id) {
+          // Get projects for selector
+          const projectsRes = await managerProjects.getMyProjects(approved.org_id);
           setProjects(projectsRes.projects || []);
+
+          // Get overview
+          const analyticsRes = await managerAnalytics.getOverview();
+          setOverview(analyticsRes);
         }
       } catch (err) {
         console.error("Failed to fetch analytics:", err);
@@ -50,7 +54,7 @@ export default function OwnerAnalyticsPage() {
     const fetchProjectAnalytics = async () => {
       try {
         setIsLoadingProject(true);
-        const res = await ownerAnalytics.getProjectAnalytics(selectedProjectId);
+        const res = await managerAnalytics.getProjectAnalytics(selectedProjectId);
         setProjectAnalytics(res);
       } catch (err) {
         console.error("Failed to fetch project analytics:", err);
@@ -72,12 +76,12 @@ export default function OwnerAnalyticsPage() {
 
   return (
     <div className="space-y-8 pt-12 md:pt-0 pb-12">
-      <DashboardHeader userName={user?.name?.split(" ")[0]} title="Analytics Dashboard" />
+      <DashboardHeader userName={user?.name?.split(" ")[0]} title="Analytics & Overview" />
 
       {/* Organization Overview */}
       {overview && (
         <>
-          <h3 className="text-lg font-bold">Organization Overview</h3>
+          <h3 className="text-lg font-bold">Your Performance Overview</h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="glass-card rounded-xl p-4">
               <div className="flex items-center gap-3">
@@ -85,7 +89,7 @@ export default function OwnerAnalyticsPage() {
                   <Activity className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total Projects</p>
+                  <p className="text-xs text-muted-foreground">Assigned Projects</p>
                   <p className="text-2xl font-bold">{overview.total_projects || 0}</p>
                 </div>
               </div>
@@ -163,9 +167,9 @@ export default function OwnerAnalyticsPage() {
         </>
       )}
 
-      {/* Project Analytics */}
+      {/* Project Analytics Selector */}
       <div className="glass-card rounded-xl p-6">
-        <h3 className="font-bold text-lg mb-4">Project Analytics</h3>
+        <h3 className="font-bold text-lg mb-4">Detailed Project Analytics</h3>
         
         <select
           value={selectedProjectId || ""}

@@ -74,6 +74,11 @@ export default function ManagerProjectsTablePage() {
     ON_HOLD: { bg: "rgba(100, 116, 139, 0.1)", text: "#475569", border: "rgba(100, 116, 139, 0.3)" },
   };
 
+  const roleStyles = {
+    Creator: { bg: "rgba(139, 92, 246, 0.1)", text: "#7c3aed", border: "rgba(139, 92, 246, 0.3)" },
+    "Team Member": { bg: "rgba(6, 182, 212, 0.1)", text: "#0891b2", border: "rgba(6, 182, 212, 0.3)" },
+  };
+
   const columns: Column<Project>[] = [
     {
       key: "name",
@@ -125,10 +130,36 @@ export default function ManagerProjectsTablePage() {
       },
     },
     {
+      key: "is_creator",
+      label: "Role",
+      sortable: true,
+      width: "12%",
+      render: (value, row) => {
+        const role = value ? "Creator" : "Team Member";
+        const style = roleStyles[role];
+        return (
+          <span
+            style={{
+              display: "inline-block",
+              padding: "0.375rem 0.75rem",
+              backgroundColor: style.bg,
+              color: style.text,
+              border: `1px solid ${style.border}`,
+              borderRadius: "9999px",
+              fontSize: "0.75rem",
+              fontWeight: "600",
+            }}
+          >
+            {role}
+          </span>
+        );
+      },
+    },
+    {
       key: "budget",
       label: "Budget",
       sortable: true,
-      width: "15%",
+      width: "12%",
       render: (value) => (
         <span style={{ fontWeight: "600" }}>{formatBudget(value || 0)}</span>
       ),

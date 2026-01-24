@@ -57,4 +57,19 @@ export const api = {
       method: "DELETE",
       ...(data ? { body: JSON.stringify(data) } : {}),
     }),
+
+  getBlob: async (endpoint: string) => {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch blob");
+    return res.blob();
+  },
+
+  defaults: {
+    baseURL: API_URL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  },
 };

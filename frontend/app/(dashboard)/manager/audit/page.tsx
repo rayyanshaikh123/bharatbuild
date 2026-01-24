@@ -139,19 +139,16 @@ export default function ManagerAuditPage() {
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
-        const orgsRes = await managerOrganization.getMyOrganizations();
-        if (orgsRes.organizations && orgsRes.organizations.length > 0) {
-          const orgId = orgsRes.organizations[0].org_id;
-           if (!orgId) {
-             console.error("Organization ID missing in response", orgsRes.organizations[0]);
-             setError("Invalid organization data");
-             return;
-          }
-          setOrganizationId(orgId);
-          const projectsRes = await managerProjects.getMyProjects(orgId);
+        // Use getMyRequests instead of getMyOrganizations - it returns org_id
+        const reqsRes = await managerOrganization.getMyRequests();
+        const approved = reqsRes.requests?.find(r => r.status === "APPROVED");
+        
+        if (approved && approved.org_id) {
+          setOrganizationId(approved.org_id);
+          const projectsRes = await managerProjects.getMyProjects(approved.org_id);
           setProjects(projectsRes.projects || []);
         } else {
-            setProjects([]);
+          setProjects([]);
         }
       } catch (err) {
         console.error("Failed to fetch initial data:", err);
