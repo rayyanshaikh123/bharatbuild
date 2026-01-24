@@ -53,6 +53,37 @@ CREATE TABLE "audit_logs" (
 	"category" text,
 	"change_summary" jsonb
 );
+CREATE TABLE "dangerous_task_otps" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_request_id" uuid NOT NULL,
+	"otp_hash" text NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"verified" boolean DEFAULT false,
+	"verified_at" timestamp,
+	"created_at" timestamp DEFAULT now()
+);
+CREATE TABLE "dangerous_task_requests" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"dangerous_task_id" uuid NOT NULL,
+	"labour_id" uuid NOT NULL,
+	"project_id" uuid NOT NULL,
+	"status" text DEFAULT 'REQUESTED',
+	"requested_at" timestamp DEFAULT now(),
+	"approved_at" timestamp,
+	"approved_by" uuid,
+	"approval_method" text DEFAULT 'OTP',
+	CONSTRAINT "dtr_status_check" CHECK (CHECK ((status = ANY (ARRAY['REQUESTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'EXPIRED'::text]))))
+);
+CREATE TABLE "dangerous_tasks" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"is_active" boolean DEFAULT true,
+	"created_by" uuid NOT NULL,
+	"created_by_role" text DEFAULT 'SITE_ENGINEER',
+	"created_at" timestamp DEFAULT now()
+);
 CREATE TABLE "dpr_items" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"dpr_id" uuid NOT NULL,
@@ -79,6 +110,25 @@ CREATE TABLE "dprs" (
 	"plan_item_id" uuid,
 	CONSTRAINT "dprs_project_id_site_engineer_id_report_date_key" UNIQUE("project_id","site_engineer_id","report_date"),
 	CONSTRAINT "dprs_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
+);
+CREATE TABLE "goods_receipt_notes" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"purchase_order_id" uuid NOT NULL,
+	"material_request_id" uuid NOT NULL,
+	"received_items" jsonb NOT NULL,
+	"received_at" timestamp DEFAULT now(),
+	"received_by" uuid NOT NULL,
+	"bill_image" bytea,
+	"bill_image_mime" text,
+	"delivery_proof_image" bytea,
+	"delivery_proof_image_mime" text,
+	"status" text DEFAULT 'PENDING',
+	"manager_feedback" text,
+	"reviewed_by" uuid,
+	"reviewed_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "grn_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "grns" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -183,6 +233,7 @@ CREATE TABLE "material_bills" (
 	"created_at" timestamp DEFAULT now(),
 	"bill_image" bytea,
 	"bill_image_mime" text,
+	"grn_id" uuid,
 	CONSTRAINT "material_bills_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
 CREATE TABLE "material_ledger" (
@@ -441,6 +492,7 @@ CREATE TABLE "purchase_orders" (
 	"sent_at" timestamp,
 	"po_pdf" bytea,
 	"po_pdf_mime" text,
+	"grn_created" boolean DEFAULT false,
 	CONSTRAINT "purchase_orders_status_check" CHECK (CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SENT'::text, 'ACKNOWLEDGED'::text]))))
 );
 CREATE TABLE "session" (
@@ -535,75 +587,27 @@ CREATE TABLE "wages" (
 	CONSTRAINT "wages_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))),
 	CONSTRAINT "wages_wage_type_check" CHECK (CHECK ((wage_type = ANY (ARRAY['DAILY'::text, 'HOURLY'::text]))))
 );
-CREATE TABLE goods_receipt_notes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
-  project_id UUID NOT NULL,
-  purchase_order_id UUID NOT NULL,
-  material_request_id UUID NOT NULL,
-
-  received_items JSONB NOT NULL,
-  -- example:
-  -- [{ material_name, quantity_received, unit }]
-
-  received_at TIMESTAMP DEFAULT now(),
-  received_by UUID NOT NULL, -- site_engineer_id
-
-  bill_image BYTEA,
-  bill_image_mime TEXT,
-
-  delivery_proof_image BYTEA,
-  delivery_proof_image_mime TEXT,
-
-  status TEXT DEFAULT 'PENDING',
-  manager_feedback TEXT,
-  reviewed_by UUID,
-  reviewed_at TIMESTAMP,
-
-  created_at TIMESTAMP DEFAULT now(),
-
-  CONSTRAINT grn_status_check
-    CHECK (status IN ('PENDING','APPROVED','REJECTED'))
-);
-ALTER TABLE goods_receipt_notes
-ADD CONSTRAINT grn_project_fkey
-FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
-
-ALTER TABLE goods_receipt_notes
-ADD CONSTRAINT grn_po_fkey
-FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE RESTRICT;
-
-ALTER TABLE goods_receipt_notes
-ADD CONSTRAINT grn_material_request_fkey
-FOREIGN KEY (material_request_id) REFERENCES material_requests(id) ON DELETE RESTRICT;
-
-ALTER TABLE goods_receipt_notes
-ADD CONSTRAINT grn_received_by_fkey
-FOREIGN KEY (received_by) REFERENCES site_engineers(id);
-
-ALTER TABLE goods_receipt_notes
-ADD CONSTRAINT grn_reviewed_by_fkey
-FOREIGN KEY (reviewed_by) REFERENCES managers(id);
-ALTER TABLE material_bills
-ADD COLUMN grn_id UUID;
-
-ALTER TABLE material_bills
-ADD CONSTRAINT material_bills_grn_fkey
-FOREIGN KEY (grn_id) REFERENCES goods_receipt_notes(id) ON DELETE SET NULL;
-ALTER TABLE purchase_orders
-ADD COLUMN grn_created BOOLEAN DEFAULT false;
-
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_labour_id_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_manual_labour_id_fkey" FOREIGN KEY ("manual_labour_id") REFERENCES "manual_attendance_labours"("id") ON DELETE SET NULL;
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "attendance" ADD CONSTRAINT "attendance_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
 ALTER TABLE "attendance_sessions" ADD CONSTRAINT "attendance_sessions_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "attendance"("id") ON DELETE CASCADE;
+ALTER TABLE "dangerous_task_otps" ADD CONSTRAINT "dto_request_fkey" FOREIGN KEY ("task_request_id") REFERENCES "dangerous_task_requests"("id") ON DELETE CASCADE;
+ALTER TABLE "dangerous_task_requests" ADD CONSTRAINT "dtr_labour_fkey" FOREIGN KEY ("labour_id") REFERENCES "labours"("id") ON DELETE CASCADE;
+ALTER TABLE "dangerous_task_requests" ADD CONSTRAINT "dtr_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "dangerous_task_requests" ADD CONSTRAINT "dtr_task_fkey" FOREIGN KEY ("dangerous_task_id") REFERENCES "dangerous_tasks"("id") ON DELETE CASCADE;
+ALTER TABLE "dangerous_tasks" ADD CONSTRAINT "dt_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "dpr_items" ADD CONSTRAINT "dpr_items_dpr_id_fkey" FOREIGN KEY ("dpr_id") REFERENCES "dprs"("id") ON DELETE CASCADE;
 ALTER TABLE "dpr_items" ADD CONSTRAINT "dpr_items_plan_item_id_fkey" FOREIGN KEY ("plan_item_id") REFERENCES "plan_items"("id");
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
 ALTER TABLE "dprs" ADD CONSTRAINT "dprs_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
+ALTER TABLE "goods_receipt_notes" ADD CONSTRAINT "grn_material_request_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE RESTRICT;
+ALTER TABLE "goods_receipt_notes" ADD CONSTRAINT "grn_po_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT;
+ALTER TABLE "goods_receipt_notes" ADD CONSTRAINT "grn_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "goods_receipt_notes" ADD CONSTRAINT "grn_received_by_fkey" FOREIGN KEY ("received_by") REFERENCES "site_engineers"("id");
+ALTER TABLE "goods_receipt_notes" ADD CONSTRAINT "grn_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
 ALTER TABLE "grns" ADD CONSTRAINT "grn_material_request_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE RESTRICT;
 ALTER TABLE "grns" ADD CONSTRAINT "grn_po_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT;
 ALTER TABLE "grns" ADD CONSTRAINT "grn_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
@@ -617,6 +621,7 @@ ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_project_id_fkey" F
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
 ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_grn_fkey" FOREIGN KEY ("grn_id") REFERENCES "goods_receipt_notes"("id") ON DELETE SET NULL;
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_material_request_id_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE SET NULL;
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "managers"("id");
@@ -669,11 +674,15 @@ CREATE UNIQUE INDEX "audit_logs_pkey" ON "audit_logs" ("id");
 CREATE INDEX "idx_audit_actor" ON "audit_logs" ("acted_by_role","acted_by_id");
 CREATE INDEX "idx_audit_entity" ON "audit_logs" ("entity_type","entity_id");
 CREATE INDEX "idx_audit_time" ON "audit_logs" ("created_at");
+CREATE UNIQUE INDEX "dangerous_task_otps_pkey" ON "dangerous_task_otps" ("id");
+CREATE UNIQUE INDEX "dangerous_task_requests_pkey" ON "dangerous_task_requests" ("id");
+CREATE UNIQUE INDEX "dangerous_tasks_pkey" ON "dangerous_tasks" ("id");
 CREATE UNIQUE INDEX "dpr_items_pkey" ON "dpr_items" ("id");
 CREATE INDEX "idx_dpr_items_dpr" ON "dpr_items" ("dpr_id");
 CREATE INDEX "idx_dpr_items_plan_item" ON "dpr_items" ("plan_item_id");
 CREATE UNIQUE INDEX "dprs_pkey" ON "dprs" ("id");
 CREATE UNIQUE INDEX "dprs_project_id_site_engineer_id_report_date_key" ON "dprs" ("project_id","site_engineer_id","report_date");
+CREATE UNIQUE INDEX "goods_receipt_notes_pkey" ON "goods_receipt_notes" ("id");
 CREATE UNIQUE INDEX "grns_pkey" ON "grns" ("id");
 CREATE INDEX "idx_grn_po" ON "grns" ("purchase_order_id");
 CREATE INDEX "idx_grn_project" ON "grns" ("project_id");
