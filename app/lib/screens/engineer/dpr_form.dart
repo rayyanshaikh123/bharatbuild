@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/dpr_provider.dart';
+import '../../providers/ledger_provider.dart';
+import '../../providers/current_project_provider.dart';
 import '../../services/voice_nlp_service.dart';
 
 class DPRFormScreen extends ConsumerStatefulWidget {
@@ -20,8 +22,12 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   
-  Map<String, dynamic>? _selectedPlanItem; // To be removed or used for simple dropdown
+  // Work Items
   final List<Map<String, dynamic>> _reportedItems = [];
+  
+  // Material Usage Items
+  final List<Map<String, dynamic>> _materialUsage = [];
+
   DateTime _reportDate = DateTime.now();
   XFile? _image;
   bool _isLoading = false;
@@ -66,6 +72,25 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final project = ref.read(currentProjectProvider);
+      
+      // 1. Submit Material Usage (Parallel)
+      for (var mat in _materialUsage) {
+        if (project != null) {
+          await ref.read(recordMovementProvider({
+            'project_id': project['project_id'] ?? project['id'],
+            'material_name': mat['material_name'],
+            'category': 'Construction', // Simplified
+            'quantity': mat['quantity'],
+            'unit': mat['unit'] ?? 'units',
+            'movement_type': 'OUT',
+            'source': 'DPR_CONSUMPTION',
+            'remarks': 'Used in DPR: ${_titleController.text}',
+          }).future);
+        }
+      }
+
+      // 2. Submit DPR
       String? base64Image;
       String? mimeType;
       
@@ -131,14 +156,28 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
     }
 
     final result = _voiceService.parseSpeech(text, knownItemsMap);
-    final parsedItems = result['items'] as Map<String, double>;
+    
+    final workTasks = result['items'] as Map<String, double>;
+    final materialsFound = result['materials'] as List<Map<String, dynamic>>;
     final customItems = result['custom'] as List<Map<String, dynamic>>;
 
+    final fullText = result['full_text'] as String? ?? text;
+    
     setState(() {
-      // Add matched items
-      parsedItems.forEach((planItemId, qty) {
+      // 0. Autofill Description & Title
+      if (_descriptionController.text.isEmpty) {
+        _descriptionController.text = fullText;
+      } else {
+        // Append if already has text
+        _descriptionController.text = "${_descriptionController.text}\n$fullText";
+      }
+
+      // 1. Autofill Work Tasks
+      String? firstTaskName;
+      workTasks.forEach((planItemId, qty) {
         final planItem = availablePlanItems.firstWhere((it) => it['id'] == planItemId);
-        // Check if already in _reportedItems
+        firstTaskName ??= planItem['task_name'];
+        
         final existingIdx = _reportedItems.indexWhere((ri) => ri['plan_item_id'] == planItemId);
         if (existingIdx != -1) {
           _reportedItems[existingIdx]['quantity_done'] = qty;
@@ -148,20 +187,44 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
             'plan_id': planItem['plan_id'],
             'task_name': planItem['task_name'],
             'quantity_done': qty,
-            'remarks': '',
+            'remarks': 'Voice update',
           });
         }
       });
 
-      // Handle custom/unmatched items by adding them as remarks to a "Custom/Other" note or listing them
-      if (customItems.isNotEmpty) {
-        String customRemarks = customItems.map((c) => "${c['quantity']} ${c['item']}").join(", ");
-        _descriptionController.text = "${_descriptionController.text} [Voice: $customRemarks]".trim();
+      // Smart Title Autofill
+      if (_titleController.text.isEmpty) {
+        if (firstTaskName != null) {
+          _titleController.text = "$firstTaskName Update";
+        } else if (materialsFound.isNotEmpty) {
+          _titleController.text = "Material Consumption Report";
+        } else {
+          _titleController.text = "Site Report - ${DateFormat('dd MMM').format(DateTime.now())}";
+        }
       }
+
+      // 2. Autofill Material Usage
+      for (var mat in materialsFound) {
+        // Check duplicate
+        final existingIdx = _materialUsage.indexWhere((m) => m['material_name'] == mat['material']);
+        if (existingIdx != -1) {
+           _materialUsage[existingIdx]['quantity'] = mat['quantity'];
+        } else {
+           _materialUsage.add({
+             'material_name': mat['material'],
+             'quantity': mat['quantity'],
+             'unit': 'units', // Default logic, could be enhanced
+           });
+        }
+      }
+
+      // 3. Custom/Unmatched as additional remarks in description if not already covered
+      // (Since we added full text to description, we might not need to append custom items explicitly,
+      // but let's keep them if they were parsed as specific entities)
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Processed: $text')),
+      SnackBar(content: Text('Autofilled from voice!'), backgroundColor: Colors.green),
     );
   }
 
@@ -169,6 +232,7 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final planItemsAsync = ref.watch(projectPlanItemsProvider);
+    final stockAsync = ref.watch(projectStockProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -193,13 +257,62 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // STOCK DISPLAY SECTION
+              Text(
+                'Available Stock',
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              stockAsync.when(
+                data: (stock) {
+                  if (stock.isEmpty) return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text('No stock data available', style: theme.textTheme.bodySmall),
+                  );
+                  return Container(
+                    height: 90,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: stock.length,
+                      separatorBuilder: (_,__) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final item = stock[index];
+                        return Container(
+                          width: 120,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(item['material_name'] ?? 'Item', 
+                                   style: const TextStyle(fontWeight: FontWeight.bold),
+                                   maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              Text('${item['current_stock']} ${item['unit'] ?? ''}',
+                                   style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (_,__) => const Text('Failed to load stock'),
+              ),
+
               Text(
                 'report_details'.tr(),
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               
-              // Date Picker
               InkWell(
                 onTap: _selectDate,
                 child: Container(
@@ -220,7 +333,6 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Title
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -232,7 +344,42 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Reported Plan Items Section
+              // MATERIAL CONSUMPTION SECTION
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Materials Used Today',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  TextButton.icon(
+                    onPressed: _showAddMaterialSheet,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                  ),
+                ],
+              ),
+              if (_materialUsage.isEmpty)
+                Text('No material usage reported', style: theme.textTheme.bodySmall)
+              else
+                ..._materialUsage.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final item = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(item['material_name']),
+                      subtitle: Text('${item['quantity']} ${item['unit']}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        onPressed: () => setState(() => _materialUsage.removeAt(idx)),
+                      ),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 24),
+
+              // WORK TASKS SECTION
               planItemsAsync.maybeWhen(
                 data: (items) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,7 +395,7 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
                           TextButton.icon(
                             onPressed: () => _showAddPlanItemSheet(items),
                             icon: const Icon(Icons.add_circle_outline, size: 20),
-                            label: Text('add_task'.tr()),
+                            label: Text('select_task'.tr()),
                           ),
                       ],
                     ),
@@ -262,7 +409,7 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            'no_tasks_selected_yet'.tr(),
+                            'select_tasks_to_report'.tr(),
                             style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
                           ),
                         ),
@@ -279,7 +426,6 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
                 orElse: () => const SizedBox.shrink(),
               ),
 
-              // Description
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 5,
@@ -292,7 +438,6 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Image Selection
               Text(
                 'site_photos'.tr(),
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -390,9 +535,19 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    item['task_name'] ?? 'Task',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['task_name'] ?? 'Task',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (item['planned_amt'] != null)
+                        Text(
+                          'Total Planned: ${item['planned_amt']}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.primary),
+                        ),
+                    ],
                   ),
                 ),
                 IconButton(
@@ -465,12 +620,54 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
                   'task_name': item['task_name'],
                   'quantity_done': 0.0,
                   'remarks': '',
+                  'planned_amt': item['planned_quantity'],
                 });
               });
               Navigator.pop(context);
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showAddMaterialSheet() {
+    final nameCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Add Material Usage', style: Theme.of(context).textTheme.titleLarge), 
+            const SizedBox(height: 16),
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Material Name')),
+            const SizedBox(height: 12),
+            TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'), keyboardType: TextInputType.number),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                if(nameCtrl.text.isNotEmpty && qtyCtrl.text.isNotEmpty) {
+                  setState(() {
+                    _materialUsage.add({
+                      'material_name': nameCtrl.text,
+                      'quantity': double.tryParse(qtyCtrl.text) ?? 0,
+                      'unit': 'units'
+                    });
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Add'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
