@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'persistent_client.dart';
+import '../config.dart';
 
 class AuthService {
-  // Update this to your backend address when running on device/emulator
-  // Backend is running on localhost:3001; for Android emulator use 10.0.2.2
-  static const String _base = 'http://192.168.0.101:3001';
+  static final String _base = API_BASE_URL;
 
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();

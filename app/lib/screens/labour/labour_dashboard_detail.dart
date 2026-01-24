@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import '../../theme/app_colors.dart';
 import '../../services/persistent_client.dart';
+import '../../config.dart';
 import '../../providers/user_provider.dart';
 
 class LabourDashboardDetail extends ConsumerStatefulWidget {
@@ -38,7 +39,7 @@ class _LabourDashboardDetailState extends ConsumerState<LabourDashboardDetail> {
 
     final client = PersistentClient();
     try {
-      final uri = Uri.parse('http://10.0.2.2:3001/labour/apply');
+      final uri = Uri.parse(API_BASE_URL + '/labour/apply');
       final body = jsonEncode({
         'site_id': widget.site?['id'],
         'labour_id': labourId,
