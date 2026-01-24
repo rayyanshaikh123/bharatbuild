@@ -53,11 +53,15 @@ export function MaterialReviewModal({ item, type, onClose, onReview, isReviewing
                <>
                  <div className="flex justify-between items-center">
                    <span className="text-sm text-muted-foreground">Material</span>
-                   <span className="font-bold text-base">{item.material_name}</span>
+                   <span className="font-bold text-base">{item.title}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-muted-foreground">Category</span>
+                   <span className="text-sm">{item.category || "-"}</span>
                  </div>
                  <div className="flex justify-between items-center">
                    <span className="text-sm text-muted-foreground">Quantity</span>
-                   <span className="font-mono font-medium">{item.quantity} {item.unit}</span>
+                   <span className="font-mono font-medium">{item.quantity}</span>
                  </div>
                  <div className="flex justify-between items-center">
                    <span className="text-sm text-muted-foreground">Requested By</span>
@@ -80,6 +84,17 @@ export function MaterialReviewModal({ item, type, onClose, onReview, isReviewing
                      {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(item.total_amount)}
                    </span>
                  </div>
+                 {item.bill_image && (
+                   <div className="pt-2 border-t border-border">
+                     <p className="text-sm text-muted-foreground mb-2">Bill Image</p>
+                     <img 
+                       src={`data:${item.bill_image_mime || 'image/jpeg'};base64,${item.bill_image}`}
+                       alt="Bill"
+                       className="w-full max-h-48 object-contain rounded-lg border border-border bg-background cursor-pointer hover:opacity-90"
+                       onClick={() => window.open(`data:${item.bill_image_mime || 'image/jpeg'};base64,${item.bill_image}`, '_blank')}
+                     />
+                   </div>
+                 )}
                </>
              )}
           </div>

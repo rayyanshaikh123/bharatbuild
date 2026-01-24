@@ -57,7 +57,7 @@ const managerNavItems: NavItem[] = [
   { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
   { label:"Wages", href:"/manager/wages", icon:ReceiptIndianRupeeIcon },
   { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
-  { label: "Ledger", href: "/manager/ledger", icon: Receipt },
+  { label: "Timeline", href: "/manager/timeline", icon: Clock },
   { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
   { label: "Materials", href: "/manager/materials", icon: Package },

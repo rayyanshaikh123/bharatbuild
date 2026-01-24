@@ -304,10 +304,13 @@ export const managerDPR = {
 export interface LabourRequest {
   id: string;
   project_id: string;
-  labour_type: string;
+  site_engineer_id?: string;
+  category: string;
   required_count: number;
+  search_radius_meters: number;
   request_date: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "OPEN" | "LOCKED" | "CLOSED";
+  copied_from?: string;
   created_at: string;
 }
 
@@ -380,7 +383,7 @@ export const managerMaterials = {
   // Get material requests
   getRequests: (filters?: { project_id?: string; status?: string }) => {
     const params = new URLSearchParams();
-    if (filters?.project_id) params.append('projectId', filters.project_id);
+    if (filters?.project_id) params.append('project_id', filters.project_id);
     if (filters?.status) params.append('status', filters.status);
     return api.get<{ requests: any[] }>(`/manager/material/requests?${params.toString()}`);
   },
@@ -388,18 +391,21 @@ export const managerMaterials = {
   // Get material bills
   getBills: (filters?: { project_id?: string; status?: string }) => {
     const params = new URLSearchParams();
-    if (filters?.project_id) params.append('projectId', filters.project_id);
+    if (filters?.project_id) params.append('project_id', filters.project_id);
     if (filters?.status) params.append('status', filters.status);
     return api.get<{ bills: any[] }>(`/manager/material/bills?${params.toString()}`);
   },
 
-  // Review material request
-  reviewRequest: (requestId: string, status: 'APPROVED' | 'REJECTED', feedback?: string) =>
-    api.put<{ message: string }>(`/manager/material/requests/${requestId}/review`, { status, feedback }),
+  // Review material request (PATCH to match backend)
+  reviewRequest: (requestId: string, status: 'APPROVED' | 'REJECTED', manager_feedback?: string) =>
+    api.patch<{ request: any }>(`/manager/material/requests/${requestId}`, { status, manager_feedback }),
 
-  // Review material bill
-  reviewBill: (billId: string, status: 'APPROVED' | 'REJECTED', feedback?: string) =>
-    api.put<{ message: string }>(`/manager/material/bills/${billId}/review`, { status, feedback }),
+  // Review material bill (PATCH to match backend)
+  reviewBill: (billId: string, status: 'APPROVED' | 'REJECTED', manager_feedback?: string) =>
+    api.patch<{ bill: any }>(`/manager/material/bills/${billId}`, { status, manager_feedback }),
+
+  // Get bill image
+  getBillImage: (billId: string) => api.getBlob(`/manager/material/bills/${billId}/image`),
 };
 
 // ==================== MANAGER PROJECT JOIN REQUESTS ====================
@@ -449,3 +455,32 @@ export const managerBlacklist = {
   remove: (id: string, orgId: string) =>
     api.delete<{ message: string }>(`/manager/blacklist/${id}?orgId=${orgId}`),
 };
+
+// ==================== MANAGER TIMELINE API ====================
+
+export interface TimelineItem {
+  plan_item_id: string;
+  task_name: string;
+  period_start: string;
+  period_end: string;
+  status: string;
+  priority: number;
+  delay_days: number;
+  delay_info: any;
+}
+
+export interface TimelineResponse {
+  project_id: string;
+  overall_progress: number;
+  total_tasks: number;
+  completed_tasks: number;
+  pending_tasks: number;
+  delayed_tasks: number;
+  timeline: TimelineItem[];
+}
+
+export const managerTimeline = {
+  getProjectTimeline: (projectId: string) =>
+    api.get<TimelineResponse>(`/manager/timeline/project/${projectId}`),
+};
+

@@ -282,9 +282,10 @@ export interface MaterialRequest {
   id: string;
   project_id: string;
   site_engineer_id: string;
-  material_name: string;
+  title: string;
+  category: string;
   quantity: number;
-  unit: string;
+  description?: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;
   project_name?: string;
@@ -413,11 +414,13 @@ export const ownerWages = {
 export interface LabourRequest {
   id: string;
   project_id: string;
-  site_engineer_id: string;
-  request_date: string;
-  labour_type: string;
+  site_engineer_id?: string;
+  category: string;
   required_count: number;
-  status: string;
+  search_radius_meters: number;
+  request_date: string;
+  status: "OPEN" | "LOCKED" | "CLOSED";
+  copied_from?: string;
   created_at: string;
 }
 

@@ -91,8 +91,8 @@ export default function ManagerLabourRequestsPage() {
   const columns: Column<LabourRequest>[] = useMemo(
     () => [
       {
-        key: "labour_type",
-        label: "Type",
+        key: "category",
+        label: "Category",
         sortable: true,
         render: (val) => (
           <div className="flex items-center gap-2">
@@ -119,8 +119,8 @@ export default function ManagerLabourRequestsPage() {
         width: "120px",
         render: (val) => (
           <span className={`text-xs px-2 py-1 rounded font-medium ${
-            val === "APPROVED" ? "bg-green-500/20 text-green-400" :
-            val === "REJECTED" ? "bg-red-500/20 text-red-400" :
+            val === "CLOSED" ? "bg-green-500/20 text-green-400" :
+            val === "LOCKED" ? "bg-blue-500/20 text-blue-400" :
             "bg-amber-500/20 text-amber-400"
           }`}>
             {val}
@@ -174,7 +174,7 @@ export default function ManagerLabourRequestsPage() {
             data={requests}
             columns={columns}
             searchable
-            searchKeys={["labour_type"]}
+            searchKeys={["category"]}
             emptyMessage="No labour requests found"
           />
         )}

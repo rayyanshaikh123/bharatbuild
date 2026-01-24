@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
+import { Badge } from "@/components/ui/badge";
 import { managerOrganization, managerProjects, Project } from "@/lib/api/manager";
 import { managerAudit } from "@/lib/api/audit";
 import type { AuditLog, AuditCategory, AuditAction } from "@/types/ledger";
@@ -11,7 +12,6 @@ import {
   Loader2,
   History,
   Filter,
-  User,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -213,17 +213,24 @@ export default function ManagerAuditPage() {
         key: "action",
         label: "Action",
         width: "100px",
-        render: (value: AuditAction) => <ActionBadge action={value} />,
+        render: (value: AuditAction) => {
+          const actionColors: Record<string, string> = {
+            CREATE: "bg-green-500/20 text-green-400 border-green-500/30",
+            UPDATE: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+            DELETE: "bg-red-500/20 text-red-400 border-red-500/30",
+            APPROVE: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+            REJECT: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+          };
+          const colors = actionColors[value] || "bg-muted/50 text-muted-foreground";
+          return <Badge variant="outline" className={colors}>{value}</Badge>;
+        },
       },
       {
         key: "entity_type",
         label: "Entity",
         width: "130px",
-        render: (value: string, row: AuditLog) => (
-          <div className="text-sm">
-            <div className="font-medium capitalize">{value.replace(/_/g, " ")}</div>
-            <div className="text-xs text-muted-foreground">#{row.entity_id}</div>
-          </div>
+        render: (value: string) => (
+          <span className="text-sm font-medium capitalize">{value?.replace(/_/g, " ")}</span>
         ),
       },
       {
@@ -237,34 +244,27 @@ export default function ManagerAuditPage() {
           ),
       },
       {
-        key: "user_type",
+        key: "acted_by_role",
         label: "By",
-        width: "120px",
-        render: (value: string, row: AuditLog) => (
-          <div className="flex items-center gap-2">
-            <User size={14} className="text-muted-foreground" />
-            <div className="text-sm">
-              <div className="capitalize">{value}</div>
-              <div className="text-xs text-muted-foreground">#{row.user_id}</div>
-            </div>
-          </div>
-        ),
+        width: "130px",
+        render: (value: string) => {
+          const roleColors: Record<string, string> = {
+            OWNER: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+            MANAGER: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+            SITE_ENGINEER: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+            LABOUR: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+          };
+          const colors = roleColors[value?.toUpperCase()] || "bg-muted/50 text-muted-foreground";
+          const displayRole = value?.replace(/_/g, " ") || "Unknown";
+          return <Badge variant="outline" className={colors}>{displayRole}</Badge>;
+        },
       },
       {
-        key: "changed_fields",
-        label: "Changes",
-        render: (value: string[] | null) =>
-          value && value.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {value.slice(0, 3).map((field) => (
-                <span key={field} className="text-xs bg-muted/50 px-2 py-0.5 rounded">
-                  {field}
-                </span>
-              ))}
-              {value.length > 3 && (
-                <span className="text-xs text-muted-foreground">+{value.length - 3} more</span>
-              )}
-            </div>
+        key: "change_summary",
+        label: "Summary",
+        render: (value: string | null) =>
+          value ? (
+            <span className="text-sm text-muted-foreground">{value}</span>
           ) : (
             <span className="text-muted-foreground text-sm">—</span>
           ),
@@ -365,7 +365,7 @@ export default function ManagerAuditPage() {
           data={audits}
           columns={columns}
           searchable={true}
-          searchKeys={["entity_type", "project_name", "user_type"]}
+          searchKeys={["entity_type", "project_name", "acted_by_role"]}
           emptyMessage="No audit logs found for your assigned projects."
           itemsPerPage={15}
         />

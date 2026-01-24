@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { managerProjects, Project} from "@/lib/api/manager";
+import { managerProjects, managerOrganization, managerTimeline, Project, TimelineResponse, TimelineItem } from "@/lib/api/manager";
 import { Loader2, Calendar, Clock, AlertTriangle, CheckCircle2, Filter, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -61,9 +61,19 @@ export default function ManagerTimelinePage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        if (user?.orgId) {
-          const res = await managerProjects.getMyProjects(user.orgId);
-          setProjects(res.projects || []);
+        // Fetch approved organization
+        let currentOrgId = (user as any)?.orgId;
+        
+        if (!currentOrgId && user) {
+          const orgRes = await managerOrganization.getMyRequests();
+          const approved = orgRes.requests?.find((r: any) => r.status === 'APPROVED');
+          if (approved) currentOrgId = approved.org_id;
+        }
+
+        if (currentOrgId) {
+          const res = await managerProjects.getAllProjects(currentOrgId);
+          const authorizedProjects = (res.projects || []).filter((p: any) => p.my_status === 'ACTIVE' || p.is_creator);
+          setProjects(authorizedProjects);
         }
       } catch (err) {
         console.error("Failed to fetch projects", err);
