@@ -610,7 +610,10 @@
           alert("Please get your projects first to set project ID");
           return;
         }
-        await apiCall("GET", `/engineer/dprs?project_id=${currentProjectId}`);
+        await apiCall(
+          "GET",
+          `/engineer/dpr/projects/${currentProjectId}/dprs/my`,
+        );
       }
 
       async function getProjectPlanItems() {
@@ -620,7 +623,7 @@
         }
         await apiCall(
           "GET",
-          `/engineer/dprs/projects/${currentProjectId}/plans/items`,
+          `/engineer/dpr/projects/${currentProjectId}/plans/items`,
         );
       }
 
@@ -652,7 +655,7 @@
 
         await apiCall(
           "POST",
-          `/engineer/dprs/projects/${currentProjectId}/dprs`,
+          `/engineer/dpr/projects/${currentProjectId}/dprs`,
           body,
         );
       }
@@ -663,7 +666,7 @@
           alert("Please enter DPR ID");
           return;
         }
-        await apiCall("GET", `/engineer/dprs/${dprId}`);
+        await apiCall("GET", `/engineer/dpr/dprs/${dprId}`);
       }
 
       async function deleteDPR() {
@@ -675,7 +678,7 @@
         if (!confirm("Are you sure you want to delete this DPR?")) {
           return;
         }
-        await apiCall("DELETE", `/engineer/dprs/${dprId}`);
+        await apiCall("DELETE", `/engineer/dpr/dprs/${dprId}`);
       }
 
       // 4️⃣ Material Request Management

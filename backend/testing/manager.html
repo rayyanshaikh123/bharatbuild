@@ -90,6 +90,61 @@
         margin: 10px 0;
         font-size: 12px;
       }
+      .dpr-details {
+        background: #ecf0f1;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+        display: none;
+      }
+      .dpr-details.visible {
+        display: block;
+      }
+      .dpr-details h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 2px solid #27ae60;
+        padding-bottom: 5px;
+      }
+      .dpr-field {
+        margin: 8px 0;
+        padding: 5px 0;
+      }
+      .dpr-field label {
+        font-weight: bold;
+        color: #34495e;
+        display: inline-block;
+        min-width: 150px;
+      }
+      .dpr-field span {
+        color: #2c3e50;
+      }
+      .dpr-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        margin-top: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .status-pending {
+        background: #f39c12;
+        color: white;
+      }
+      .status-approved {
+        background: #27ae60;
+        color: white;
+      }
+      .status-rejected {
+        background: #e74c3c;
+        color: white;
+      }
     </style>
   </head>
   <body>
@@ -277,13 +332,52 @@
     </div>
 
     <div class="section">
-      <h2>8️⃣ Plans & DPRs</h2>
-      <button onclick="getPlans()">Get Plans</button>
-      <button onclick="getDPRs()">Get DPRs</button>
+      <h2>8️⃣ Daily Progress Reports (DPR)</h2>
+
+      <button onclick="getAllDPRs()">Get All DPRs</button>
+      <button onclick="getPendingDPRs()">Get Pending DPRs</button>
+      <button onclick="getApprovedDPRs()">Get Approved DPRs</button>
+      <button onclick="getRejectedDPRs()">Get Rejected DPRs</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">View DPR Details</h3>
+      <div class="input-group">
+        <label>DPR ID:</label>
+        <input type="text" id="dprIdToView" placeholder="Paste DPR ID" />
+      </div>
+      <button onclick="viewDPRDetails()">View Full DPR Details</button>
+
+      <div id="dprDetailsContainer" class="dpr-details">
+        <!-- DPR details will be populated here -->
+      </div>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Review DPR</h3>
+      <div class="input-group">
+        <label>DPR ID:</label>
+        <input type="text" id="dprIdToReview" placeholder="Paste DPR ID" />
+      </div>
+      <div class="input-group">
+        <label>Review Remarks:</label>
+        <textarea
+          id="dprReviewRemarks"
+          rows="3"
+          placeholder="Enter review comments"
+        ></textarea>
+      </div>
+      <button onclick="approveDPR()" class="success">Approve DPR</button>
+      <button onclick="rejectDPR()" class="danger">Reject DPR</button>
     </div>
 
     <div class="section">
-      <h2>9️⃣ Audit Logs</h2>
+      <h2>9️⃣ Plans</h2>
+      <button onclick="getPlans()">Get Plans</button>
+    </div>
+
+    <div class="section">
+      <h2>🔟 Audit Logs</h2>
       <button onclick="getAuditLogs()">Get Audit Logs</button>
     </div>
 
@@ -299,7 +393,14 @@
     </div>
 
     <script>
-      const API_BASE = "http://localhost:3001";
+      // Auto-detect API base - uses current host or defaults to localhost
+      const API_BASE =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+          ? "http://localhost:3001"
+          : `http://${window.location.hostname}:3001`;
+
+      console.log("API Base:", API_BASE);
       let currentOrgId = null;
       let currentProjectId = null;
 
@@ -684,7 +785,190 @@
         await apiCall("GET", `/manager/wages?project_id=${currentProjectId}`);
       }
 
-      // 8️⃣ Plans & DPRs
+      // 8️⃣ DPR Management
+      async function getAllDPRs() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall("GET", `/manager/dpr/projects/${currentProjectId}/dprs`);
+      }
+
+      async function getPendingDPRs() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/dpr/projects/${currentProjectId}/dprs/pending`,
+        );
+      }
+
+      async function getApprovedDPRs() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/dpr/projects/${currentProjectId}/dprs/approved`,
+        );
+      }
+
+      async function getRejectedDPRs() {
+        if (!currentProjectId) {
+          alert("Please get projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/manager/dpr/projects/${currentProjectId}/dprs/rejected`,
+        );
+      }
+
+      async function approveDPR() {
+        const dprId = document.getElementById("dprIdToReview").value;
+        const remarks = document.getElementById("dprReviewRemarks").value;
+
+        if (!dprId) {
+          alert("Please enter DPR ID");
+          return;
+        }
+
+        await apiCall("PATCH", `/manager/dpr/dprs/${dprId}/review`, {
+          status: "APPROVED",
+          remarks: remarks || "Approved",
+        });
+      }
+
+      async function rejectDPR() {
+        const dprId = document.getElementById("dprIdToReview").value;
+        const remarks = document.getElementById("dprReviewRemarks").value;
+
+        if (!dprId) {
+          alert("Please enter DPR ID");
+          return;
+        }
+
+        if (!remarks) {
+          alert("Please provide rejection remarks");
+          return;
+        }
+
+        await apiCall("PATCH", `/manager/dpr/dprs/${dprId}/review`, {
+          status: "REJECTED",
+          remarks: remarks,
+        });
+      }
+
+      async function viewDPRDetails() {
+        const dprId = document.getElementById("dprIdToView").value;
+        if (!dprId) {
+          alert("Please enter DPR ID");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/manager/dpr/dprs/${dprId}`,
+            {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+            },
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            alert(`Error: ${error.error || "Failed to fetch DPR"}`);
+            return;
+          }
+
+          const data = await response.json();
+          const dpr = data.dpr;
+
+          log(`✅ DPR Details Retrieved`, dpr);
+
+          // Display DPR details in the container
+          const container = document.getElementById("dprDetailsContainer");
+          container.classList.add("visible");
+
+          const statusClass =
+            dpr.status === "APPROVED"
+              ? "status-approved"
+              : dpr.status === "REJECTED"
+                ? "status-rejected"
+                : "status-pending";
+
+          let imageHtml = "";
+          if (dpr.report_image) {
+            imageHtml = `
+              <div class="dpr-field">
+                <label>Report Image:</label><br/>
+                <img src="${API_BASE}/manager/dpr/dprs/${dprId}/image" 
+                     class="dpr-image" 
+                     alt="DPR Report Image"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><rect width=%22400%22 height=%22300%22 fill=%22%23ecf0f1%22/><text x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2218%22 fill=%22%2334495e%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22>Image not available</text></svg>'" />
+              </div>
+            `;
+          }
+
+          container.innerHTML = `
+            <h3>📋 DPR Details</h3>
+            <div class="dpr-field">
+              <label>DPR ID:</label>
+              <span>${dpr.id}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Status:</label>
+              <span class="status-badge ${statusClass}">${dpr.status}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Report Date:</label>
+              <span>${new Date(dpr.report_date).toLocaleDateString()}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Title:</label>
+              <span>${dpr.title || "N/A"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Description:</label>
+              <span>${dpr.description || "N/A"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Engineer Name:</label>
+              <span>${dpr.engineer_name || "N/A"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Engineer Phone:</label>
+              <span>${dpr.engineer_phone || "N/A"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Plan Item Task:</label>
+              <span>${dpr.plan_item_task_name || "Not linked to plan"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Submitted At:</label>
+              <span>${dpr.submitted_at ? new Date(dpr.submitted_at).toLocaleString() : "N/A"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Reviewed At:</label>
+              <span>${dpr.reviewed_at ? new Date(dpr.reviewed_at).toLocaleString() : "Not reviewed yet"}</span>
+            </div>
+            <div class="dpr-field">
+              <label>Remarks:</label>
+              <span>${dpr.remarks || "No remarks"}</span>
+            </div>
+            ${imageHtml}
+          `;
+        } catch (error) {
+          log(`❌ Error fetching DPR details`, { error: error.message });
+          alert(`Network Error: ${error.message}`);
+        }
+      }
+
+      // 9️⃣ Plans
       async function getPlans() {
         if (!currentProjectId) {
           alert("Please get projects first");
@@ -701,7 +985,7 @@
         await apiCall("GET", `/manager/dpr/project/${currentProjectId}`);
       }
 
-      // 9️⃣ Audit Logs
+      // 🔟 Audit Logs
       async function getAuditLogs() {
         await apiCall("GET", "/manager/audits?page=1&limit=20");
       }
