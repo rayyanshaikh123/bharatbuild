@@ -15,15 +15,23 @@ const port = process.env.PORT || 3001;
 // Live Server runs on port 5500, Frontend on port 3000
 // credentials: true is REQUIRED for session cookies to work cross-origin
 // Note: Live Server can use either localhost or 127.0.0.1, so we allow both
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5500",
+//       "http://127.0.0.1:5500",
+//       "http://localhost:3000",
+//       "http://127.0.0.1:3000",
+//     ],
+//     credentials: true,
+//   }),
+// );
 app.use(
   cors({
-    origin: [
-      "http://localhost:5500",
-      "http://127.0.0.1:5500",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-    ],
-    credentials: true,
+    origin: true, // Reflects the request origin (effectively allows all origins)
+    credentials: true, // Essential for cookies/sessions to work
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS", // Explicitly allow all methods
+    allowedHeaders: "Content-Type, Authorization, X-Requested-With, Accept", // Explicitly allow all common headers
   }),
 );
 
