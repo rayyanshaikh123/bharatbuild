@@ -24,28 +24,22 @@ router.post("/request", engineerCheck, async (req, res) => {
     } = req.body;
 
     const isActive = await verifyEngineerAccess(engineerId, project_id);
-    if (!isActive.allowed) return res.status(403).json({ error: isActive.error });
-
-    // Check standalone request limit if no DPR linked
-    if (!dpr_id) {
-      const STANDALONE_REQUEST_MONTHLY_LIMIT = 5;
-      const countResult = await pool.query(
-        `SELECT COUNT(*) FROM material_requests 
-                 WHERE site_engineer_id = $1 
-                   AND dpr_id IS NULL 
-                   AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())
-                   AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`,
-        [engineerId],
-      );
-
-      if (
-        parseInt(countResult.rows[0].count) >= STANDALONE_REQUEST_MONTHLY_LIMIT
-      ) {
-        return res.status(400).json({
-          error: "Monthly limit for standalone requests exceeded",
-        });
-      }
+    if (!isActive.allowed) {
+      console.error("[Material Request] Access denied:", isActive.error);
+      return res.status(403).json({ error: isActive.error });
     }
+
+    // Validate and parse quantity
+    const parsedQuantity = parseFloat(quantity);
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      console.error("[Material Request] Invalid quantity:", quantity);
+      return res.status(400).json({
+        error: "Invalid quantity. Must be a positive number.",
+      });
+    }
+
+    console.log(`[Material Request] Creating request for project ${project_id}, engineer ${engineerId}`);
+    console.log(`[Material Request] Data:`, { title, category, quantity: parsedQuantity, dpr_id: dpr_id || null });
 
     const result = await pool.query(
       `INSERT INTO material_requests (project_id, site_engineer_id, dpr_id, title, category, quantity, description, request_image, request_image_mime)
@@ -56,12 +50,14 @@ router.post("/request", engineerCheck, async (req, res) => {
         dpr_id || null,
         title,
         category,
-        quantity,
+        parsedQuantity,
         description,
         request_image || null,
         request_image_mime || null,
       ],
     );
+
+    console.log(`[Material Request] Successfully created request ${result.rows[0].id}`);
 
     // Send email notification if standalone request
     if (!dpr_id) {
@@ -108,8 +104,8 @@ router.post("/request", engineerCheck, async (req, res) => {
 
     res.status(201).json({ request: result.rows[0] });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("[Material Request] Error creating material request:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
   }
 });
 

@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 import '../storage/sqlite_service.dart';
 import '../providers/user_provider.dart';
 import 'auth_providers.dart';
@@ -30,20 +33,32 @@ final createMaterialRequestProvider = FutureProvider.family<bool, Map<String, dy
     ref.invalidate(materialRequestsProvider);
     return true;
   } catch (e) {
-    if (user == null) return false;
+    // Only store locally if it's a network error, not validation errors
+    bool isNetworkError = e is SocketException || 
+                         e is http.ClientException ||
+                         e is TimeoutException ||
+                         e is HandshakeException ||
+                         (e.toString().contains('Failed host lookup')) ||
+                         (e.toString().contains('Network is unreachable'));
     
-    await SQLiteService.insertAction({
-      'id': const Uuid().v4(),
-      'user_role': 'SITE_ENGINEER',
-      'user_id': user['id'].toString(),
-      'action_type': 'CREATE_MATERIAL_REQUEST',
-      'entity_type': 'MATERIAL_REQUEST',
-      'project_id': data['project_id'].toString(),
-      'payload': jsonEncode(data),
-      'created_at': DateTime.now().millisecondsSinceEpoch,
-      'sync_status': 'PENDING',
-    });
-    return false;
+    if (isNetworkError && user != null) {
+      // Network error - store locally for later sync
+      await SQLiteService.insertAction({
+        'id': const Uuid().v4(),
+        'user_role': 'SITE_ENGINEER',
+        'user_id': user['id'].toString(),
+        'action_type': 'CREATE_MATERIAL_REQUEST',
+        'entity_type': 'MATERIAL_REQUEST',
+        'project_id': data['project_id'].toString(),
+        'payload': jsonEncode(data),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+        'sync_status': 'PENDING',
+      });
+      return false; // Queued for sync
+    } else {
+      // Validation or other error - rethrow to show user
+      rethrow;
+    }
   }
 });
 
@@ -56,20 +71,32 @@ final uploadMaterialBillProvider = FutureProvider.family<bool, Map<String, dynam
     ref.invalidate(materialBillsProvider);
     return true;
   } catch (e) {
-    if (user == null) return false;
+    // Only store locally if it's a network error, not validation errors
+    bool isNetworkError = e is SocketException || 
+                         e is http.ClientException ||
+                         e is TimeoutException ||
+                         e is HandshakeException ||
+                         (e.toString().contains('Failed host lookup')) ||
+                         (e.toString().contains('Network is unreachable'));
     
-    await SQLiteService.insertAction({
-      'id': const Uuid().v4(),
-      'user_role': 'SITE_ENGINEER',
-      'user_id': user['id'].toString(),
-      'action_type': 'UPLOAD_MATERIAL_BILL',
-      'entity_type': 'MATERIAL_BILL',
-      'project_id': data['project_id'].toString(),
-      'payload': jsonEncode(data),
-      'created_at': DateTime.now().millisecondsSinceEpoch,
-      'sync_status': 'PENDING',
-    });
-    return false;
+    if (isNetworkError && user != null) {
+      // Network error - store locally for later sync
+      await SQLiteService.insertAction({
+        'id': const Uuid().v4(),
+        'user_role': 'SITE_ENGINEER',
+        'user_id': user['id'].toString(),
+        'action_type': 'UPLOAD_MATERIAL_BILL',
+        'entity_type': 'MATERIAL_BILL',
+        'project_id': data['project_id'].toString(),
+        'payload': jsonEncode(data),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+        'sync_status': 'PENDING',
+      });
+      return false; // Queued for sync
+    } else {
+      // Validation or other error - rethrow to show user
+      rethrow;
+    }
   }
 });
 
