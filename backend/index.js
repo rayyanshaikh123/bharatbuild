@@ -205,6 +205,10 @@ app.use("/manager/delays", require("./routes/manager/delays"));
 app.use("/manager/timeline", require("./routes/manager/timeline"));
 app.use("/manager/purchase-orders", require("./routes/manager/purchaseOrders"));
 app.use("/manager", require("./routes/manager/grn"));
+app.use(
+  "/manager/goods-receipt-notes",
+  require("./routes/manager/goodsReceiptNotes"),
+);
 
 /* ---------------- PURCHASE MANAGER ROUTES ---------------- */
 app.use(
@@ -245,6 +249,7 @@ app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 app.use("/engineer/attendance", require("./routes/engineer/attendance"));
 app.use("/engineer/material", require("./routes/engineer/material"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
+app.use("/engineer/tools", require("./routes/engineer/tools"));
 app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
 app.use("/engineer/ledger", require("./routes/engineer/ledger"));
 app.use("/engineer/ai", require("./routes/engineer/ai"));
@@ -256,6 +261,10 @@ app.use(
   require("./routes/engineer/purchaseOrders"),
 );
 app.use("/engineer", require("./routes/engineer/grn"));
+app.use(
+  "/engineer/goods-receipt-notes",
+  require("./routes/engineer/goodsReceiptNotes"),
+);
 
 /* ---------------- LABOUR ROUTES ---------------- */
 app.use("/labour", require("./routes/labour/labour"));
@@ -263,6 +272,7 @@ app.use("/labour/jobs", require("./routes/labour/jobs"));
 app.use("/labour/projects", require("./routes/labour/projects"));
 app.use("/labour/attendance", require("./routes/labour/attendance"));
 app.use("/labour/wages", require("./routes/labour/wages"));
+app.use("/labour/tools", require("./routes/labour/tools"));
 app.use("/labour/notifications", require("./routes/labour/notifications"));
 app.use("/labour/address", require("./routes/labour/address"));
 app.use("/labour/sync", require("./routes/labour/sync"));
