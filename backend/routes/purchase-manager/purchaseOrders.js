@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const purchaseManagerCheck = require("../../middleware/purchaseManagerCheck");
+const uploadPDF = require("../../middleware/uploadPDF");
 
 /* ---------------- CREATE PURCHASE ORDER ---------------- */
 router.post("/", purchaseManagerCheck, async (req, res) => {
@@ -124,9 +125,9 @@ router.post("/", purchaseManagerCheck, async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.status(201).json({ 
-      message: "Purchase order created successfully", 
-      purchase_order: poResult.rows[0] 
+    res.status(201).json({
+      message: "Purchase order created successfully",
+      purchase_order: poResult.rows[0],
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -149,7 +150,9 @@ router.get("/", purchaseManagerCheck, async (req, res) => {
     const { projectId, status } = req.query;
 
     let query = `
-      SELECT po.*, 
+      SELECT po.id, po.project_id, po.material_request_id, po.po_number, 
+             po.vendor_name, po.items, po.total_amount, po.status, 
+             po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
              p.name AS project_name,
              mr.title AS material_request_title,
              mr.category AS material_category
@@ -192,7 +195,9 @@ router.get("/:id", purchaseManagerCheck, async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT po.*, 
+      `SELECT po.id, po.project_id, po.material_request_id, po.po_number, 
+              po.vendor_name, po.items, po.total_amount, po.status, 
+              po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               p.name AS project_name, p.location_text,
               mr.title AS material_request_title, mr.category AS material_category,
               mr.quantity AS requested_quantity, mr.description AS material_description
@@ -222,70 +227,112 @@ router.get("/:id", purchaseManagerCheck, async (req, res) => {
 });
 
 /* ---------------- UPLOAD PO PDF ---------------- */
-router.patch("/:id/upload", purchaseManagerCheck, async (req, res) => {
-  const client = await pool.connect();
+router.patch(
+  "/:id/upload",
+  purchaseManagerCheck,
+  uploadPDF.single("pdf"),
+  async (req, res) => {
+    const client = await pool.connect();
 
-  try {
-    const purchaseManagerId = req.user.id;
-    const { id } = req.params;
-    const { poPdfUrl } = req.body;
+    try {
+      const purchaseManagerId = req.user.id;
+      const { id } = req.params;
 
-    if (!poPdfUrl) {
-      return res.status(400).json({ error: "PO PDF URL is required" });
+      // Validate file upload
+      if (!req.file) {
+        return res.status(400).json({ error: "PDF file is required" });
+      }
+
+      // Verify ownership
+      const poCheck = await client.query(
+        `SELECT id, status, project_id FROM purchase_orders WHERE id = $1 AND created_by = $2`,
+        [id, purchaseManagerId],
+      );
+
+      if (poCheck.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Purchase order not found or access denied" });
+      }
+
+      await client.query("BEGIN");
+
+      // Update PO with PDF binary data
+      const result = await client.query(
+        `UPDATE purchase_orders 
+         SET po_pdf = $1, po_pdf_mime = $2
+         WHERE id = $3
+         RETURNING id, po_number, vendor_name, status, created_at, sent_at`,
+        [req.file.buffer, req.file.mimetype, id],
+      );
+
+      // Create audit log
+      await client.query(
+        `INSERT INTO audit_logs (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, category, change_summary)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          "PURCHASE_ORDER",
+          id,
+          "PO_PDF_UPLOADED",
+          "PURCHASE_MANAGER",
+          purchaseManagerId,
+          poCheck.rows[0].project_id,
+          "PROCUREMENT",
+          JSON.stringify({
+            file_size: req.file.size,
+            mime_type: req.file.mimetype,
+          }),
+        ],
+      );
+
+      // Notify site engineers on the project
+      const engineersResult = await client.query(
+        `SELECT site_engineer_id FROM project_site_engineers 
+         WHERE project_id = $1 AND status = 'APPROVED'`,
+        [poCheck.rows[0].project_id],
+      );
+
+      for (const engineer of engineersResult.rows) {
+        await client.query(
+          `INSERT INTO notifications (user_id, user_role, title, message, type, project_id, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            engineer.site_engineer_id,
+            "SITE_ENGINEER",
+            "Purchase Order PDF Uploaded",
+            "A purchase order PDF has been uploaded and is ready for review",
+            "INFO",
+            poCheck.rows[0].project_id,
+            JSON.stringify({ po_id: id }),
+          ],
+        );
+      }
+
+      await client.query("COMMIT");
+
+      res.json({
+        message: "PO PDF uploaded successfully",
+        purchase_order: result.rows[0],
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      console.error(err);
+
+      if (err.name === "MulterError") {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res
+            .status(400)
+            .json({ error: "File size exceeds 10 MB limit" });
+        }
+        return res.status(400).json({ error: err.message });
+      }
+
+      res.status(500).json({ error: "Server error" });
+    } finally {
+      client.release();
     }
-
-    // Verify ownership
-    const poCheck = await client.query(
-      `SELECT id, status, project_id FROM purchase_orders WHERE id = $1 AND created_by = $2`,
-      [id, purchaseManagerId],
-    );
-
-    if (poCheck.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Purchase order not found or access denied" });
-    }
-
-    await client.query("BEGIN");
-
-    // Update PO with PDF URL
-    const result = await client.query(
-      `UPDATE purchase_orders 
-       SET po_pdf_url = $1
-       WHERE id = $2
-       RETURNING *`,
-      [poPdfUrl, id],
-    );
-
-    // Create audit log
-    await client.query(
-      `INSERT INTO audit_logs (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, category)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        "PURCHASE_ORDER",
-        id,
-        "PDF_UPLOADED",
-        "PURCHASE_MANAGER",
-        purchaseManagerId,
-        poCheck.rows[0].project_id,
-        "PROCUREMENT",
-      ],
-    );
-
-    await client.query("COMMIT");
-
-    res.json({ 
-      message: "PO PDF uploaded successfully", 
-      purchase_order: result.rows[0] 
-    });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  } finally {
-    client.release();
-  }
-});
+  },
+);
 
 /* ---------------- SEND PURCHASE ORDER ---------------- */
 router.patch("/:id/send", purchaseManagerCheck, async (req, res) => {
@@ -319,7 +366,7 @@ router.patch("/:id/send", purchaseManagerCheck, async (req, res) => {
       });
     }
 
-    if (!po.po_pdf_url) {
+    if (!po.po_pdf) {
       return res.status(400).json({
         error: "Please upload PO PDF before sending",
       });
@@ -369,9 +416,9 @@ router.patch("/:id/send", purchaseManagerCheck, async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({ 
-      message: "Purchase order sent successfully", 
-      purchase_order: result.rows[0] 
+    res.json({
+      message: "Purchase order sent successfully",
+      purchase_order: result.rows[0],
     });
   } catch (err) {
     await client.query("ROLLBACK");

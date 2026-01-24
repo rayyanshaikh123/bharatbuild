@@ -28,9 +28,11 @@ router.get("/", engineerCheck, async (req, res) => {
       });
     }
 
-    // Get all purchase orders for this project
+    // Get all purchase orders for this project (exclude BYTEA columns)
     const result = await pool.query(
-      `SELECT po.*, 
+      `SELECT po.id, po.project_id, po.material_request_id, po.po_number, 
+              po.vendor_name, po.items, po.total_amount, po.status, 
+              po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
               mr.description AS material_request_description,
               p.name AS project_name
@@ -55,9 +57,11 @@ router.get("/:poId", engineerCheck, async (req, res) => {
     const siteEngineerId = req.user.id;
     const { poId } = req.params;
 
-    // Get purchase order details
+    // Get purchase order details (exclude BYTEA columns)
     const poResult = await pool.query(
-      `SELECT po.*, 
+      `SELECT po.id, po.project_id, po.material_request_id, po.po_number, 
+              po.vendor_name, po.items, po.total_amount, po.status, 
+              po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
               mr.description AS material_request_description,
               mr.items AS material_request_items,
@@ -107,7 +111,7 @@ router.get("/:poId/pdf", engineerCheck, async (req, res) => {
 
     // Get purchase order with PDF
     const poResult = await pool.query(
-      `SELECT po.id, po.project_id, po.po_pdf_url 
+      `SELECT po.id, po.project_id, po.po_pdf, po.po_pdf_mime, po.po_number
        FROM purchase_orders po
        WHERE po.id = $1`,
       [poId],
@@ -134,14 +138,19 @@ router.get("/:poId/pdf", engineerCheck, async (req, res) => {
       });
     }
 
-    if (!po.po_pdf_url) {
+    if (!po.po_pdf) {
       return res.status(404).json({
         error: "PDF not available for this purchase order",
       });
     }
 
-    // Return base64 PDF
-    res.json({ pdf: po.po_pdf_url });
+    // Stream PDF with correct headers
+    res.setHeader("Content-Type", po.po_pdf_mime || "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="PO_${po.po_number}.pdf"`,
+    );
+    res.send(po.po_pdf);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -173,9 +182,11 @@ router.get("/sent/list", engineerCheck, async (req, res) => {
       });
     }
 
-    // Get all SENT purchase orders (ready for GRN creation)
+    // Get all SENT purchase orders (ready for GRN creation, exclude BYTEA columns)
     const result = await pool.query(
-      `SELECT po.*, 
+      `SELECT po.id, po.project_id, po.material_request_id, po.po_number, 
+              po.vendor_name, po.items, po.total_amount, po.status, 
+              po.created_by, po.created_at, po.sent_at, po.po_pdf_mime,
               mr.title AS material_request_title,
               mr.items AS material_request_items,
               p.name AS project_name,
