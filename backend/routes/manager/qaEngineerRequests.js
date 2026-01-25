@@ -246,4 +246,112 @@ router.delete(
   },
 );
 
+/* ---------------- GET PENDING QA PROJECT REQUESTS ---------------- */
+router.get("/project-requests", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+
+    // Get projects where manager is active or creator
+    const projectsResult = await pool.query(
+      `SELECT DISTINCT p.id 
+       FROM projects p
+       LEFT JOIN project_managers pm ON p.id = pm.project_id
+       WHERE (pm.manager_id = $1 AND pm.status = 'ACTIVE') OR p.created_by = $1`,
+      [managerId],
+    );
+
+    const projectIds = projectsResult.rows.map((r) => r.id);
+
+    if (projectIds.length === 0) {
+      return res.json({ requests: [] });
+    }
+
+    const result = await pool.query(
+      `SELECT pqa.id AS request_id, pqa.*, 
+              qa.name, qa.email, qa.phone, 
+              p.name AS project_name, p.org_id
+       FROM project_qa_engineers pqa
+       JOIN qa_engineers qa ON pqa.qa_engineer_id = qa.id
+       JOIN projects p ON pqa.project_id = p.id
+       WHERE pqa.project_id = ANY($1) AND pqa.status = 'PENDING'
+       ORDER BY pqa.assigned_at DESC`,
+      [projectIds],
+    );
+
+    res.json({ requests: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- APPROVE/REJECT QA PROJECT REQUEST ---------------- */
+router.patch("/project-requests/:requestId", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { requestId } = req.params;
+    const { status } = req.body; // 'APPROVED' or 'REJECTED'
+
+    if (!status || !["APPROVED", "REJECTED"].includes(status)) {
+      return res
+        .status(400)
+        .json({ error: "status must be APPROVED or REJECTED" });
+    }
+
+    // Get the request
+    const requestResult = await pool.query(
+      `SELECT pqa.*, p.id AS project_id, p.org_id 
+       FROM project_qa_engineers pqa
+       JOIN projects p ON pqa.project_id = p.id
+       WHERE pqa.id = $1`,
+      [requestId],
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const request = requestResult.rows[0];
+
+    // Verify manager has access to this project
+    const hasAccess = await managerProjectStatusCheck(
+      managerId,
+      request.project_id,
+    );
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Not authorized for this project" });
+    }
+
+    // Update status
+    const result = await pool.query(
+      `UPDATE project_qa_engineers 
+       SET status = $1
+       WHERE id = $2 RETURNING *`,
+      [status, requestId],
+    );
+
+    // Log to audit
+    await pool.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, organization_id, remarks)
+       VALUES ('PROJECT_QA_REQUEST', $1, $2, 'MANAGER', $3, $4, $5, $6)`,
+      [
+        requestId,
+        status === "APPROVED" ? "QA_PROJECT_APPROVED" : "QA_PROJECT_REJECTED",
+        managerId,
+        request.project_id,
+        request.org_id,
+        `Manager ${status.toLowerCase()} QA Engineer project request`,
+      ],
+    );
+
+    res.json({
+      request: result.rows[0],
+      message: `Request ${status.toLowerCase()} successfully`,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

@@ -39,6 +39,8 @@ import 'screens/engineer/tasks_screen.dart';
 import 'screens/engineer/my_organizations_page.dart';
 import 'screens/engineer/my_projects_page.dart';
 import 'screens/qa/qa_flow.dart';
+import 'screens/qa/qa_organization_list_screen.dart';
+import 'screens/qa/qa_join_project_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -113,6 +115,8 @@ class MyApp extends ConsumerWidget {
           '/engineer-my-organizations': (_) => const MyOrganizationsScreen(),
           '/engineer-my-projects': (_) => const MyProjectsScreen(),
           '/qa-flow': (_) => const QAFlowScreen(),
+          '/qa-organization': (_) => const QAOrganizationListScreen(),
+          '/qa-join-project': (_) => const QAJoinProjectScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {

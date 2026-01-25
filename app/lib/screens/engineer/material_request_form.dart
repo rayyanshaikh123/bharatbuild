@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/material_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
@@ -63,12 +64,26 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
       return;
     }
 
+    // Get current location for geofence validation
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Location fetch failed, but continue without coordinates (backend will skip validation)
+      print('Failed to get location: $e');
+    }
+
     final data = {
       'project_id': selectedProject['project_id'] ?? selectedProject['id'],
       'title': _titleController.text.trim(),
       'category': _selectedCategory,
       'quantity': quantity,
       'description': _descriptionController.text.trim(),
+      if (position != null) 'latitude': position.latitude,
+      if (position != null) 'longitude': position.longitude,
     };
 
     try {
@@ -105,7 +120,12 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
           final match = RegExp(r'\{.*\}').firstMatch(e.toString());
           if (match != null) {
             final errorJson = jsonDecode(match.group(0)!);
-            errorMessage = errorJson['error'] ?? errorMessage;
+            final error = errorJson['error'] ?? '';
+            if (error == 'OUTSIDE_PROJECT_GEOFENCE') {
+              errorMessage = 'You must be inside the project site to create material requests';
+            } else {
+              errorMessage = error;
+            }
           }
         } catch (_) {
           errorMessage = e.toString().replaceAll('Exception: Failed to create material request: ', '');

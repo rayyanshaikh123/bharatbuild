@@ -57,6 +57,7 @@ router.post(
   "/login",
   passport.authenticate("qa-engineer-local"),
   (req, res) => {
+    console.log("QA Engineer logged in:", req.user);
     res.json({ message: "Login successful", user: req.user });
   },
 );

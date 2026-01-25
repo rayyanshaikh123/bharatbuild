@@ -948,6 +948,8 @@ class AuthService {
     String? remarks,
     required File billImage,
     required File proofImage,
+    double? latitude,
+    double? longitude,
   }) async {
     final uri = Uri.parse('$_base/engineer/grns');
     
@@ -980,6 +982,12 @@ class AuthService {
     request.fields['receivedItems'] = jsonEncode(receivedItems);
     if (remarks != null && remarks.isNotEmpty) {
       request.fields['remarks'] = remarks;
+    }
+    if (latitude != null) {
+      request.fields['latitude'] = latitude.toString();
+    }
+    if (longitude != null) {
+      request.fields['longitude'] = longitude.toString();
     }
 
     // Send request

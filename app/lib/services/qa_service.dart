@@ -35,7 +35,7 @@ class QAService {
 
   Future<List<dynamic>> getAssignedProjects() async {
     final response = await _client.get(
-      Uri.parse('$_baseUrl/qa-engineer/projects'),
+      Uri.parse('$_baseUrl/qa-engineer/my-projects'),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
       },
@@ -51,7 +51,7 @@ class QAService {
 
   Future<List<dynamic>> getProjectTasks(String projectId) async {
     final response = await _client.get(
-      Uri.parse('$_baseUrl/qa-engineer/projects/$projectId/tasks'),
+      Uri.parse('$_baseUrl/qa-engineer/my-projects/$projectId/tasks'),
       headers: {'Content-Type': 'application/json'},
     );
 
@@ -90,6 +90,86 @@ class QAService {
     } else {
       throw Exception('Failed to load profile');
     }
+  }
+
+  // Organizations
+  Future<Map<String, dynamic>>Loop() async {
+      return {};
+  }
+
+  Future<Map<String, dynamic>> getAllOrganizations() async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/qa-engineer/organizations'),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to fetch organizations');
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> getCurrentOrganization() async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/qa-engineer/organizations/requests'),
+    );
+    if (response.statusCode == 404) return {'organizations': []};
+    if (response.statusCode != 200) throw Exception('Failed to fetch organization');
+    
+    final data = jsonDecode(response.body);
+    final requests = data['requests'] as List;
+    
+    // Find APPROVED organization
+    final approved = requests.where((r) => r['status'] == 'APPROVED').toList();
+    
+    if (approved.isEmpty) {
+      return {'organizations': []};
+    }
+    
+    return {'organizations': [{
+      'id': approved[0]['org_id'],
+      'name': approved[0]['org_name'],
+      'address': approved[0]['address'],
+    }]};
+  }
+
+  Future<Map<String, dynamic>> getMyOrgRequests() async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/qa-engineer/organizations/requests'),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to fetch requests');
+    return jsonDecode(response.body);
+  }
+
+  Future<void> joinOrganization(String orgId) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/qa-engineer/organizations/$orgId/join'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to join organization: ${response.body}');
+  }
+
+  // Project Join Requests
+  Future<List<dynamic>> getOrgProjects() async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/qa-engineer/projects/available'),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to fetch org projects');
+    final data = jsonDecode(response.body);
+    return data['projects'];
+  }
+
+  Future<void> joinProject(String projectId) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/qa-engineer/projects/$projectId/join'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to join project: ${response.body}');
+  }
+
+  Future<List<dynamic>> getMyProjectRequests() async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/qa-engineer/projects/requests'),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to fetch project requests');
+    final data = jsonDecode(response.body);
+    return data['requests'];
   }
 }
 

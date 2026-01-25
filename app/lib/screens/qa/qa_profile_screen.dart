@@ -3,16 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/qa_provider.dart';
 import '../../providers/auth_providers.dart';
 
-class QAProfileScreen extends ConsumerWidget {
-  const QAProfileScreen({super.key});
+class QAProfileContent extends ConsumerWidget {
+  const QAProfileContent({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(qaProfileProvider);
 
-    return Scaffold(
-      body: profileAsync.when(
-        data: (user) {
+    return profileAsync.when(
+        data: (data) {
+          // Robust null check for user data
+          // Ensure we have a valid map, otherwise render error or fallback
+          if (data == null) {
+             return const Center(child: Text("Profile not found"));
+          }
+          final user = data;
+
           return Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -22,21 +28,22 @@ class QAProfileScreen extends ConsumerWidget {
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.blueAccent,
+                  // Ensure no null passed to widgets if possible
                   child: Icon(Icons.person, size: 50, color: Colors.white),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  user['name'] ?? 'Unknown Name',
+                  user['name']?.toString() ?? 'Unknown Name',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  user['email'] ?? '',
+                  user['email']?.toString() ?? '',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  user['phone'] ?? '',
+                  user['phone']?.toString() ?? '',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                 ),
                 const Spacer(),
@@ -71,7 +78,6 @@ class QAProfileScreen extends ConsumerWidget {
         },
         error: (err, stack) => Center(child: Text("Error loading profile: $err")),
         loading: () => const Center(child: CircularProgressIndicator()),
-      ),
     );
   }
 }

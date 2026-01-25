@@ -1,44 +1,37 @@
 import 'package:flutter/material.dart';
-import 'qa_home_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../../layouts/app_layout.dart';
+import 'qa_mobile_pages.dart';
 import 'qa_profile_screen.dart';
 
-class QAFlowScreen extends StatefulWidget {
+class QAFlowScreen extends ConsumerWidget {
+  static const routeName = '/qa-flow';
   const QAFlowScreen({super.key});
 
   @override
-  State<QAFlowScreen> createState() => _QAFlowScreenState();
-}
-
-class _QAFlowScreenState extends State<QAFlowScreen> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = [
-    const QAHomeScreen(),
-    const QAProfileScreen(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("QA Engineer"),
-      ),
-      body: _screens[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Projects',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    
+    return AppLayout(
+      title: 'BharatBuild QA',
+      mobilePages: const [
+        QADashboardContent(),
+        QAProfileContent(),
+      ],
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Text(
+              'welcome'.tr(),
+              style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            const QADashboardContent(),
+          ],
+        ),
       ),
     );
   }
