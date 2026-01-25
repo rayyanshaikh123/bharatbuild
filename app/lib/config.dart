@@ -5,7 +5,7 @@ import 'dart:io' show Platform;
 
 /// TODO: Update this IP address with your Mac's IP address
 /// Run this command on Mac to get your IP: ipconfig getifaddr en0
-const String BASE_IP = '172.16.28.199'; // Current Mac IP
+const String BASE_IP = '172.16.7.241'; // Current Mac IP
 const int PORT = 3001;
 
 /// API base URL resolution:

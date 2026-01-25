@@ -751,6 +751,29 @@ class AuthService {
     }
   }
 
+  Future<List<dynamic>> getUnpaidWages(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/wages?projectId=$projectId&status=APPROVED');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      // Filter filtering out already paid ones if API returns them (though API filter logic should handle it usually)
+      final wages = data['wages'] as List<dynamic>;
+      return wages.where((w) => w['paid_at'] == null).toList();
+    }
+    throw Exception('Failed to fetch unpaid wages: ${res.body}');
+  }
+
+  Future<void> markWagePaid(String wageId) async {
+    final uri = Uri.parse('$_base/engineer/wages/$wageId/mark-paid');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark wage as paid: ${res.body}');
+    }
+  }
+
   /* ---------------- OFFLINE SYNC ---------------- */
   Future<Map<String, dynamic>> syncBatch(String role, List<Map<String, dynamic>> actions) async {
     final endpoint = role == 'LABOUR' ? '/sync/labour' : '/sync/engineer';
