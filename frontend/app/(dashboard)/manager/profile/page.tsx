@@ -101,8 +101,8 @@ export default function ManagerProfilePage() {
               <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
                  <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-foreground text-lg">{organization.org_name || "Unknown Org"}</p>
-                      <p className="text-xs text-muted-foreground">Address: {organization.org_address || "N/A"}</p>
+                      <p className="font-bold text-foreground text-lg">{organization.name || organization.org_name || "Unknown Org"}</p>
+                      <p className="text-xs text-muted-foreground">Address: {organization.address || organization.org_address || "N/A"}</p>
                     </div>
                     <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-xs font-bold uppercase">
                       Active Member
@@ -120,7 +120,7 @@ export default function ManagerProfilePage() {
                           <DialogHeader>
                             <DialogTitle className="text-destructive">Leave Organization?</DialogTitle>
                             <DialogDescription>
-                              Are you sure you want to leave <strong>{organization.org_name}</strong>?
+                              Are you sure you want to leave <strong>{organization.name || organization.org_name}</strong>?
                               <br/><br/>
                               This action will:
                               <ul className="list-disc pl-5 mt-2 space-y-1">

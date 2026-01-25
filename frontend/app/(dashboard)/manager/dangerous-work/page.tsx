@@ -34,7 +34,7 @@ export default function ManagerDangerousWorkPage() {
       setIsLoading(true);
       const orgRes = await managerOrganization.getMyOrganizations();
       if (orgRes.organizations && orgRes.organizations.length > 0) {
-        const orgId = orgRes.organizations[0].org_id;
+        const orgId = orgRes.organizations[0].id;
         const res = await managerProjects.getMyProjects(orgId);
         setProjects(res.projects || []);
         if (res.projects && res.projects.length > 0) {

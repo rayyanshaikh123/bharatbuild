@@ -34,12 +34,15 @@ router.get("/projects/:projectId/dprs", managerCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -278,12 +281,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -320,12 +326,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -362,12 +371,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -414,13 +426,16 @@ router.get("/dprs/:dprId", managerCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               pr.name AS project_name,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        JOIN projects pr ON d.project_id = pr.id
@@ -554,12 +569,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -596,12 +614,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -638,12 +659,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -680,12 +704,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
