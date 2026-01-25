@@ -23,6 +23,8 @@ import '../../providers/activity_provider.dart';
 import '../../providers/notification_provider.dart';
 import 'manual_attendance_screen.dart';
 import 'semi_manual_attendance_screen.dart';
+import 'dangerous_work_auth_screen.dart';
+import 'tools_management_screen.dart';
 import 'tools_management_screen.dart';
 
 /// Content-only engineer dashboard used in mobile IndexedStack.
@@ -287,6 +289,7 @@ class EngineerDashboardContent extends ConsumerWidget {
                 _quickActionItem(context, Icons.playlist_add_check, 'semi_manual_attendance'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SemiManualAttendanceScreen()))),
                 _quickActionItem(context, Icons.payments_outlined, 'daily_wages'.tr(), () => Navigator.pushNamed(context, '/engineer-wages')),
                 _quickActionItem(context, Icons.inventory_2_outlined, 'material_management'.tr(), () => Navigator.pushNamed(context, '/engineer-materials')),
+                _quickActionItem(context, Icons.report_problem_outlined, 'dangerous_work'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (_) => DangerousWorkAuthorizationScreen()))),
                 _quickActionItem(context, Icons.construction, 'Tools Management', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ToolsManagementScreen()))),
                 _quickActionItem(context, Icons.business_outlined, 'my_organizations'.tr(), () => Navigator.pushNamed(context, '/engineer-my-organizations')),
                 _quickActionItem(context, Icons.description_outlined, 'submit_report'.tr(), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DPRFormScreen()))),

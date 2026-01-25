@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../../db");
 const managerCheck = require("../../middleware/managerCheck");
+const bcrypt = require("bcrypt");
 
 /* ============================================================
    DANGEROUS WORK AUTHORIZATION - MANAGER (READ-ONLY)
@@ -332,6 +333,136 @@ router.get("/labour/:labourId/history", managerCheck, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* -------------------- AUTHORIZE TASK REQUEST (VERIFY OTP) -------------------- */
+router.post("/authorize", managerCheck, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const managerId = req.user.id;
+    const { requestId, otp } = req.body;
+
+    if (!requestId || !otp) {
+      return res.status(400).json({ error: "requestId and otp are required" });
+    }
+
+    await client.query("BEGIN");
+
+    // 1. Get request details and verify manager assignment
+    const requestCheck = await client.query(
+      `SELECT dtr.id, dtr.project_id, dtr.status, dt.name AS task_name, l.name AS labour_name
+       FROM dangerous_task_requests dtr
+       JOIN dangerous_tasks dt ON dtr.dangerous_task_id = dt.id
+       JOIN labours l ON dtr.labour_id = l.id
+       WHERE dtr.id = $1`,
+      [requestId],
+    );
+
+    if (requestCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Task request not found" });
+    }
+
+    const request = requestCheck.rows[0];
+
+    // Verify manager is assigned to this project
+    const assignmentCheck = await client.query(
+      `SELECT 1 FROM project_managers 
+       WHERE project_id = $1 AND manager_id = $2 AND status = 'ACTIVE'`,
+      [request.project_id, managerId],
+    );
+
+    if (assignmentCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res
+        .status(403)
+        .json({ error: "You are not assigned to this project" });
+    }
+
+    if (request.status !== "REQUESTED") {
+      await client.query("ROLLBACK");
+      return res
+        .status(400)
+        .json({ error: `Cannot authorize. Status is ${request.status}` });
+    }
+
+    // 2. Get latest OTP
+    const otpCheck = await client.query(
+      `SELECT id, otp_hash, expires_at, verified
+       FROM dangerous_task_otps
+       WHERE task_request_id = $1
+       ORDER BY created_at DESC LIMIT 1`,
+      [requestId],
+    );
+
+    if (otpCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "No OTP found for this request" });
+    }
+
+    const otpRecord = otpCheck.rows[0];
+
+    if (otpRecord.verified) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "OTP already used" });
+    }
+
+    if (new Date(otpRecord.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "OTP has expired" });
+    }
+
+    // 3. Verify OTP
+    const isValid = await bcrypt.compare(otp, otpRecord.otp_hash);
+    if (!isValid) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+
+    // 4. APPROVE request
+    await client.query(
+      `UPDATE dangerous_task_requests
+       SET status = 'APPROVED', approved_at = NOW(), approved_by_manager = $1, approval_method = 'MANAGER_OTP'
+       WHERE id = $2`,
+      [managerId, requestId],
+    );
+
+    await client.query(
+      `UPDATE dangerous_task_otps SET verified = true, verified_at = NOW() WHERE id = $1`,
+      [otpRecord.id],
+    );
+
+    // Audit Log
+    await client.query(
+      `INSERT INTO audit_logs 
+       (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, category, change_summary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        "DANGEROUS_TASK_REQUEST",
+        requestId,
+        "APPROVED",
+        "MANAGER",
+        managerId,
+        request.project_id,
+        "SAFETY",
+        JSON.stringify({
+          task_name: request.task_name,
+          labour_name: request.labour_name,
+          approval_method: "MANAGER_OTP",
+        }),
+      ],
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: "Authorization successful", status: "APPROVED" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 

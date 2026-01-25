@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../../db");
 const router = express.Router();
 const labourCheck = require("../../middleware/labourCheck");
+const { getISTDate, normalizeDBDate } = require("../../util/dateUtils");
 
 /* ---------------- SCAN QR CODE (ISSUE/RETURN TOOL) ---------------- */
 router.post("/scan", labourCheck, async (req, res) => {
@@ -16,7 +17,7 @@ router.post("/scan", labourCheck, async (req, res) => {
       });
     }
 
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = getISTDate(); // YYYY-MM-DD in IST
 
     await client.query("BEGIN");
 
@@ -43,11 +44,11 @@ router.post("/scan", labourCheck, async (req, res) => {
     const orgId = qrData.org_id;
 
     // Check if QR is valid for today
-    if (qrData.valid_date !== today) {
+    const validDate = normalizeDBDate(qrData.valid_date);
+    if (validDate !== today) {
       await client.query("ROLLBACK");
       return res.status(400).json({
-        error:
-          "QR code has expired. This QR is only valid for " + qrData.valid_date,
+        error: "QR code has expired. This QR is only valid for " + validDate,
       });
     }
 

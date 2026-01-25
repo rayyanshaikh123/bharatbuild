@@ -188,7 +188,7 @@ async function checkCategoryCapacity(client, labourId, projectId) {
     hasCapacity,
     category,
     currentCount,
-    requiredCount,
+    requiredCount: required_count,
     requestId: request_id,
   };
 }

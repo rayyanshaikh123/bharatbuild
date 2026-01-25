@@ -3,6 +3,7 @@ const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 const crypto = require("crypto");
+const { getISTDate } = require("../../util/dateUtils");
 
 /* ---------------- CREATE TOOL ---------------- */
 router.post("/", engineerCheck, async (req, res) => {
@@ -248,9 +249,11 @@ router.post("/:toolId/qr", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
     const { toolId } = req.params;
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = getISTDate(); // YYYY-MM-DD in IST
 
-    console.log(`[QR Generation] Request for tool ${toolId} by engineer ${engineerId}`);
+    console.log(
+      `[QR Generation] Request for tool ${toolId} by engineer ${engineerId}`,
+    );
 
     // Check if QR already exists for today (fast path - no JOIN needed)
     const existingQR = await pool.query(
@@ -317,29 +320,31 @@ router.post("/:toolId/qr", engineerCheck, async (req, res) => {
     console.log(`[QR Generation] QR created successfully: ${qr.id}`);
 
     // Create audit log asynchronously (don't block response)
-    pool.query(
-      `INSERT INTO audit_logs 
+    pool
+      .query(
+        `INSERT INTO audit_logs 
        (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, organization_id, category, change_summary)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        "TOOL_QR",
-        qr.id,
-        "QR_GENERATED",
-        "SITE_ENGINEER",
-        engineerId,
-        tool.project_id,
-        tool.org_id,
-        "TOOL_MANAGEMENT",
-        JSON.stringify({
-          tool_id: toolId,
-          tool_code: tool.tool_code,
-          valid_date: today,
-        }),
-      ],
-    ).catch((err) => {
-      console.error("Failed to create audit log for QR generation:", err);
-      // Don't block response on audit log failure
-    });
+        [
+          "TOOL_QR",
+          qr.id,
+          "QR_GENERATED",
+          "SITE_ENGINEER",
+          engineerId,
+          tool.project_id,
+          tool.org_id,
+          "TOOL_MANAGEMENT",
+          JSON.stringify({
+            tool_id: toolId,
+            tool_code: tool.tool_code,
+            valid_date: today,
+          }),
+        ],
+      )
+      .catch((err) => {
+        console.error("Failed to create audit log for QR generation:", err);
+        // Don't block response on audit log failure
+      });
 
     console.log(`[QR Generation] Sending response for tool ${toolId}`);
     res.status(201).json({

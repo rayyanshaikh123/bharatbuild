@@ -23,6 +23,25 @@ router.get("/my-wages", labourCheck, async (req, res) => {
       [labourId],
     );
 
+    // 1.5 Get all sessions for these attendances to include in details
+    const attendanceIds = attendanceResult.rows.map((r) => r.attendance_id);
+    const sessionsByAttendance = {};
+
+    if (attendanceIds.length > 0) {
+      const sessionRes = await pool.query(
+        `SELECT attendance_id, check_in_time, check_out_time, worked_minutes 
+         FROM attendance_sessions 
+         WHERE attendance_id = ANY($1)
+         ORDER BY check_in_time ASC`,
+        [attendanceIds],
+      );
+      sessionRes.rows.forEach((s) => {
+        if (!sessionsByAttendance[s.attendance_id])
+          sessionsByAttendance[s.attendance_id] = [];
+        sessionsByAttendance[s.attendance_id].push(s);
+      });
+    }
+
     // 2. Calculate wages for each attendance (server-side)
     const wagesWithCalculation = [];
     for (const record of attendanceResult.rows) {
@@ -39,6 +58,7 @@ router.get("/my-wages", labourCheck, async (req, res) => {
           is_ready_for_payment: calculation.is_ready_for_payment,
           category: calculation.category,
           skill_type: calculation.skill_type,
+          sessions: sessionsByAttendance[record.attendance_id] || [],
         });
       } catch (err) {
         // If wage calculation fails (e.g., no rate configured), skip this record

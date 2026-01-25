@@ -24,8 +24,8 @@ router.get("/", engineerCheck, async (req, res) => {
     );
 
     projectCounts.rows.forEach((row) => {
-      if (row.status === "ACTIVE")
-        summary.total_projects_assigned = parseInt(row.count);
+      if (row.status === "ACTIVE" || row.status === "APPROVED")
+        summary.total_projects_assigned += parseInt(row.count);
       if (row.status === "PENDING")
         summary.total_projects_pending = parseInt(row.count);
       if (row.status === "REJECTED")

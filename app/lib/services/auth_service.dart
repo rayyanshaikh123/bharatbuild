@@ -13,6 +13,8 @@ class AuthService {
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();
 
+  http.Client get client => _client;
+
   /// Helper method to extract error message from response
   String _extractErrorMessage(http.Response response) {
     try {

@@ -3,13 +3,14 @@ const pool = require("../../db");
 const router = express.Router();
 const engineerCheck = require("../../middleware/engineerCheck");
 const { verifyEngineerAccess } = require("../../util/engineerPermissions");
+const { getISTDate } = require("../../util/dateUtils");
 
 /* ---------------- GET WAGE QUEUE (PRESENT LABOURERS) ---------------- */
 router.get("/queue", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
     const { projectId, date } = req.query;
-    const reportDate = date || new Date().toISOString().split("T")[0];
+    const reportDate = date || getISTDate();
 
     if (!projectId)
       return res.status(400).json({ error: "projectId is required" });
