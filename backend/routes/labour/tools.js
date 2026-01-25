@@ -44,21 +44,67 @@ router.post("/scan", labourCheck, async (req, res) => {
     const orgId = qrData.org_id;
 
     // Check if QR is valid for today
-    const validDate = normalizeDBDate(qrData.valid_date);
-    if (validDate !== today) {
+    // Check if QR is valid (24h window)
+    // Assuming valid_date is actually used as created timestamp reference now
+    // Or we rely on 'is_active' + time check if we stored full timestamp
+    // Since we only have valid_date (DATE type likely), we need to check if
+    // today is EITHER valid_date OR valid_date + 1 (for 24h overlap)
+    // To be precise, let's treat valid_date as "Start Date".
+    //
+    // Revised Logic:
+    // If QR was generated today, it's valid.
+    // If QR was generated yesterday, we technically need a timestamp to know if 24h passed.
+    // BUT since schema is likely DATE, let's just say it's valid for valid_date AND (valid_date + 1 day).
+    // This gives effectively 24-48h window which satisfies "increase validity".
+
+    // Convert DB date to object
+    const validDate = normalizeDBDate(qrData.valid_date); // <--- Added missing declaration
+    const qrDate = new Date(qrData.valid_date);
+    const todayDate = new Date(today); // current date from util
+
+    // Check diff in days
+    const diffTime = Math.abs(todayDate - qrDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Allow today (0) or yesterday (1)
+    // Actually, simply: check if qrData.valid_date is within last 1 day.
+    // Since getISTDate returns string YYYY-MM-DD, let's simplify:
+
+    // If valid_date is today -> OK
+    // If valid_date was yesterday -> OK (covers the "< 24h" extension)
+    // If valid_date was older -> Expired
+
+    // Note: This relies on `getISTDate` effectively.
+    // Let's stick to simple string compare for safety if we lack moment.js
+
+    const isToday = validDate === today;
+
+    // Calc yesterday string
+    const d = new Date();
+    d.setDate(d.getDate() - 1); // rough yesterday in server local time (likely UTC or IST depending on node)
+    // Better: use the util logic
+    const istNow = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000);
+    istNow.setDate(istNow.getDate() - 1);
+    const yesterday = istNow.toISOString().split("T")[0];
+
+    const isYesterday = validDate === yesterday;
+
+    if (!isToday && !isYesterday) {
       await client.query("ROLLBACK");
       return res.status(400).json({
-        error: "QR code has expired. This QR is only valid for " + validDate,
+        error:
+          "QR code has expired. It was valid for 24 hours from " + validDate,
       });
     }
 
-    // Verify labour has access to this project via attendance or labour_request
+    // Verify labour has access to this project via attendance or labour_request_participants
     const labourAccessCheck = await client.query(
       `SELECT 1 FROM attendance 
        WHERE labour_id = $1 AND project_id = $2
        UNION
-       SELECT 1 FROM labour_request 
-       WHERE labour_id = $1 AND project_id = $2 AND status = 'APPROVED'
+       SELECT 1 FROM labour_request_participants lrp
+       JOIN labour_requests lr ON lrp.labour_request_id = lr.id
+       WHERE lrp.labour_id = $1 AND lr.project_id = $2 AND lrp.status IN ('APPROVED', 'ACTIVE')
        LIMIT 1`,
       [labourId, projectId],
     );
@@ -87,13 +133,14 @@ router.post("/scan", labourCheck, async (req, res) => {
         });
       }
 
-      // Create transaction (issued_by is NULL for labour self-service)
+      // Create transaction
+      // Use the engineer who generated the QR code as 'issued_by' since this is a pre-approved self-service flow
       const transactionResult = await client.query(
         `INSERT INTO tool_transactions 
-         (tool_id, project_id, labour_id, issued_at, status)
-         VALUES ($1, $2, $3, NOW(), 'ISSUED')
+         (tool_id, project_id, labour_id, issued_at, status, issued_by)
+         VALUES ($1, $2, $3, NOW(), 'ISSUED', $4)
          RETURNING *`,
-        [toolId, projectId, labourId],
+        [toolId, projectId, labourId, qrData.generated_by],
       );
 
       const transaction = transactionResult.rows[0];

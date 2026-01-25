@@ -305,6 +305,9 @@ router.post("/:toolId/qr", engineerCheck, async (req, res) => {
     // Generate unique QR token
     const qrToken = crypto.randomBytes(32).toString("hex");
 
+    // Calculate expiration time (24 hours from now)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     // Create QR code (using ON CONFLICT to handle race conditions)
     const qrResult = await pool.query(
       `INSERT INTO tool_qr_codes 

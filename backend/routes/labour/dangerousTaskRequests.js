@@ -51,13 +51,13 @@ router.post("/", labourCheck, async (req, res) => {
     }
 
     const authorizedRecord = labourProjectCheck.rows.find((r) =>
-      ["APPROVED", "ACTIVE"].includes(r.status),
+      ["APPROVED", "ACTIVE", "PENDING"].includes(r.status),
     );
 
     if (!authorizedRecord) {
       await client.query("ROLLBACK");
       console.warn(
-        `[DangerousTaskReq] Access denied. No APPROVED/ACTIVE record found.`,
+        `[DangerousTaskReq] Access denied. No APPROVED/ACTIVE/PENDING record found.`,
       );
       return res
         .status(403)
@@ -513,12 +513,12 @@ router.get("/available-tasks", labourCheck, async (req, res) => {
     }
 
     const authorizedRecord = labourProjectCheck.rows.find((r) =>
-      ["APPROVED", "ACTIVE"].includes(r.status),
+      ["APPROVED", "ACTIVE", "PENDING"].includes(r.status),
     );
 
     if (!authorizedRecord) {
       console.warn(
-        `[DangerousTaskReq] GET Tasks - Access denied. No APPROVED/ACTIVE record found.`,
+        `[DangerousTaskReq] GET Tasks - Access denied. No APPROVED/ACTIVE/PENDING record found.`,
       );
       return res
         .status(403)
