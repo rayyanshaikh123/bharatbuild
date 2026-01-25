@@ -19,11 +19,13 @@ class AuthService {
   String _extractErrorMessage(http.Response response) {
     try {
       final body = jsonDecode(response.body);
-      if (body is Map && body.containsKey('error')) {
-        return body['error'] as String;
-      }
-      if (body is Map && body.containsKey('message')) {
-        return body['message'] as String;
+      if (body is Map) {
+        if (body.containsKey('error') && body['error'] != null) {
+          return body['error'].toString();
+        }
+        if (body.containsKey('message') && body['message'] != null) {
+          return body['message'].toString();
+        }
       }
     } catch (_) {
       // If parsing fails, return the raw body
@@ -582,7 +584,9 @@ class AuthService {
     );
     if (res.statusCode == 201) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['attendance'] as Map<String, dynamic>;
+      // Backend returns { attendance_id, session, message }
+      // We wrap it or return it directly. The provider expects a Map.
+      return data;
     }
     throw Exception('Check-in failed: ${res.body}');
   }
@@ -744,6 +748,29 @@ class AuthService {
     );
     if (res.statusCode != 200) {
       throw Exception('Failed to submit wage: ${res.body}');
+    }
+  }
+
+  Future<List<dynamic>> getUnpaidWages(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/wages?projectId=$projectId&status=APPROVED');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      // Filter filtering out already paid ones if API returns them (though API filter logic should handle it usually)
+      final wages = data['wages'] as List<dynamic>;
+      return wages.where((w) => w['paid_at'] == null).toList();
+    }
+    throw Exception('Failed to fetch unpaid wages: ${res.body}');
+  }
+
+  Future<void> markWagePaid(String wageId) async {
+    final uri = Uri.parse('$_base/engineer/wages/$wageId/mark-paid');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark wage as paid: ${res.body}');
     }
   }
 

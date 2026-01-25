@@ -13,7 +13,6 @@ import '../../theme/app_colors.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../providers/dpr_provider.dart';
-import 'dpr_form.dart';
 import 'package:intl/intl.dart';
 import 'grn_screen.dart';
 import '../../providers/labour_request_provider.dart';
@@ -24,7 +23,6 @@ import '../../providers/notification_provider.dart';
 import 'manual_attendance_screen.dart';
 import 'semi_manual_attendance_screen.dart';
 import 'dangerous_work_auth_screen.dart';
-import 'tools_management_screen.dart';
 import 'tools_management_screen.dart';
 
 /// Content-only engineer dashboard used in mobile IndexedStack.
@@ -75,9 +73,9 @@ class EngineerDashboardContent extends ConsumerWidget {
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
@@ -113,9 +111,9 @@ class EngineerDashboardContent extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.05),
+                color: AppColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
               ),
               child: projectsAsync.when(
                 data: (projects) {
@@ -387,10 +385,10 @@ class EngineerDashboardContent extends ConsumerWidget {
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -420,9 +418,9 @@ class EngineerDashboardContent extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.1)),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +428,7 @@ class EngineerDashboardContent extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 20),
@@ -447,7 +445,7 @@ class EngineerDashboardContent extends ConsumerWidget {
             Text(
               title,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -473,7 +471,7 @@ class EngineerDashboardContent extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -490,7 +488,7 @@ class EngineerDashboardContent extends ConsumerWidget {
                 Text(
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -499,7 +497,7 @@ class EngineerDashboardContent extends ConsumerWidget {
           Text(
             time,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ],
@@ -607,10 +605,10 @@ class EngineerJobsContent extends ConsumerWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -622,7 +620,7 @@ class EngineerJobsContent extends ConsumerWidget {
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 28),
@@ -634,13 +632,13 @@ class EngineerJobsContent extends ConsumerWidget {
         subtitle: Text(
           subtitle,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: theme.colorScheme.onSurface.withOpacity(0.3),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -686,7 +684,7 @@ class EngineerReportsContent extends ConsumerWidget {
                         padding: const EdgeInsets.only(top: 100),
                         child: Column(
                           children: [
-                            Icon(Icons.description_outlined, size: 64, color: Colors.grey.withOpacity(0.5)),
+                            Icon(Icons.description_outlined, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
                             const SizedBox(height: 16),
                             Text('no_reports_yet'.tr(), style: theme.textTheme.titleMedium),
                           ],
@@ -712,7 +710,7 @@ class EngineerReportsContent extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+                          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
                         ),
                         child: ListTile(
                           title: Text(dpr['title'] ?? 'Untitled Report', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -720,7 +718,7 @@ class EngineerReportsContent extends ConsumerWidget {
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
+                              color: statusColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -770,7 +768,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                     child: Text(
                       displayName[0].toUpperCase(),
                       style: theme.textTheme.headlineLarge?.copyWith(
@@ -803,7 +801,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
             Text(
               email,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 32),
@@ -839,7 +837,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
                 Navigator.pushNamedAndRemoveUntil(context, '/onboarding', (route) => false);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.withOpacity(0.1),
+                backgroundColor: Colors.red.withValues(alpha: 0.1),
                 foregroundColor: Colors.red,
                 elevation: 0,
                 minimumSize: const Size(double.infinity, 56),
@@ -870,7 +868,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: theme.colorScheme.onSurface.withOpacity(0.05),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 20),
@@ -878,7 +876,7 @@ class _EngineerProfileContentState extends ConsumerState<EngineerProfileContent>
         title: Text(title, style: theme.textTheme.bodyLarge),
         trailing: const Icon(Icons.arrow_forward_ios, size: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        tileColor: theme.colorScheme.onSurface.withOpacity(0.02),
+        tileColor: theme.colorScheme.onSurface.withValues(alpha: 0.02),
       ),
     );
   }

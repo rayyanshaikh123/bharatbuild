@@ -48,16 +48,16 @@ export default function MaterialStockPage() {
         if (orgsRes.organizations && orgsRes.organizations.length > 0) {
           const approvedOrg = orgsRes.organizations[0];
           const res = await managerProjects.getMyProjects(approvedOrg.id);
-        const activeProjects = res.projects.filter(
-          (p: any) =>
-            p.my_status === "ACTIVE" &&
-            (p.status === "ACTIVE" || p.status === "PLANNED"),
-        );
-        setProjects(activeProjects);
+          const activeProjects = res.projects.filter(
+            (p: any) =>
+              p.my_status === "ACTIVE" &&
+              (p.status === "ACTIVE" || p.status === "PLANNED"),
+          );
+          setProjects(activeProjects);
 
-        if (activeProjects.length > 0) {
-          setSelectedProject(activeProjects[0].id);
-        }
+          if (activeProjects.length > 0) {
+            setSelectedProject(activeProjects[0].id);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
@@ -355,7 +355,9 @@ function ConsumptionView({
                 <td className="p-4">
                   <div className="text-right">
                     <span className="font-mono font-semibold text-sm">
-                      {record.quantity_used.toFixed(2)}
+                      {parseFloat((record.quantity_used as any) || "0").toFixed(
+                        2,
+                      )}
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">
                       {record.unit}

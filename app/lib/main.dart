@@ -82,8 +82,8 @@ class MyApp extends ConsumerWidget {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
+        theme: AppTheme.light(context.locale),
+        darkTheme: AppTheme.dark(context.locale),
         themeMode: themeMode,
         home: const SessionGate(),
         routes: {

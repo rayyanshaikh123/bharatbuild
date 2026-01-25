@@ -53,27 +53,6 @@ router.post("/request", engineerCheck, async (req, res) => {
       }
     }
 
-    // Check standalone request limit if no DPR linked
-    if (!dpr_id) {
-      const STANDALONE_REQUEST_MONTHLY_LIMIT = 5;
-      const countResult = await pool.query(
-        `SELECT COUNT(*) FROM material_requests 
-                 WHERE site_engineer_id = $1 
-                   AND dpr_id IS NULL 
-                   AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())
-                   AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`,
-        [engineerId],
-      );
-
-      if (
-        parseInt(countResult.rows[0].count) >= STANDALONE_REQUEST_MONTHLY_LIMIT
-      ) {
-        return res.status(400).json({
-          error: "Monthly limit for standalone requests exceeded",
-        });
-      }
-    }
-
     // Validate and parse quantity
     const parsedQuantity = parseFloat(quantity);
     if (isNaN(parsedQuantity) || parsedQuantity <= 0) {

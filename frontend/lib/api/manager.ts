@@ -897,7 +897,9 @@ export interface DangerousWorkStatistics {
 
 export const managerDangerousWork = {
   getTasks: (projectId: string) =>
-    api.get<{ dangerous_tasks: DangerousTask[] }>(`/manager/dangerous-work/tasks?projectId=${projectId}`),
+    api.get<{ dangerous_tasks: DangerousTask[] }>(
+      `/manager/dangerous-work/tasks?projectId=${projectId}`,
+    ),
 
   getRequests: (filters: {
     projectId: string;
@@ -914,19 +916,23 @@ export const managerDangerousWork = {
     if (filters.taskId) params.append("taskId", filters.taskId);
     if (filters.startDate) params.append("startDate", filters.startDate);
     if (filters.endDate) params.append("endDate", filters.endDate);
-    return api.get<{ task_requests: DangerousTaskRequest[] }>(`/manager/dangerous-work/requests?${params}`);
+    return api.get<{ task_requests: DangerousTaskRequest[] }>(
+      `/manager/dangerous-work/requests?${params}`,
+    );
   },
 
   getStatistics: (projectId: string, startDate?: string, endDate?: string) => {
     const params = new URLSearchParams({ projectId });
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
-    return api.get<DangerousWorkStatistics>(`/manager/dangerous-work/statistics?${params}`);
+    return api.get<DangerousWorkStatistics>(
+      `/manager/dangerous-work/statistics?${params}`,
+    );
   },
 
   getLabourHistory: (projectId: string, labourId: string) =>
     api.get<{ history: DangerousTaskRequest[] }>(
-      `/manager/dangerous-work/labour/${labourId}/history?projectId=${projectId}`
+      `/manager/dangerous-work/labour/${labourId}/history?projectId=${projectId}`,
     ),
 };
 
@@ -945,20 +951,29 @@ export interface DelayedItem {
 export const managerDelays = {
   // Get delays for a project
   getProjectDelays: (projectId: string) =>
-    api.get<{ delayed_items: DelayedItem[] }>(`/manager/delays/project/${projectId}`),
+    api.get<{ delayed_items: DelayedItem[] }>(
+      `/manager/delays/project/${projectId}`,
+    ),
 
   // Update status of delayed item
   updatePlanItemStatus: (
     itemId: string,
-    data: { status: string; delay?: string; completed_at?: string }
-  ) => api.patch<{ plan_item: any }>(`/manager/delays/plan-items/${itemId}/status`, data),
+    data: { status: string; delay?: string; completed_at?: string },
+  ) =>
+    api.patch<{ plan_item: any }>(
+      `/manager/delays/plan-items/${itemId}/status`,
+      data,
+    ),
 };
 
 // ==================== MANAGER LEAVE ORGANIZATION API ====================
 
 export const managerLeaveOrganization = {
   leave: () =>
-    api.post<{ message: string; removed_from_projects: number }>("/manager/organization/leave", {}),
+    api.post<{ message: string; removed_from_projects: number }>(
+      "/manager/organization/leave",
+      {},
+    ),
 };
 
 // ==================== MANAGER WORKING HOURS API ====================
@@ -966,14 +981,54 @@ export const managerLeaveOrganization = {
 export const managerWorkingHours = {
   // Get project working hours
   get: (projectId: string) =>
-    api.get<{ working_hours: { check_in_time: string; check_out_time: string } }>(
-      `/manager/working-hours/${projectId}`
-    ),
+    api.get<{
+      working_hours: { check_in_time: string; check_out_time: string };
+    }>(`/manager/working-hours/${projectId}`),
 
   // Update project working hours (Creator only)
-  update: (projectId: string, data: { check_in_time: string; check_out_time: string }) =>
+  update: (
+    projectId: string,
+    data: { check_in_time: string; check_out_time: string },
+  ) =>
     api.put<{
       message: string;
       working_hours: { check_in_time: string; check_out_time: string };
     }>(`/manager/working-hours/${projectId}`, data),
+};
+// ==================== MANAGER AI API ====================
+
+export const managerAI = {
+  // Get project health
+  getProjectHealth: (projectId: string) =>
+    api.get<{
+      health_score: number;
+      health_status: string;
+      overall_assessment: string;
+      financial_health: any;
+      schedule_health: any;
+      operational_health: any;
+      recommendations: string[];
+    }>(`/manager/ai/projects/${projectId}/health`),
+
+  // Get delay analysis
+  getDelayAnalysis: (projectId: string) =>
+    api.get<{
+      risk_score: number;
+      root_causes: any[];
+      impact_assessment: string;
+      recovery_steps: string[];
+    }>(`/manager/ai/delays/${projectId}/analysis`),
+
+  // Get material anomalies
+  getMaterialAnomalies: (projectId: string) =>
+    api.get<{
+      anomalies: any[];
+    }>(`/manager/ai/materials/${projectId}/anomalies`),
+
+  // Get audit insights
+  getAuditInsights: (projectId: string) =>
+    api.get<{
+      risk_factors: any[];
+      patterns: string[];
+    }>(`/manager/ai/audits/${projectId}/insights`),
 };
