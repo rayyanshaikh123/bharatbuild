@@ -20,10 +20,14 @@ router.get("/projects", engineerCheck, async (req, res) => {
 
     // Allow engineers who are APPROVED or PENDING to view projects
     const status = await siteEngineerStatuusCheck(engineerId, organizationId);
-    if (!status || (status !== "APPROVED" && status !== "PENDING")) {
+    const validStatuses = ["APPROVED", "PENDING", "ACTIVE"];
+    if (!status || !validStatuses.includes(status)) {
       return res
         .status(403)
-        .json({ error: "Access denied. You must be part of the organization to view its projects." });
+        .json({
+          error:
+            "Access denied. You must be part of the organization to view its projects.",
+        });
     }
 
     const result = await pool.query(
@@ -42,12 +46,16 @@ router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
     const { projectId } = req.params;
     const { organizationId } = req.body;
 
-    // Check if engineer is part of the organization (APPROVED or PENDING)
+    // Check if engineer is part of the organization (APPROVED, PENDING, or ACTIVE)
     const status = await siteEngineerStatuusCheck(engineerId, organizationId);
-    if (!status || (status !== "APPROVED" && status !== "PENDING")) {
+    const validStatuses = ["APPROVED", "PENDING", "ACTIVE"];
+    if (!status || !validStatuses.includes(status)) {
       return res
         .status(403)
-        .json({ error: "Access denied. You must be part of the organization to join its projects." });
+        .json({
+          error:
+            "Access denied. You must be part of the organization to join its projects.",
+        });
     }
 
     // Verify project belongs to the organization
@@ -56,7 +64,9 @@ router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
       [projectId, organizationId],
     );
     if (projectCheck.rows.length === 0) {
-      return res.status(404).json({ error: "Project not found in this organization." });
+      return res
+        .status(404)
+        .json({ error: "Project not found in this organization." });
     }
 
     // Insert project join request with PENDING status (requires manager approval)
@@ -67,7 +77,10 @@ router.post("/project-join/:projectId", engineerCheck, async (req, res) => {
          DO UPDATE SET status = 'PENDING'`,
       [projectId, engineerId],
     );
-    res.json({ message: "Project join request submitted successfully. Waiting for manager approval." });
+    res.json({
+      message:
+        "Project join request submitted successfully. Waiting for manager approval.",
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

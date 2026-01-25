@@ -35,9 +35,12 @@ router.get("/grns", managerCheck, async (req, res) => {
       });
     }
 
-    // Get GRNs for this project
+    // Get GRNs for this project (exclude BYTEA columns for performance)
     const result = await pool.query(
-      `SELECT g.*, 
+      `SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
+              g.site_engineer_id, g.status, g.received_items, g.remarks, 
+              g.verified_by, g.created_at, g.received_at, g.verified_at,
+              g.bill_image_mime, g.proof_image_mime,
               p.name AS project_name,
               po.po_number,
               po.vendor_name,
@@ -179,6 +182,128 @@ router.patch("/grns/:grnId/verify", managerCheck, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
+  }
+});
+
+/* ---------------- GET GRN BILL IMAGE ---------------- */
+router.get("/grns/:grnId/bill-image", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { grnId } = req.params;
+
+    // Get GRN with bill image
+    const result = await pool.query(
+      `SELECT g.id, g.project_id, g.bill_image, g.bill_image_mime
+       FROM grns g
+       WHERE g.id = $1`,
+      [grnId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "GRN not found",
+      });
+    }
+
+    const grn = result.rows[0];
+
+    // Verify manager has access to this project
+    const accessCheck = await pool.query(
+      `SELECT pm.id, p.created_by 
+       FROM project_managers pm
+       JOIN projects p ON pm.project_id = p.id
+       WHERE pm.manager_id = $1 AND pm.project_id = $2 AND pm.status = 'ACTIVE'`,
+      [managerId, grn.project_id],
+    );
+
+    const isCreator = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND created_by = $2`,
+      [grn.project_id, managerId],
+    );
+
+    if (accessCheck.rows.length === 0 && isCreator.rows.length === 0) {
+      return res.status(403).json({
+        error: "You do not have access to this GRN's project",
+      });
+    }
+
+    if (!grn.bill_image) {
+      return res.status(404).json({
+        error: "Bill image not available for this GRN",
+      });
+    }
+
+    // Stream image with correct headers
+    res.setHeader("Content-Type", grn.bill_image_mime || "image/jpeg");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="GRN_${grnId}_bill.jpg"`,
+    );
+    res.send(grn.bill_image);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ---------------- GET GRN PROOF IMAGE ---------------- */
+router.get("/grns/:grnId/proof-image", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { grnId } = req.params;
+
+    // Get GRN with proof image
+    const result = await pool.query(
+      `SELECT g.id, g.project_id, g.proof_image, g.proof_image_mime
+       FROM grns g
+       WHERE g.id = $1`,
+      [grnId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "GRN not found",
+      });
+    }
+
+    const grn = result.rows[0];
+
+    // Verify manager has access to this project
+    const accessCheck = await pool.query(
+      `SELECT pm.id, p.created_by 
+       FROM project_managers pm
+       JOIN projects p ON pm.project_id = p.id
+       WHERE pm.manager_id = $1 AND pm.project_id = $2 AND pm.status = 'ACTIVE'`,
+      [managerId, grn.project_id],
+    );
+
+    const isCreator = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND created_by = $2`,
+      [grn.project_id, managerId],
+    );
+
+    if (accessCheck.rows.length === 0 && isCreator.rows.length === 0) {
+      return res.status(403).json({
+        error: "You do not have access to this GRN's project",
+      });
+    }
+
+    if (!grn.proof_image) {
+      return res.status(404).json({
+        error: "Proof image not available for this GRN",
+      });
+    }
+
+    // Stream image with correct headers
+    res.setHeader("Content-Type", grn.proof_image_mime || "image/jpeg");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="GRN_${grnId}_proof.jpg"`,
+    );
+    res.send(grn.proof_image);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

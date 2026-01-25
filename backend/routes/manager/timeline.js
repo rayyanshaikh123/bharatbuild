@@ -66,7 +66,7 @@ router.get("/project/:projectId", async (req, res) => {
         status,
         priority,
         completed_at,
-        delay,
+        delay_info,
         CASE 
           WHEN status = 'COMPLETED' AND completed_at > period_end 
             THEN EXTRACT(DAY FROM (completed_at - period_end))
@@ -118,7 +118,7 @@ router.get("/project/:projectId", async (req, res) => {
       status: item.status,
       priority: item.priority,
       delay_days: Math.max(0, Math.round(parseFloat(item.delay_days) || 0)),
-      delay_info: item.delay || null,
+      delay_info: item.delay_info || null,
     }));
 
     res.json({
@@ -132,7 +132,7 @@ router.get("/project/:projectId", async (req, res) => {
     });
   } catch (err) {
     console.error("[Manager Timeline API] Error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 

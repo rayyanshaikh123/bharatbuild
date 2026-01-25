@@ -719,7 +719,7 @@ class _ProjectsMapScreenState extends ConsumerState<ProjectsMapScreen> {
                 _detailRow(Icons.currency_rupee, 'daily_wages'.tr(), '₹${project['wage']}/day', theme),
               // Start date
               if (project['start_date'] != null)
-                _detailRow(Icons.calendar_today, 'start_date'.tr(), project['start_date'].toString().split('T')[0], theme),
+                _detailRow(Icons.calendar_today, 'start_date'.tr(), DateFormat('yyyy-MM-dd').format(DateTime.parse(project['start_date'].toString())), theme),
               const SizedBox(height: 20),
               // Apply button
               SizedBox(

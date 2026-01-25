@@ -5,10 +5,19 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { poManagerPurchaseOrders, poManagerProjects, PurchaseOrder, Project } from "@/lib/api/po-manager";
-import { Loader2, FileText, Filter, Upload, Eye, Send, Download } from "lucide-react";
+import { 
+  purchaseManagerPurchaseOrders, 
+  purchaseManagerProjects, 
+  purchaseManagerOrganization,
+  PurchaseOrder, 
+  Project 
+} from "@/lib/api/purchase-manager";
+import { Loader2, Filter, Upload, Send, Download, Eye, FileText, User, Calendar, Box } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // Project selector
 function ProjectSelector({
@@ -36,7 +45,7 @@ function ProjectSelector({
   );
 }
 
-// Upload Modal - Now prompts for URL since backend stores URL
+// Upload Modal
 function UploadModal({ 
   po, 
   onClose, 
@@ -46,60 +55,163 @@ function UploadModal({
   onClose: () => void;
   onUploaded: () => void;
 }) {
-  const [pdfUrl, setPdfUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = async () => {
-    if (!pdfUrl.trim()) return;
+    if (!file) return;
 
     try {
       setIsUploading(true);
-      await poManagerPurchaseOrders.uploadPDF(po.id, pdfUrl);
-      toast.success("PO PDF URL saved successfully!");
+      await purchaseManagerPurchaseOrders.uploadPDF(po.id, file);
+      toast.success("PO PDF uploaded successfully!");
       onUploaded();
       onClose();
     } catch (err) {
       console.error("Upload failed:", err);
-      toast.error("Failed to save PDF URL");
+      toast.error("Failed to upload PDF");
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Add PO PDF URL</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Enter the URL for the Purchase Order PDF for <strong>{po.po_number}</strong>
-        </p>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload PO PDF</DialogTitle>
+          <DialogDescription>
+            Select the Purchase Order PDF for <strong>{po.po_number}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 pt-4">
+            <Input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setFile(f);
+              }}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Only PDF files are allowed. Max size 10MB.
+            </p>
 
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://example.com/po-document.pdf"
-          className="w-full h-10 px-3 bg-background/50 border border-border rounded-lg text-sm"
-        />
-        <p className="text-xs text-muted-foreground mt-2">
-          Upload your PDF to a cloud storage and paste the public URL here.
-        </p>
-
-        <div className="flex gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} className="flex-1" disabled={isUploading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleUpload} 
-            className="flex-1" 
-            disabled={!pdfUrl.trim() || isUploading}
-          >
-            {isUploading ? <Loader2 className="animate-spin" size={16} /> : "Save URL"}
-          </Button>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={onClose} disabled={isUploading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpload} 
+                disabled={!file || isUploading}
+              >
+                {isUploading ? <Loader2 className="animate-spin mr-2" /> : <Upload size={16} className="mr-2" />}
+                Upload PDF
+              </Button>
+            </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
+}
+
+// View Details Modal
+function ViewDetailsModal({
+    po,
+    onClose
+}: {
+    po: PurchaseOrder;
+    onClose: () => void;
+}) {
+    // Parse items if string
+    const items = typeof po.items === 'string' ? JSON.parse(po.items) : po.items;
+
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <FileText className="text-primary" />
+                        Purchase Order Details
+                    </DialogTitle>
+                    <DialogDescription>
+                        PO Number: <span className="font-mono font-bold text-foreground">{po.po_number}</span>
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 pt-2">
+                    {/* Status Banner */}
+                    <div className={`p-3 rounded-lg flex items-center justify-between ${
+                         po.status === 'SENT' ? 'bg-green-500/10 text-green-700' :
+                         po.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-700' :
+                         'bg-blue-500/10 text-blue-700'
+                    }`}>
+                         <span className="font-bold flex items-center gap-2">
+                             Status: {po.status}
+                         </span>
+                         <span className="text-sm opacity-80">
+                             Created: {new Date(po.created_at).toLocaleDateString()}
+                         </span>
+                    </div>
+
+                    {/* Vendor & Project Info */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border/50">
+                            <h4 className="font-bold flex items-center gap-2 text-foreground">
+                                <User size={16} /> Vendor Details
+                            </h4>
+                            <div className="text-sm space-y-1">
+                                <p><span className="text-muted-foreground">Name:</span> {po.vendor_name}</p>
+                                <p><span className="text-muted-foreground">Contact:</span> {po.vendor_contact || "-"}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border/50">
+                            <h4 className="font-bold flex items-center gap-2 text-foreground">
+                                <Box size={16} /> Project Details
+                            </h4>
+                            <div className="text-sm space-y-1">
+                                <p><span className="text-muted-foreground">Project:</span> {po.project_name}</p>
+                                <p><span className="text-muted-foreground">Ref Request:</span> {po.material_request_title || "-"}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div>
+                        <h4 className="font-bold mb-3">Items</h4>
+                        <div className="border border-border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left font-medium">Item</th>
+                                        <th className="px-4 py-2 text-right font-medium">Qty</th>
+                                        <th className="px-4 py-2 text-right font-medium">Rate</th>
+                                        <th className="px-4 py-2 text-right font-medium">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {Array.isArray(items) && items.map((item: any, idx: number) => (
+                                        <tr key={idx} className="bg-card">
+                                            <td className="px-4 py-2">{item.name || item.description || "Item"}</td>
+                                            <td className="px-4 py-2 text-right">{item.quantity}</td>
+                                            <td className="px-4 py-2 text-right">₹{item.rate}</td>
+                                            <td className="px-4 py-2 text-right font-mono">₹{item.amount}</td>
+                                        </tr>
+                                    ))}
+                                    <tr className="bg-muted/30 font-bold">
+                                        <td colSpan={3} className="px-4 py-3 text-right">Total Amount:</td>
+                                        <td className="px-4 py-3 text-right font-mono text-base">₹{po.total_amount.toLocaleString()}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export default function PurchaseOrdersPage() {
@@ -110,13 +222,21 @@ export default function PurchaseOrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPOs, setIsLoadingPOs] = useState(false);
   const [uploadingPO, setUploadingPO] = useState<PurchaseOrder | null>(null);
+  const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null);
+  const [sendingPOId, setSendingPOId] = useState<string | null>(null);
 
   // Fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await poManagerProjects.getMyProjects();
-        setProjects(res.projects);
+        const orgRes = await purchaseManagerOrganization.getMyOrganizations(); 
+        if (!orgRes.organizations || orgRes.organizations.length === 0) {
+           setIsLoading(false);
+           return;
+        }
+
+        const res = await purchaseManagerProjects.getMyProjects();
+        setProjects(res.projects || []);
       } catch (err) {
         console.error("Failed to fetch projects:", err);
       } finally {
@@ -130,10 +250,11 @@ export default function PurchaseOrdersPage() {
   const fetchPOs = async () => {
     try {
       setIsLoadingPOs(true);
-      const res = await poManagerPurchaseOrders.getAll(selectedProjectId || undefined);
-      setPurchaseOrders(res.purchase_orders);
+      const res = await purchaseManagerPurchaseOrders.getAll(selectedProjectId || undefined);
+      setPurchaseOrders(res.purchase_orders || []);
     } catch (err) {
       console.error("Failed to fetch POs:", err);
+      toast.error("Failed to load purchase orders");
     } finally {
       setIsLoadingPOs(false);
     }
@@ -150,8 +271,13 @@ export default function PurchaseOrdersPage() {
         key: "po_number",
         label: "PO Number",
         sortable: true,
-        render: (value: string) => (
-          <span className="font-mono font-medium">{value}</span>
+        render: (value: string, row: PurchaseOrder) => (
+          <button 
+             onClick={() => setViewingPO(row)}
+             className="font-mono font-bold text-primary hover:underline text-left"
+          >
+             {value}
+          </button>
         ),
       },
       {
@@ -190,49 +316,88 @@ export default function PurchaseOrdersPage() {
         },
       },
       {
-        key: "created_at",
-        label: "Created",
-        width: "120px",
-        render: (value: string) => new Date(value).toLocaleDateString(),
-      },
-      {
-        key: "actions",
+        key: "id", 
         label: "Actions",
-        width: "150px",
-        render: (_: unknown, row: PurchaseOrder) => (
+        width: "200px",
+        render: (_: unknown, row: any) => (
           <div className="flex gap-2">
-            {row.po_pdf_url ? (
-              <Button size="sm" variant="outline" className="gap-1">
-                <Download size={14} />
-                PDF
-              </Button>
+            <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setViewingPO(row)}
+                title="View Details"
+             >
+                <Eye size={16} />
+             </Button>
+
+            {row.po_pdf_mime ? ( // Check if binary PDF exists
+               <Button 
+                 size="sm" 
+                 variant="outline" 
+                 className="gap-1 bg-blue-500/5 text-blue-600 hover:bg-blue-500/10"
+                 onClick={async (e) => {
+                     e.stopPropagation();
+                     try {
+                         const blob = await purchaseManagerPurchaseOrders.getPdf(row.id);
+                         const url = window.URL.createObjectURL(blob);
+                         const a = document.createElement('a');
+                         a.href = url;
+                         a.download = `PO-${row.po_number}.pdf`;
+                         document.body.appendChild(a);
+                         a.click();
+                         window.URL.revokeObjectURL(url);
+                         document.body.removeChild(a);
+                     } catch(err) {
+                         toast.error("Failed to download PDF");
+                     }
+                 }}
+               >
+                  <Download size={14} />
+                  PDF
+               </Button>
             ) : (
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="gap-1"
-                onClick={() => setUploadingPO(row)}
+                className="gap-1 border-dashed"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setUploadingPO(row);
+                }}
               >
                 <Upload size={14} />
                 Upload
               </Button>
             )}
-              {row.status === "DRAFT" && row.po_pdf_url && (
+              {row.status === "DRAFT" && row.po_pdf_mime && (
                 <Button 
                   size="sm" 
                   className="gap-1"
-                  onClick={async () => {
+                  disabled={sendingPOId === row.id}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (sendingPOId === row.id) return;
+                    
                     try {
-                      await poManagerPurchaseOrders.send(row.id);
+                      setSendingPOId(row.id);
+                      await purchaseManagerPurchaseOrders.send(row.id);
                       toast.success("PO sent to site engineer!");
                       fetchPOs();
-                    } catch (err) {
+                    } catch (err: any) { // Type as any to access message safely
                       console.error("Send failed:", err);
-                      toast.error("Failed to send PO");
+                      // If error says strictly "Only DRAFT...", it implies it's already sent, so we can treat it as success or just info
+                      if (err.message && err.message.includes("Only DRAFT")) {
+                          toast.info("PO was already sent.");
+                          fetchPOs();
+                      } else {
+                          toast.error(err.message || "Failed to send PO");
+                      }
+                    } finally {
+                      setSendingPOId(null);
                     }
                   }}
                 >
-                  <Send size={14} />
+                  {sendingPOId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   Send
                 </Button>
               )}
@@ -281,7 +446,6 @@ export default function PurchaseOrdersPage() {
           searchable
           searchKeys={["po_number", "project_name", "vendor_name"]}
           emptyMessage="No purchase orders found."
-          itemsPerPage={15}
         />
       )}
 
@@ -292,6 +456,14 @@ export default function PurchaseOrdersPage() {
           onClose={() => setUploadingPO(null)} 
           onUploaded={fetchPOs}
         />
+      )}
+
+      {/* View Details Modal */}
+      {viewingPO && (
+          <ViewDetailsModal
+             po={viewingPO}
+             onClose={() => setViewingPO(null)}
+          />
       )}
     </div>
   );

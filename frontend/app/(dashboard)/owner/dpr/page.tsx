@@ -5,7 +5,7 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { ownerOrganization, ownerProjects, ownerDpr, Project, DprEntry } from "@/lib/api/owner";
-import { Loader2, FileText, Filter, Calendar } from "lucide-react";
+import { Loader2, FileText, Filter, Calendar, Eye } from "lucide-react";
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -192,6 +192,20 @@ export default function OwnerDprPage() {
           dateStyle: "short",
           timeStyle: "short",
         }),
+      },
+      {
+        key: "actions",
+        label: "View",
+        width: "80px",
+        render: (_: any, row: any) => (
+          <button 
+            onClick={() => window.location.href = `/owner/dpr/${row.id}`}
+            className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+            title="View Details"
+          >
+            <Eye size={16} />
+          </button>
+        ),
       },
     ],
     []

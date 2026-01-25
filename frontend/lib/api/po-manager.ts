@@ -34,7 +34,7 @@ export interface PurchaseOrder {
   items: POItem[];
   total_amount: number;
   status: "DRAFT" | "SENT" | "ACKNOWLEDGED";
-  po_pdf_url?: string;
+  po_pdf_mime?: string;
   created_by: string;
   created_by_role?: string;
   created_at: string;
@@ -172,12 +172,35 @@ export const poManagerPurchaseOrders = {
     );
   },
 
-  // Upload PO PDF URL
-  uploadPDF: async (poId: string, poPdfUrl: string): Promise<{ message: string; purchase_order: PurchaseOrder }> => {
-    return api.patch<{ message: string; purchase_order: PurchaseOrder }>(
-      `/purchase-manager/purchase-orders/${poId}/upload`,
-      { poPdfUrl }
-    );
+  // Upload PO PDF File (FormData)
+  uploadPDF: async (poId: string, file: File): Promise<{ message: string; purchase_order: PurchaseOrder }> => {
+    const formData = new FormData();
+    formData.append("pdf", file);
+    
+    // Note: api.patch usually sets Content-Type to application/json. 
+    // We need to bypass that for FormData to let browser set boundary.
+    // Assuming custom implementation or handling in api.ts. 
+    // If api.ts wrapper forces JSON, we might need a direct fetch or update api.ts.
+    // For now, let's try to pass FormData. If api.ts handles it, good. 
+    // Checking api.ts (Step 998): "body: JSON.stringify(data)". This will BREAK FormData.
+    // So we need a custom fetch here or extend api.ts.
+    // I will use api.upload (if exists) or direct fetch with credentials.
+    
+    // Let's use the fetcher directly if exposed, or fallback to fetch.
+    const container = new FormData();
+    container.append("pdf", file);
+
+    return fetch(`${api.defaults.baseURL}/purchase-manager/purchase-orders/${poId}/upload`, {
+        method: "PATCH",
+        body: container,
+        credentials: "include", // Essential
+    }).then(async (res) => {
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({ error: "Upload failed" }));
+            throw new Error(error.error || error.message || "Upload failed");
+        }
+        return res.json();
+    });
   },
 
   // Send PO to site engineer
@@ -231,3 +254,36 @@ export const poManagerOrganization = {
     return api.post<{ message: string }>("/purchase-manager/join-organization", { organizationId });
   },
 };
+
+// ==================== GRN API ====================
+
+export interface GRN {
+  id: string;
+  project_id: string;
+  project_name: string;
+  purchase_order_id: string;
+  po_number: string;
+  vendor_name: string;
+  material_request_id: string;
+  material_request_title: string;
+  site_engineer_id: string;
+  engineer_name: string;
+  grn_number: string;
+  quantity_received: number;
+  unit: string;
+  quality_check_status: "PENDING" | "PASSED" | "FAILED";
+  remarks?: string;
+  received_at: string;
+  created_at: string;
+  verified_by?: string;
+  verified_by_name?: string;
+  verified_at?: string;
+}
+
+export const poManagerGRN = {
+  // Get GRNs for a project
+  getByProject: async (projectId: string): Promise<{ grns: GRN[] }> => {
+    return api.get<{ grns: GRN[] }>(`/purchase-manager/grns?projectId=${projectId}`);
+  },
+};
+

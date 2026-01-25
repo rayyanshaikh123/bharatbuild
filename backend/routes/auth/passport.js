@@ -8,6 +8,7 @@ require("./managerPassport");
 require("./engineerPassport");
 require("./labourPassport");
 require("./purchaseManagerPassport");
+require("./qaEngineerPassport");
 
 // Configure owner-local strategy
 passport.use(
@@ -63,6 +64,9 @@ passport.deserializeUser(async (key, done) => {
       columns = "id, name, phone, role";
     } else if (role === "PURCHASE_MANAGER") {
       table = "purchase_managers";
+      columns = "id, name, email, phone, role";
+    } else if (role === "QA_ENGINEER") {
+      table = "qa_engineers";
       columns = "id, name, email, phone, role";
     } else return done(null, false);
 

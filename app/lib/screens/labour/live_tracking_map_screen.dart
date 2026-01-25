@@ -17,7 +17,7 @@ class LiveTrackingMapScreen extends ConsumerStatefulWidget {
   ConsumerState<LiveTrackingMapScreen> createState() => _LiveTrackingMapScreenState();
 }
 
-class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
+class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final GeofenceService _geofenceService = GeofenceService();
   StreamSubscription<Position>? _positionSubscription;
@@ -25,15 +25,21 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
   bool _isInside = true;
   double _distanceFromEdge = 0;
   List<LatLng> _geofencePoints = [];
-  LatLng? _siteCenter;
+  LatLng? _siteRadiusCenter;
   double? _siteRadius;
+  bool _hasCenteredOnUser = false;
   
   Timer? _workTimer;
   Duration _workDuration = Duration.zero;
+  late AnimationController _markerPulseController;
 
   @override
   void initState() {
     super.initState();
+    _markerPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
     _parseProjectGeofence();
     _initWorkDuration();
     _startLiveTracking();
@@ -68,6 +74,7 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
   void dispose() {
     _positionSubscription?.cancel();
     _workTimer?.cancel();
+    _markerPulseController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -79,13 +86,13 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
         final lat = (geofenceData.center?['lat'] as num?)?.toDouble();
         final lng = (geofenceData.center?['lng'] as num?)?.toDouble();
         if (lat != null && lng != null) {
-          _siteCenter = LatLng(lat, lng);
+          _siteRadiusCenter = LatLng(lat, lng);
           _siteRadius = geofenceData.radiusMeters;
         }
       } else if (geofenceData.type == 'POLYGON' && geofenceData.polygon != null) {
         _geofencePoints = geofenceData.polygon!.map((p) => LatLng(p[0], p[1])).toList();
         if (_geofencePoints.isNotEmpty) {
-           _siteCenter = _geofencePoints.first; // Rough fallback
+           _siteRadiusCenter = _geofencePoints.first; // Rough center for initial camera
         }
       } else {
         // Legacy fallback
@@ -93,7 +100,7 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
         final lng = (widget.project['longitude'] as num?)?.toDouble();
         final rad = (widget.project['geofence_radius'] as num?)?.toDouble();
         if (lat != null && lng != null) {
-          _siteCenter = LatLng(lat, lng);
+          _siteRadiusCenter = LatLng(lat, lng);
           _siteRadius = rad ?? 100;
         }
       }
@@ -115,14 +122,18 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
         widget.project,
       );
 
+      final userLatLng = LatLng(position.latitude, position.longitude);
+
       setState(() {
         _currentPosition = position;
         _isInside = validation['isValid'] ?? true;
         _distanceFromEdge = (validation['distance'] as num?)?.toDouble() ?? 0;
       });
 
-      if (_currentPosition != null) {
-        // Soft move to center user if they move too far from view
+      // Auto-center on first fix
+      if (!_hasCenteredOnUser) {
+        _hasCenteredOnUser = true;
+        _mapController.move(userLatLng, 17.0);
       }
     });
   }
@@ -150,7 +161,7 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: userLatLng ?? _siteCenter ?? const LatLng(20.5937, 78.9629),
+              initialCenter: userLatLng ?? _siteRadiusCenter ?? const LatLng(20.5937, 78.9629),
               initialZoom: 17.0,
             ),
             children: [
@@ -159,11 +170,11 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
                 userAgentPackageName: 'com.bharatbuild.app',
               ),
               // site boundary
-              if (_siteCenter != null && _siteRadius != null)
+              if (_siteRadiusCenter != null && _siteRadius != null)
                 CircleLayer(
                   circles: [
                     CircleMarker(
-                      point: _siteCenter!,
+                      point: _siteRadiusCenter!,
                       radius: _siteRadius!,
                       useRadiusInMeter: true,
                       color: AppColors.primary.withOpacity(0.1),
@@ -189,30 +200,37 @@ class _LiveTrackingMapScreenState extends ConsumerState<LiveTrackingMapScreen> {
                   markers: [
                     Marker(
                       point: userLatLng,
-                      width: 60,
-                      height: 60,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: (_isInside ? Colors.blue : Colors.red).withOpacity(0.2),
-                            ),
-                          ),
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _isInside ? Colors.blue : Colors.red,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
-                              ],
-                            ),
-                          ),
-                        ],
+                      width: 80,
+                      height: 80,
+                      child: AnimatedBuilder(
+                        animation: _markerPulseController,
+                        builder: (context, child) {
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 40 + (40 * _markerPulseController.value),
+                                height: 40 + (40 * _markerPulseController.value),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: (_isInside ? Colors.blue : Colors.red).withOpacity(0.2 * (1.0 - _markerPulseController.value)),
+                                ),
+                              ),
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _isInside ? Colors.blue : Colors.red,
+                                  border: Border.all(color: Colors.white, width: 3),
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],

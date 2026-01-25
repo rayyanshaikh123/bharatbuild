@@ -250,4 +250,44 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
   }
 });
 
+/* ---------------- GET WEEKLY WAGE COST ---------------- */
+router.get("/weekly-cost", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { project_id } = req.query;
+
+    if (!project_id) {
+      return res.status(400).json({ error: "project_id is required" });
+    }
+
+    // Verify access
+    const accessRes = await pool.query(
+      `SELECT id FROM project_managers WHERE manager_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+      [managerId, project_id]
+    );
+
+    if (accessRes.rows.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await pool.query(
+      `SELECT 
+         DATE_TRUNC('week', created_at) as week_start, 
+         SUM(total_amount) as total_cost,
+         COUNT(id) as record_count
+       FROM wages
+       WHERE project_id = $1 AND status = 'APPROVED'
+       GROUP BY week_start
+       ORDER BY week_start DESC
+       LIMIT 12`, // Last 12 weeks
+      [project_id]
+    );
+
+    res.json({ weekly_costs: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

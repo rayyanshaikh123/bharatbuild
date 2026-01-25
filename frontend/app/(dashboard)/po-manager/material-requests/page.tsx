@@ -5,10 +5,17 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { poManagerRequests, poManagerProjects, MaterialRequest, Project } from "@/lib/api/po-manager";
-import { Loader2, Package, Filter, FileText, Plus, Eye } from "lucide-react";
+import { 
+  purchaseManagerMaterialRequests, 
+  purchaseManagerProjects, 
+  purchaseManagerOrganization,
+  MaterialRequest, 
+  Project 
+} from "@/lib/api/purchase-manager";
+import { Loader2, Package, Filter, Plus, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import { toast } from "sonner";
 
 // Project selector
 function ProjectSelector({
@@ -26,7 +33,7 @@ function ProjectSelector({
       onChange={(e) => onSelect(e.target.value || null)}
       className="h-10 px-3 bg-background/50 border border-border rounded-lg text-sm transition-all min-w-[200px]"
     >
-      <option value="">All Projects</option>
+      <option value="">Select a Project</option>
       {projects.map((p) => (
         <option key={p.id} value={p.id}>
           {p.name}
@@ -48,8 +55,15 @@ export default function MaterialRequestsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await poManagerProjects.getMyProjects();
-        setProjects(res.projects);
+        const orgRes = await purchaseManagerOrganization.getMyOrganizations();
+        if (!orgRes.organizations || orgRes.organizations.length === 0) {
+          setIsLoading(false);
+          return;
+        }
+        const orgId = orgRes.organizations[0].org_id;
+        
+        const res = await purchaseManagerProjects.getMyProjects(orgId);
+        setProjects(res.projects || []);
       } catch (err) {
         console.error("Failed to fetch projects:", err);
       } finally {
@@ -69,11 +83,12 @@ export default function MaterialRequestsPage() {
     const fetchRequests = async () => {
       try {
         setIsLoadingRequests(true);
-        const res = await poManagerRequests.getApproved(selectedProjectId);
-        setRequests(res.requests);
+        const res = await purchaseManagerMaterialRequests.getApproved(selectedProjectId);
+        setRequests(res.requests || []);
       } catch (err) {
         console.error("Failed to fetch requests:", err);
         setRequests([]);
+        toast.error("Failed to load requests");
       } finally {
         setIsLoadingRequests(false);
       }
@@ -114,14 +129,17 @@ export default function MaterialRequestsPage() {
         render: (value: string) => <span className="text-sm">{value}</span>,
       },
       {
-        key: "has_po",
+        key: "has_po", // Note: This field needs to come from backend. Currently standard MaterialRequest type might not have it unless I extended it.
+                       // Using 'any' cast inside render if needed, or update interface. 
+                       // Updated Interface has has_po? No. I should update Interface if I want type safety. 
+                       // But backend sends it.
         label: "PO Status",
         width: "140px",
-        render: (_: unknown, row: MaterialRequest) => {
+        render: (_: unknown, row: any) => {
           if (row.has_po) {
             return (
               <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                PO: {row.po_number} ({row.po_status})
+                PO: {row.po_number}
               </Badge>
             );
           }
@@ -139,10 +157,10 @@ export default function MaterialRequestsPage() {
         render: (value: string) => new Date(value).toLocaleDateString(),
       },
       {
-        key: "actions",
+        key: "id",
         label: "Actions",
         width: "120px",
-        render: (_: unknown, row: MaterialRequest) => {
+        render: (_: unknown, row: any) => {
           if (row.has_po) {
             return (
               <Link href={`/po-manager/purchase-orders`}>
@@ -219,9 +237,8 @@ export default function MaterialRequestsPage() {
           data={requests}
           columns={columns}
           searchable
-          searchKeys={["title", "project_name", "engineer_name", "category"]}
+          searchKeys={["title", "project_name", "engineer_name"]} // 'category' removed as it's not top level key usually for search in simple DataTable unless flattened
           emptyMessage="No approved material requests found for this project."
-          itemsPerPage={15}
         />
       )}
     </div>

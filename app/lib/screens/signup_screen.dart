@@ -56,6 +56,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         Navigator.pushReplacementNamed(context, '/engineer-dashboard');
         return;
       }
+
+      if (_role == 'qa_engineer') {
+        await ref.read(
+          qaEngineerRegisterProvider({
+            'name': _nameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'password': _passwordController.text,
+          }).future,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/qa-flow');
+        return;
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('error'.tr() + ': $e')));
@@ -83,6 +97,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             items: [
               DropdownMenuItem(value: 'engineer', child: Text('engineer'.tr())),
               DropdownMenuItem(value: 'labour', child: Text('labour'.tr())),
+              DropdownMenuItem(value: 'qa_engineer', child: Text('QA Engineer')),
             ],
             onChanged: (v) => setState(() => _role = v ?? 'engineer'),
             decoration: const InputDecoration(),

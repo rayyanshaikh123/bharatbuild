@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/material_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
@@ -51,12 +53,37 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
     final selectedProject = ref.read(currentProjectProvider);
     if (selectedProject == null) return;
 
+    // Parse quantity to number
+    final quantityText = _quantityController.text.trim();
+    final quantity = double.tryParse(quantityText);
+    
+    if (quantity == null || quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('please_enter_valid_quantity'.tr())),
+      );
+      return;
+    }
+
+    // Get current location for geofence validation
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Location fetch failed, but continue without coordinates (backend will skip validation)
+      print('Failed to get location: $e');
+    }
+
     final data = {
       'project_id': selectedProject['project_id'] ?? selectedProject['id'],
       'title': _titleController.text.trim(),
       'category': _selectedCategory,
-      'quantity': _quantityController.text.trim(),
+      'quantity': quantity,
       'description': _descriptionController.text.trim(),
+      if (position != null) 'latitude': position.latitude,
+      if (position != null) 'longitude': position.longitude,
     };
 
     try {
@@ -65,17 +92,54 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
       
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('request_submitted'.tr())),
+          SnackBar(
+            content: Text('request_submitted'.tr()),
+            backgroundColor: Colors.green,
+          ),
         );
+        Navigator.pop(context);
       } else {
+        // Stored offline for later sync
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('material_queued_offline'.tr()), backgroundColor: Colors.orange),
+          SnackBar(
+            content: Text('material_queued_offline'.tr()),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
         );
+        Navigator.pop(context);
       }
-      Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
+      
+      // Extract error message from backend response
+      String errorMessage = 'error'.tr();
+      if (e.toString().contains('Failed to create material request:')) {
+        // Parse backend error
+        try {
+          final match = RegExp(r'\{.*\}').firstMatch(e.toString());
+          if (match != null) {
+            final errorJson = jsonDecode(match.group(0)!);
+            final error = errorJson['error'] ?? '';
+            if (error == 'OUTSIDE_PROJECT_GEOFENCE') {
+              errorMessage = 'You must be inside the project site to create material requests';
+            } else {
+              errorMessage = error;
+            }
+          }
+        } catch (_) {
+          errorMessage = e.toString().replaceAll('Exception: Failed to create material request: ', '');
+        }
+      } else {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('error'.tr() + ': $e')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -112,9 +176,17 @@ class _MaterialRequestFormState extends ConsumerState<MaterialRequestForm> {
                 controller: _quantityController,
                 decoration: InputDecoration(
                   labelText: 'quantity'.tr(),
-                  hintText: 'e.g. 500 bags, 2 tons',
+                  hintText: 'e.g. 500',
                 ),
-                validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) {
+                  if ((v ?? '').isEmpty) return 'required'.tr();
+                  final num = double.tryParse(v!);
+                  if (num == null || num <= 0) {
+                    return 'Please enter a valid positive number';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               TextFormField(

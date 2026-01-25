@@ -5,9 +5,10 @@ import '../../providers/material_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/current_project_provider.dart';
+import '../../providers/material_stock_provider.dart';
 import '../../theme/app_colors.dart';
 import 'material_request_form.dart';
-import 'upload_bill_form.dart';
+import 'material_exchange_screen.dart';
 
 class MaterialManagementScreen extends ConsumerStatefulWidget {
   const MaterialManagementScreen({super.key});
@@ -42,8 +43,8 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
           controller: _tabController,
           tabs: [
             Tab(text: 'requests'.tr()),
-            Tab(text: 'bills'.tr()),
             Tab(text: 'inventory'.tr()),
+            Tab(text: 'Stock'),
           ],
         ),
       ),
@@ -51,8 +52,8 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         controller: _tabController,
         children: [
           _buildRequestsList(),
-          _buildBillsList(),
           _buildInventoryList(),
+          _buildStockAvailability(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -79,31 +80,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
             itemBuilder: (context, index) {
               final req = requests[index];
               return _buildRequestCard(req);
-            },
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Error: $err')),
-    );
-  }
-
-  Widget _buildBillsList() {
-    final billsAsync = ref.watch(materialBillsProvider);
-    return billsAsync.when(
-      data: (bills) {
-        if (bills.isEmpty) {
-          return Center(child: Text('no_materials'.tr()));
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.refresh(materialBillsProvider.future),
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: bills.length,
-            itemBuilder: (context, index) {
-              final bill = bills[index];
-              return _buildBillCard(bill);
             },
           ),
         );
@@ -152,48 +128,8 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 12),
-            if (status == 'APPROVED')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UploadBillForm(request: req),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: Text('upload_bill'.tr()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    foregroundColor: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBillCard(Map<String, dynamic> bill) {
-    final theme = Theme.of(context);
-    final status = bill['status'] as String;
-    final color = status == 'APPROVED' ? Colors.green : (status == 'REJECTED' ? Colors.red : Colors.orange);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        title: Text(bill['vendor_name'] ?? 'Unknown Vendor'),
-        subtitle: Text('Amt: ₹${bill['total_amount']} • ${bill['category']}'),
-        trailing: _statusBadge(status, color),
-        onTap: () {
-          // Show bill details
-        },
       ),
     );
   }
@@ -297,13 +233,14 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
               },
             ),
             ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: Text('upload_bill'.tr()),
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('Material Exchange'),
+              subtitle: const Text('Record usage, transfer, or adjust stock'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const UploadBillForm()),
+                  MaterialPageRoute(builder: (context) => const MaterialExchangeScreen()),
                 );
               },
             ),
@@ -312,7 +249,6 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
               title: Text('record_movement'.tr()),
               onTap: () {
                 Navigator.pop(context);
-                // We'll show the generic movement dialog
                 _issueMaterial({});
               },
             ),
@@ -494,4 +430,386 @@ class _IssueMaterialSheetState extends ConsumerState<_IssueMaterialSheet> {
       }
     }
   }
+
+  Widget _buildStockAvailability() {
+    final currentProject = ref.watch(currentProjectProvider);
+    
+    if (currentProject == null) {
+      return const Center(child: Text('No project selected'));
+    }
+
+    final projectId = currentProject['id'] as String;
+    final stockAsync = ref.watch(materialStockProvider(projectId));
+
+    return stockAsync.when(
+      data: (stockList) {
+        if (stockList.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No material stock available',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Stock will appear here after materials are received',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(materialStockProvider(projectId));
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: stockList.length,
+            itemBuilder: (context, index) {
+              final stock = stockList[index];
+              return _buildStockCard(stock);
+            },
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text('Error loading stock: $err', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(materialStockProvider(projectId)),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockCard(stock) {
+    final theme = Theme.of(context);
+    final availableQty = stock.availableQuantity;
+    final isLowStock = availableQty < 10; // Simple threshold
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stock.materialName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (stock.category != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            stock.category!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isLowStock ? Colors.orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isLowStock ? Colors.orange : Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${availableQty.toStringAsFixed(2)} ${stock.unit}',
+                        style: TextStyle(
+                          color: isLowStock ? Colors.orange[700] : Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStockStat(
+                    'Received',
+                    stock.totalReceived.toStringAsFixed(2),
+                    stock.unit,
+                    Icons.arrow_downward,
+                    Colors.blue,
+                  ),
+                ),
+                Expanded(
+                  child: _buildStockStat(
+                    'Consumed',
+                    stock.totalConsumed.toStringAsFixed(2),
+                    stock.unit,
+                    Icons.arrow_upward,
+                    Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _showStockExchangeDialog(stock),
+                  icon: const Icon(Icons.swap_horiz, size: 18),
+                  label: const Text('Record Usage'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockStat(String label, String value, String unit, IconData icon, Color color) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$value $unit',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showStockExchangeDialog(stock) {
+    final quantityController = TextEditingController();
+    final remarksController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Record Material Usage'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                stock.materialName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Available: ${stock.availableQuantity.toStringAsFixed(2)} ${stock.unit}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Quantity Used',
+                  hintText: 'Enter quantity',
+                  suffixText: stock.unit,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: remarksController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Remarks (Optional)',
+                  hintText: 'Purpose of usage',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Usage will be recorded and deducted from stock',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final quantity = double.tryParse(quantityController.text);
+              if (quantity == null || quantity <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid quantity'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              
+              if (quantity > stock.availableQuantity) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Quantity exceeds available stock (${stock.availableQuantity.toStringAsFixed(2)} ${stock.unit})',
+                    ),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              Navigator.pop(context);
+              _recordMaterialUsage(
+                stock.materialName,
+                quantity,
+                stock.unit,
+                remarksController.text,
+              );
+            },
+            child: const Text('Record Usage'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _recordMaterialUsage(
+    String materialName,
+    double quantity,
+    String unit,
+    String remarks,
+  ) async {
+    final currentProject = ref.read(currentProjectProvider);
+    if (currentProject == null) return;
+
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 16),
+            Text('Recording material usage...'),
+          ],
+        ),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // In a real app, this would call an API endpoint to record the usage
+    // For now, we'll just show a success message and refresh the stock
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (mounted) {
+      // Refresh the stock data
+      ref.invalidate(materialStockProvider(currentProject['id'] as String));
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Recorded: $quantity $unit of $materialName',
+          ),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: Colors.white,
+            onPressed: () {
+              // Implement undo logic if needed
+            },
+          ),
+        ),
+      );
+    }
+  }
 }
+

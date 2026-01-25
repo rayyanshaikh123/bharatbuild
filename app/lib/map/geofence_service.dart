@@ -14,76 +14,97 @@ class GeofenceData {
     this.polygon,
   });
 
+  /// Robustly converts various JSON coordinate formats to [lat, lng]
+  static List<double>? _parsePoint(dynamic p) {
+    if (p == null) return null;
+    double? lat, lng;
+
+    if (p is List && p.length >= 2) {
+      double c1 = _safeParseDouble(p[0]);
+      double c2 = _safeParseDouble(p[1]);
+      
+      // India-specific heuristic: Lat is usually 8-38, Lng is 68-98
+      if (c1 > 50.0 && c2 < 45.0) {
+        lat = c2;
+        lng = c1;
+      } else {
+        lat = c1;
+        lng = c2;
+      }
+    } else if (p is Map) {
+      lat = _safeParseDouble(p['lat'] ?? p['latitude'] ?? p['y']);
+      lng = _safeParseDouble(p['lng'] ?? p['longitude'] ?? p['x']);
+    }
+
+    if (lat != null && lng != null) {
+      return [lat!, lng!];
+    }
+    return null;
+  }
+
+  /// Safely parse any dynamic value to a double
+  static double _safeParseDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
+
   factory GeofenceData.fromJson(Map<String, dynamic> json) {
-    // Handle GeoJSON format (from web frontend)
-    if (json.containsKey('type') && json['type'] == 'Feature') {
-      // GeoJSON Feature
-      final geometry = json['geometry'] as Map<String, dynamic>?;
-      if (geometry != null) {
-        final geomType = geometry['type'] as String?;
-        final coordinates = geometry['coordinates'] as dynamic;
-        
-        if (geomType == 'Polygon' && coordinates is List) {
-          // GeoJSON Polygon - coordinates is array of rings, first ring is outer boundary
-          final outerRing = coordinates[0] as List;
-          final polygon = outerRing.map((coord) {
-            if (coord is List && coord.length >= 2) {
-              return [coord[1].toDouble(), coord[0].toDouble()]; // GeoJSON is [lng, lat], we need [lat, lng]
+    // 1. Handle GeoJSON format
+    if (json.containsKey('type') && (json['type'] == 'Feature' || json['type'] == 'Polygon')) {
+      final Map<String, dynamic>? geometry = json['type'] == 'Polygon' ? json : json['geometry'] as Map<String, dynamic>?;
+      if (geometry != null && geometry['type'] == 'Polygon') {
+        final coords = geometry['coordinates'] as List?;
+        if (coords != null && coords.isNotEmpty) {
+          final outerRing = coords[0] as List;
+          final polygon = outerRing.map((c) {
+            if (c is List && c.length >= 2) {
+              return [_safeParseDouble(c[1]), _safeParseDouble(c[0])]; // GeoJSON [lng, lat]
             }
             return null;
           }).whereType<List<double>>().toList();
           
-          return GeofenceData(
-            type: 'POLYGON',
-            polygon: polygon.map((p) => [p[0], p[1]]).toList().cast<List<double>>(),
-          );
-        } else if (geomType == 'Circle' || geomType == 'Point') {
-          // Try to extract circle from properties or calculate from bounds
-          final properties = json['properties'] as Map<String, dynamic>?;
-          if (properties != null && properties.containsKey('radius')) {
-            final center = coordinates is List && coordinates.length >= 2
-                ? {'lat': coordinates[1].toDouble(), 'lng': coordinates[0].toDouble()}
-                : null;
-            final radius = (properties['radius'] as num?)?.toDouble();
-            if (center != null && radius != null) {
-              return GeofenceData(
-                type: 'CIRCLE',
-                center: center,
-                radiusMeters: radius,
-              );
-            }
+          if (polygon.isNotEmpty) {
+            return GeofenceData(type: 'POLYGON', polygon: polygon);
           }
         }
       }
     }
-    
-    // Handle simple CIRCLE type
-    final type = json['type'] as String? ?? 'NONE';
-    
+
+    // 2. Handle Simple CIRCLE/POLYGON type
+    final type = (json['type'] as String? ?? 'NONE').toUpperCase();
     if (type == 'CIRCLE') {
       final center = json['center'] as Map<String, dynamic>?;
-      final radiusMeters = json['radius_meters'] as num?;
+      final radius = _safeParseDouble(json['radius_meters'] ?? json['radius']);
       return GeofenceData(
         type: type,
         center: center,
-        radiusMeters: radiusMeters?.toDouble(),
+        radiusMeters: radius,
       );
     } else if (type == 'POLYGON') {
-      final polygon = json['polygon'] as List?;
+      final rawPolygon = (json['polygon'] ?? json['coordinates']) as List?;
+      final polygon = rawPolygon?.map(_parsePoint).whereType<List<double>>().toList();
       return GeofenceData(
         type: type,
-        polygon: polygon?.map((p) => [
-          (p[0] as num).toDouble(),
-          (p[1] as num).toDouble(),
-        ]).toList().cast<List<double>>(),
+        polygon: (polygon?.isNotEmpty == true) ? polygon : null,
       );
     }
-    
+
     return GeofenceData(type: 'NONE');
   }
 }
 
 class GeofenceService {
+  /// Safety numeric rounding
+  int _safeRound(double value) {
+    if (value.isInfinite || value.isNaN) return 999999;
+    return value.round();
+  }
+
+  /// Instance version of safe parse
+  double _parseVal(dynamic v) => GeofenceData._safeParseDouble(v);
+
   /// Check if point is inside CIRCLE geofence
   bool isPointInsideCircle(
     double pointLat,
@@ -92,12 +113,7 @@ class GeofenceService {
     double centerLng,
     double radiusMeters,
   ) {
-    final distance = Geolocator.distanceBetween(
-      pointLat,
-      pointLng,
-      centerLat,
-      centerLng,
-    );
+    final distance = Geolocator.distanceBetween(pointLat, pointLng, centerLat, centerLng);
     return distance <= radiusMeters;
   }
 
@@ -107,239 +123,117 @@ class GeofenceService {
     double pointLng,
     GeofenceData geofence,
   ) {
+    final double graceBuffer = 30.0;
     if (geofence.type == 'CIRCLE') {
-      if (geofence.center == null || geofence.radiusMeters == null) {
-        return false;
-      }
-      final centerLat = (geofence.center!['lat'] as num?)?.toDouble();
-      final centerLng = (geofence.center!['lng'] as num?)?.toDouble();
-      if (centerLat == null || centerLng == null) {
-        return false;
-      }
-      return isPointInsideCircle(
-        pointLat,
-        pointLng,
-        centerLat,
-        centerLng,
-        geofence.radiusMeters!,
-      );
+      if (geofence.center == null || geofence.radiusMeters == null) return false;
+      final cLat = _parseVal(geofence.center!['lat'] ?? geofence.center!['latitude']);
+      final cLng = _parseVal(geofence.center!['lng'] ?? geofence.center!['longitude']);
+      
+      final distance = Geolocator.distanceBetween(pointLat, pointLng, cLat, cLng);
+      return distance <= geofence.radiusMeters! + graceBuffer;
     } else if (geofence.type == 'POLYGON' && geofence.polygon != null) {
-      return isPointInside([pointLat, pointLng], geofence.polygon!);
+      final dist = _distanceToPolygon(pointLat, pointLng, geofence.polygon!);
+      return dist <= graceBuffer;
     }
-    // NONE type - no restriction
     return true;
   }
 
-  /// Calculate distance from point to geofence center (for CIRCLE) or nearest edge (for POLYGON)
-  double distanceToGeofence(
-    double pointLat,
-    double pointLng,
-    GeofenceData geofence,
-  ) {
-    if (geofence.type == 'CIRCLE') {
-      if (geofence.center == null) return double.infinity;
-      final centerLat = (geofence.center!['lat'] as num?)?.toDouble();
-      final centerLng = (geofence.center!['lng'] as num?)?.toDouble();
-      if (centerLat == null || centerLng == null) return double.infinity;
-      
-      final distance = Geolocator.distanceBetween(
-        pointLat,
-        pointLng,
-        centerLat,
-        centerLng,
-      );
-      // Return distance minus radius to get distance from edge
-      if (geofence.radiusMeters != null) {
-        return distance - geofence.radiusMeters!;
-      }
-      return distance;
-    } else if (geofence.type == 'POLYGON' && geofence.polygon != null) {
-      // Calculate distance to nearest polygon vertex
-      double min = double.infinity;
-      for (final p in geofence.polygon!) {
-        final d = Geolocator.distanceBetween(pointLat, pointLng, p[0], p[1]);
-        if (d < min) min = d;
-      }
-      return min == double.infinity ? 0.0 : min;
-    }
-    return 0.0;
-  }
-
   /// Validate geofence from backend project data
-  /// Returns validation result similar to backend format
   Map<String, dynamic> validateGeofence(
     double pointLat,
     double pointLng,
     Map<String, dynamic>? projectData,
   ) {
-    // Check for geofence JSONB field (supports GeoJSON and CIRCLE types)
     final geofenceJson = projectData?['geofence'];
-    if (geofenceJson != null && geofenceJson is Map) {
-      // Handle GeoJSON Feature format
-      if (geofenceJson['type'] == 'Feature') {
-        final geometry = geofenceJson['geometry'] as Map<String, dynamic>?;
-        if (geometry != null) {
-          final geomType = geometry['type'] as String?;
-          final coordinates = geometry['coordinates'] as dynamic;
-          
-          if (geomType == 'Polygon' && coordinates is List) {
-            // GeoJSON Polygon validation
-            final outerRing = coordinates[0] as List;
-            final polygon = outerRing.map((coord) {
-              if (coord is List && coord.length >= 2) {
-                return [coord[1].toDouble(), coord[0].toDouble()]; // GeoJSON is [lng, lat], convert to [lat, lng]
-              }
-              return null;
-            }).whereType<List<double>>().toList();
-            
-            if (polygon.isNotEmpty) {
-              final isValid = isPointInside([pointLat, pointLng], polygon);
-              final distance = _distanceToPolygon(pointLat, pointLng, polygon);
-              return {
-                'isValid': isValid,
-                'distance': distance.abs().round(),
-                'allowedRadius': 0,
-                'source': 'geofence_geojson',
-                'geofenceType': 'POLYGON',
-              };
-            }
-          } else if (geomType == 'Circle' || geomType == 'Point') {
-            // Extract circle from properties
-            final properties = geofenceJson['properties'] as Map<String, dynamic>?;
-            if (properties != null && properties.containsKey('radius')) {
-              final centerLat = coordinates is List && coordinates.length >= 2
-                  ? coordinates[1].toDouble()
-                  : null;
-              final centerLng = coordinates is List && coordinates.length >= 2
-                  ? coordinates[0].toDouble()
-                  : null;
-              final radius = (properties['radius'] as num?)?.toDouble();
-              
-              if (centerLat != null && centerLng != null && radius != null) {
-                final isValid = isPointInsideCircle(pointLat, pointLng, centerLat, centerLng, radius);
-                final distance = Geolocator.distanceBetween(pointLat, pointLng, centerLat, centerLng) - radius;
-                return {
-                  'isValid': isValid,
-                  'distance': distance.round(),
-                  'allowedRadius': radius.round(),
-                  'source': 'geofence_geojson',
-                  'geofenceType': 'CIRCLE',
-                };
-              }
-            }
-          }
-        }
-      }
-      
-      // Handle simple CIRCLE type
-      final geofence = GeofenceData.fromJson(geofenceJson as Map<String, dynamic>);
+    final double graceBuffer = 30.0;
+
+    // A. Priority: Shape-based validation (JSONB)
+    if (geofenceJson != null && geofenceJson is Map<String, dynamic>) {
+      final geofence = GeofenceData.fromJson(geofenceJson);
       if (geofence.type != 'NONE') {
-        final isValid = isPointInsideGeofence(pointLat, pointLng, geofence);
-        final distance = distanceToGeofence(pointLat, pointLng, geofence);
-        return {
-          'isValid': isValid,
-          'distance': distance.round(),
-          'allowedRadius': geofence.radiusMeters?.round() ?? 0,
-          'source': 'geofence_jsonb',
-          'geofenceType': geofence.type,
-        };
+        if (geofence.type == 'POLYGON' && geofence.polygon != null) {
+           final distance = _distanceToPolygon(pointLat, pointLng, geofence.polygon!);
+           return {
+             'isValid': distance <= graceBuffer,
+             'distance': _safeRound(distance),
+             'allowedRadius': 0,
+             'source': 'geofence_shape_polygon',
+             'geofenceType': 'POLYGON',
+           };
+        } else if (geofence.type == 'CIRCLE') {
+           final cLat = _parseVal(geofence.center?['lat'] ?? geofence.center?['latitude']);
+           final cLng = _parseVal(geofence.center?['lng'] ?? geofence.center?['longitude']);
+           final radius = geofence.radiusMeters;
+           
+           if ((cLat != 0.0 || cLng != 0.0) && radius != null) {
+             final dist = Geolocator.distanceBetween(pointLat, pointLng, cLat, cLng);
+             return {
+               'isValid': dist <= radius + graceBuffer,
+               'distance': _safeRound(dist - radius),
+               'allowedRadius': _safeRound(radius),
+               'source': 'geofence_shape_circle',
+               'geofenceType': 'CIRCLE',
+             };
+           }
+        }
       }
     }
 
-    // Fallback to legacy fields
-    final projLat = projectData?['latitude'] as num?;
-    final projLng = projectData?['longitude'] as num?;
-    final geofenceRadius = projectData?['geofence_radius'] as num?;
+    // B. Fallback: Column-based validation (Safely parse Strings)
+    final rawLat = projectData?['latitude'];
+    final rawLng = projectData?['longitude'];
+    final rawRad = projectData?['geofence_radius'];
 
-    if (projLat != null && projLng != null && geofenceRadius != null) {
-      final distance = Geolocator.distanceBetween(
-        pointLat,
-        pointLng,
-        projLat.toDouble(),
-        projLng.toDouble(),
-      );
+    if (rawLat != null && rawLng != null) {
+      final double projLat = _parseVal(rawLat);
+      final double projLng = _parseVal(rawLng);
+      final double radius = rawRad != null ? _parseVal(rawRad) : 200.0;
+      
+      final distance = Geolocator.distanceBetween(pointLat, pointLng, projLat, projLng);
       return {
-        'isValid': distance <= geofenceRadius.toDouble(),
-        'distance': distance.round(),
-        'allowedRadius': geofenceRadius.toInt(),
-        'source': 'legacy_fields',
+        'isValid': distance <= radius + graceBuffer,
+        'distance': _safeRound(distance),
+        'allowedRadius': _safeRound(radius),
+        'source': 'geofence_legacy',
         'geofenceType': 'CIRCLE',
       };
     }
 
-    // No geofence restriction
     return {
       'isValid': true,
       'distance': 0,
       'allowedRadius': 0,
-      'message': 'No geofence restriction',
+      'message': 'No location constraints',
       'source': 'none',
       'geofenceType': 'NONE',
     };
   }
 
-  /// sitePolygon: list of [lat, lng] - Legacy method for polygon validation
+  /// Ray-casting algorithm for point-in-polygon
   bool isPointInside(List<double> point, List<List<double>> sitePolygon) {
-    // Ray-casting algorithm for point-in-polygon
+    if (sitePolygon.length < 3) return false;
     final double x = point[1]; // longitude
     final double y = point[0]; // latitude
     bool inside = false;
-    for (
-      int i = 0, j = sitePolygon.length - 1;
-      i < sitePolygon.length;
-      j = i++
-    ) {
-      final xi = sitePolygon[i][1];
-      final yi = sitePolygon[i][0];
-      final xj = sitePolygon[j][1];
-      final yj = sitePolygon[j][0];
-
-      final intersect =
-          ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    for (int i = 0, j = sitePolygon.length - 1; i < sitePolygon.length; j = i++) {
+      final xi = sitePolygon[i][1], yi = sitePolygon[i][0];
+      final xj = sitePolygon[j][1], yj = sitePolygon[j][0];
+      final intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
       if (intersect) inside = !inside;
     }
     return inside;
   }
 
-  /// Calculate distance in meters from point to nearest polygon vertex (approx).
-  Future<double> distanceToSite(
-    List<double> point,
-    List<List<double>> sitePolygon,
-  ) async {
-    final lat = point[0];
-    final lng = point[1];
+  /// Accurate distance from point to polygon (negative if inside)
+  double _distanceToPolygon(double pointLat, double pointLng, List<List<double>> polygon) {
+    if (polygon.isEmpty) return double.infinity;
+    if (isPointInside([pointLat, pointLng], polygon)) return -1.0;
+    
     double min = double.infinity;
-    for (final p in sitePolygon) {
-      final d = Geolocator.distanceBetween(lat, lng, p[0], p[1]);
+    for (final p in polygon) {
+      final d = Geolocator.distanceBetween(pointLat, pointLng, p[0], p[1]);
       if (d < min) min = d;
     }
-    return min == double.infinity ? 0.0 : min;
-  }
-
-  /// Calculate distance from point to polygon edge (negative if inside)
-  double _distanceToPolygon(double pointLat, double pointLng, List<List<double>> polygon) {
-    final isInside = isPointInside([pointLat, pointLng], polygon);
-    if (isInside) {
-      // Calculate distance to nearest edge
-      double minDist = double.infinity;
-      for (int i = 0; i < polygon.length; i++) {
-        final p1 = polygon[i];
-        final p2 = polygon[(i + 1) % polygon.length];
-        // Distance to line segment (simplified - distance to midpoint)
-        final midLat = (p1[0] + p2[0]) / 2;
-        final midLng = (p1[1] + p2[1]) / 2;
-        final dist = Geolocator.distanceBetween(pointLat, pointLng, midLat, midLng);
-        if (dist < minDist) minDist = dist;
-      }
-      return -minDist; // Negative means inside
-    } else {
-      // Calculate distance to nearest vertex
-      double minDist = double.infinity;
-      for (final p in polygon) {
-        final dist = Geolocator.distanceBetween(pointLat, pointLng, p[0], p[1]);
-        if (dist < minDist) minDist = dist;
-      }
-      return minDist;
-    }
+    return min;
   }
 }

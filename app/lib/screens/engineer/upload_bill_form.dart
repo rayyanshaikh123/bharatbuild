@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/material_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
@@ -94,6 +95,18 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
     final gstAmount = amount * (gstPercent / 100);
     final totalAmount = amount + gstAmount;
 
+    // Get current location for geofence validation
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Location fetch failed, but continue without coordinates (backend will skip validation)
+      print('Failed to get location: $e');
+    }
+
     final data = {
       'material_request_id': widget.request?['id'],
       'project_id': selectedProject['project_id'] ?? selectedProject['id'],
@@ -104,6 +117,8 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
       'gst_amount': gstAmount,
       'total_amount': totalAmount,
       'category': _selectedCategory ?? 'Others',
+      if (position != null) 'latitude': position.latitude,
+      if (position != null) 'longitude': position.longitude,
     };
 
     try {

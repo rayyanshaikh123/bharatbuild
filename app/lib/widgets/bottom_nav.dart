@@ -28,14 +28,69 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     
     // Check role from user object, but fallback to reasonable defaults
     final String rawRole = user?['role']?.toString().toUpperCase() ?? '';
-    final bool isEngineer = rawRole == 'ENGINEER' || rawRole == 'SITE_ENGINEER';
+    final bool isEngineer = rawRole == 'ENGINEER' || rawRole == 'SITE_ENGINEER' || rawRole == 'MANAGER';
+    final bool isQaEngineer = rawRole == 'QA_ENGINEER';
     
     // If the user object is null but we are on an engineer screen, 
     // we should try to maintain the engineer layout.
     // However, the cleanest way is to ensure currentUserProvider is never null 
     // during a refresh (which profileProvider now handles).
 
-    final List<BottomNavigationBarItem> items = [
+    final List<BottomNavigationBarItem> items;
+
+    if (isQaEngineer) {
+      items = [
+        BottomNavigationBarItem(
+          icon: SvgPicture.string(
+            homeIcon,
+            colorFilter: const ColorFilter.mode(inActiveIconColor, BlendMode.srcIn),
+          ),
+          activeIcon: SvgPicture.string(
+            homeIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: 'home'.tr(),
+        ),
+        BottomNavigationBarItem(
+          icon: Stack(
+            alignment: Alignment.center,
+            children: [
+              SvgPicture.string(
+                userIcon,
+                colorFilter: const ColorFilter.mode(
+                  inActiveIconColor,
+                  BlendMode.srcIn,
+                ),
+              ),
+              if (user != null && user['name'] != null)
+                Positioned(
+                  right: -6,
+                  top: -6,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 8,
+                      minHeight: 8,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          activeIcon: SvgPicture.string(
+            userIcon,
+            colorFilter: ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+          ),
+          label: user != null && user['name'] != null
+              ? (user['name'] as String).split(' ').first
+              : 'profile'.tr(),
+        ),
+      ];
+    } else {
+      items = [
       BottomNavigationBarItem(
         icon: SvgPicture.string(
           homeIcon,
@@ -133,6 +188,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
             : 'profile'.tr(),
       ),
     ];
+    }
 
     return BottomNavigationBar(
       onTap: updateCurrentIndex,

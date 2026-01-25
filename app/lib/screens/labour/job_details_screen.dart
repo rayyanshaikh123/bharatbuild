@@ -111,24 +111,48 @@ class JobDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  job['project_name'] ?? 'Project Name',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.location_on_outlined, size: 20, color: theme.colorScheme.primary.withOpacity(0.6)),
-                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        job['location_text'] ?? 'Unknown location',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          height: 1.4,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            job['project_name'] ?? 'Project Name',
+                            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, size: 20, color: theme.colorScheme.primary.withOpacity(0.6)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  job['location_text'] ?? 'Unknown location',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
+                    if (job['budget'] != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '₹${NumberFormat.compact().format(double.tryParse(job['budget'].toString()) ?? 0)}',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -200,7 +224,7 @@ class JobDetailsScreen extends ConsumerWidget {
                 _sectionTitle(theme, 'requirements'.tr()),
                 const SizedBox(height: 16),
                 _requirementRow(Icons.people_alt_outlined, '${job['required_count']} workers needed'),
-                _requirementRow(Icons.calendar_month_outlined, 'Starting: ${job['request_date']?.toString().split('T')[0] ?? 'ASAP'}'),
+                _requirementRow(Icons.calendar_month_outlined, 'Starting: ${job['request_date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(job['request_date'].toString())) : 'ASAP'}'),
                 
                 const SizedBox(height: 100), // Padding for bottom FAB
               ],
@@ -231,7 +255,8 @@ class JobDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomAction(BuildContext context, WidgetRef ref, Map<String, dynamic> job) {
+  Widget _buildBottomAction(BuildContext context, WidgetRef ref, Map<String, dynamic> data) {
+    final job = data['job'] ?? {};
     final canApply = job['can_apply'] ?? true;
     
     return Container(
@@ -292,9 +317,20 @@ class JobDetailsScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // Close loading
+        
+        // Clean up error message
+        String msg = e.toString();
+        if (msg.contains('Exception:')) {
+          msg = msg.replaceAll('Exception:', '').trim();
+        }
+        if (msg.contains(':')) {
+           final parts = msg.split(':');
+           msg = parts.length > 1 ? parts.last.trim() : msg.trim();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(msg),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
