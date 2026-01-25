@@ -28,9 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-
       <body
-
         className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased`}
       >
         <head>
