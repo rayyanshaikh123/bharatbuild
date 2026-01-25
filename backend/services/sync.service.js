@@ -118,7 +118,7 @@ async function checkAuthorization(userId, userRole, action) {
       // Check if engineer is ACTIVE in project
       const engineerCheck = await pool.query(
         `SELECT id FROM project_site_engineers 
-         WHERE site_engineer_id = $1::uuid AND project_id = $2::uuid AND status = 'ACTIVE'`,
+         WHERE site_engineer_id = $1::uuid AND project_id = $2::uuid AND status = 'APPROVED'`,
         [userId, project_id],
       );
 
@@ -462,20 +462,46 @@ async function handleCreateDPR(client, action, userId) {
     throw new Error("Missing required fields: title, report_date");
   }
 
+  // Map fields to schema
+  // work_done and manpower_deployed do not exist in schema, so we append them to description
+  let finalDescription = description || "";
+  if (work_done) {
+    finalDescription += `\n\nWork Done:\n${work_done}`;
+  }
+  if (manpower_deployed) {
+    finalDescription += `\n\nManpower Deployed:\n${manpower_deployed}`;
+  }
+
+  // Map materials_used to material_usage (JSONB)
+  // Ensure it is a valid JSON array or stringified JSON
+  let finalMaterialUsage = "[]";
+  if (materials_used) {
+    if (typeof materials_used === "string") {
+      // If it's a string, try to parse it to ensure validity, else wrap
+      try {
+        JSON.parse(materials_used);
+        finalMaterialUsage = materials_used;
+      } catch (e) {
+        // Not JSON, ignore or wrap? Assuming app sends JSON string or object
+        console.warn("Invalid JSON for materials_used, using empty");
+      }
+    } else if (Array.isArray(materials_used)) {
+      finalMaterialUsage = JSON.stringify(materials_used);
+    }
+  }
+
   // Insert DPR
   const result = await client.query(
-    `INSERT INTO dprs (project_id, site_engineer_id, title, description, report_date, work_done, materials_used, manpower_deployed, submitted_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    `INSERT INTO dprs (project_id, site_engineer_id, title, description, report_date, material_usage, submitted_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
      RETURNING id`,
     [
       project_id,
       userId,
       title,
-      description || "",
+      finalDescription,
       report_date,
-      work_done || "",
-      materials_used || "",
-      manpower_deployed || "",
+      finalMaterialUsage,
     ],
   );
 
@@ -647,7 +673,14 @@ async function handleTrack(client, action, userId) {
          entry_exit_count = $4,
          last_event_at = $5
      WHERE id = $6`,
-    [latitude, longitude, isCurrentlyBreached, entryExitCount, timestamp, attendance.id],
+    [
+      latitude,
+      longitude,
+      isCurrentlyBreached,
+      entryExitCount,
+      timestamp,
+      attendance.id,
+    ],
   );
 
   return attendance.id;
