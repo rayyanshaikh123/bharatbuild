@@ -212,6 +212,8 @@ export interface PlanItem {
   approved_at?: string;
   approved_by_owner?: string;
   owner_approved_at?: string;
+  speed_rating?: number;
+  subcontractor_id?: string;
 }
 
 export interface CreatePlanItemData {
@@ -266,6 +268,10 @@ export const managerPlans = {
   // Update plan item priority
   updatePriority: (itemId: string, priority: number) =>
     api.patch<{ message: string; plan_item: PlanItem }>(`/manager/plan/plan-items/${itemId}/priority`, { priority }),
+
+  // Update plan item status
+  updateStatus: (itemId: string, status: string) =>
+    api.patch<{ message: string; plan_item: PlanItem }>(`/manager/plan/plan-items/${itemId}/status`, { status }),
 };
 
 
@@ -573,5 +579,73 @@ export const managerPurchaseOrders = {
   getPdf: (poId: string) =>
     api.getBlob(`/manager/purchase-orders/${poId}/pdf`),
 };
+
+// ==================== MANAGER SUBCONTRACTORS API ====================
+
+export interface Subcontractor {
+  id: string;
+  org_id: string;
+  name: string;
+  specialization?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  created_at: string;
+}
+
+export const managerSubcontractors = {
+  // Get all subcontractors for an organization (or all organizations)
+  getAll: (orgId?: string) => {
+    const params = new URLSearchParams();
+    if (orgId) params.append("org_id", orgId);
+    return api.get<{ subcontractors: Subcontractor[] }>(`/manager/subcontractors?${params.toString()}`);
+  },
+
+  // Create a new subcontractor
+  create: (data: {
+    org_id: string;
+    name: string;
+    specialization?: string;
+    contact_name?: string;
+    contact_phone?: string;
+    contact_email?: string;
+  }) => api.post<{ subcontractor: Subcontractor }>("/manager/subcontractors", data),
+
+  // Get subcontractor by ID
+  getById: (id: string) =>
+    api.get<{ subcontractor: Subcontractor }>(`/manager/subcontractors/${id}`),
+
+  // Get subcontractor performance
+  getPerformance: (id: string) =>
+    api.get<{
+      subcontractor_id: string;
+      subcontractor_name: string;
+      avg_speed_rating: number;
+      avg_quality_rating: number;
+      total_tasks_completed: number;
+      projects_involved: number;
+      task_breakdown: any[];
+    }>(`/manager/subcontractors/${id}/performance`),
+
+  // Assign subcontractor to task
+  // Mounted at /manager/tasks in index.js
+  assignToTask: (taskId: string, subcontractorId: string, taskStartDate?: string) =>
+    api.post<{ assignment: any }>(`/manager/tasks/${taskId}/subcontractor`, {
+      subcontractor_id: subcontractorId,
+      task_start_date: taskStartDate,
+    }),
+
+  // Get task assignment
+  getTaskAssignment: (taskId: string) =>
+    api.get<{ assignment: any }>(`/manager/tasks/${taskId}/subcontractor`),
+
+  // Submit Speed Rating
+  submitSpeedRating: (taskId: string, rating: number, derivedFromDuration: boolean = false) =>
+    api.post<{ speed_rating: any }>(`/manager/tasks/${taskId}/speed-rating`, {
+      rating,
+      derived_from_duration: derivedFromDuration,
+    }),
+};
+
 
 

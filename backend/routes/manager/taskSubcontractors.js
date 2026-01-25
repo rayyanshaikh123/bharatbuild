@@ -300,6 +300,52 @@ router.post("/:taskId/speed-rating", managerCheck, async (req, res) => {
   }
 });
 
+
+
+/* ---------------- GET QUALITY RATING ---------------- */
+router.get("/:taskId/quality-rating", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { taskId } = req.params;
+
+    // Get task and verify it exists
+    const taskResult = await pool.query(
+      `SELECT pi.*, pl.project_id 
+       FROM plan_items pi
+       JOIN plans pl ON pi.plan_id = pl.id
+       WHERE pi.id = $1`,
+      [taskId]
+    );
+
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const task = taskResult.rows[0];
+    const projectId = task.project_id;
+
+    // Check if manager is ACTIVE in project or creator
+    const isActive = await managerProjectStatusCheck(managerId, projectId);
+    const isCreator = await isProjectCreator(managerId, projectId);
+
+    if (!isActive && !isCreator) {
+      return res.status(403).json({
+        error: "Access denied. Not an active manager in the project.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM task_quality_reviews WHERE task_id = $1`,
+      [taskId]
+    );
+
+    res.json({ quality_review: result.rows[0] || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 /* ---------------- GET SPEED RATING ---------------- */
 router.get("/:taskId/speed-rating", managerCheck, async (req, res) => {
   try {

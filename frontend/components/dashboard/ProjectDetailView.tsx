@@ -237,7 +237,7 @@ export function ProjectDetailView({
 
       {/* Tasks Section for Manager */}
       {userRole === "manager" && (
-        <TasksSection projectId={project.id} />
+        <TasksSection projectId={project.id} organizationId={project.org_id} />
       )}
 
       {/* Manager Actions Section */}

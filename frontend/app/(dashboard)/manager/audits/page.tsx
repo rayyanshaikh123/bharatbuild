@@ -5,6 +5,7 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/Button";
 import { managerOrganization, managerProjects, Project } from "@/lib/api/manager";
 import { managerAudit } from "@/lib/api/audit";
 import type { AuditLog, AuditCategory, AuditAction } from "@/types/ledger";
@@ -17,8 +18,10 @@ import {
   XCircle,
   Edit,
   Trash,
-  Plus,
+  Plus, 
+  Eye,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 
 // Category badge component
 function CategoryBadge({ category }: { category: AuditCategory }) {
@@ -133,6 +136,7 @@ export default function ManagerAuditPage() {
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<AuditCategory | null>(null);
+  const [selectedAudit, setSelectedAudit] = useState<AuditLog | null>(null);
 
   // Fetch organization and projects
   useEffect(() => {
@@ -262,12 +266,54 @@ export default function ManagerAuditPage() {
       {
         key: "change_summary",
         label: "Summary",
-        render: (value: string | null) =>
-          value ? (
-            <span className="text-sm text-muted-foreground">{value}</span>
-          ) : (
-            <span className="text-muted-foreground text-sm">—</span>
-          ),
+        render: (value: any, row: AuditLog) => {
+          if (!value) return <span className="text-muted-foreground text-sm">—</span>;
+          
+          // Handle object type (from backend auditLogger)
+          if (typeof value === 'object') {
+            if (value.changed_fields && Array.isArray(value.changed_fields) && value.changed_fields.length > 0) {
+               return (
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm text-foreground truncate max-w-[150px]">Updated: {value.changed_fields.join(", ")}</span>
+                   <button 
+                     onClick={() => setSelectedAudit(row)}
+                     className="text-primary hover:text-primary/80 transition-colors"
+                     title="View Full Details"
+                   >
+                     <Eye size={16} />
+                   </button>
+                 </div>
+               );
+            }
+            if (value.action === "CREATE") return (
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm text-muted-foreground">Created new record</span>
+                   <button 
+                     onClick={() => setSelectedAudit(row)}
+                     className="text-primary hover:text-primary/80 transition-colors"
+                     title="View Full Details"
+                   >
+                     <Eye size={16} />
+                   </button>
+                 </div>
+            );
+            return (
+               <div className="flex items-center gap-2">
+                 <span className="text-sm text-muted-foreground truncate max-w-[150px]">View Details</span>
+                 <button 
+                     onClick={() => setSelectedAudit(row)}
+                     className="text-primary hover:text-primary/80 transition-colors"
+                     title="View Full Details"
+                   >
+                     <Eye size={16} />
+                   </button>
+               </div>
+            );
+          }
+
+          // Handle string type (legacy or simple message)
+          return <span className="text-sm text-muted-foreground">{String(value)}</span>;
+        },
       },
     ],
     []
@@ -369,6 +415,135 @@ export default function ManagerAuditPage() {
           emptyMessage="No audit logs found for your assigned projects."
           itemsPerPage={15}
         />
+      )}
+
+      {/* Details Modal */}
+      {selectedAudit && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]" onClick={(e) => {
+          if (e.target === e.currentTarget) setSelectedAudit(null);
+        }}>
+          <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <History className="text-primary" size={24} />
+                Audit Details
+              </h3>
+              <button onClick={() => setSelectedAudit(null)} className="text-muted-foreground hover:text-foreground">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Entity Type</p>
+                    <p className="text-sm font-semibold capitalize">{selectedAudit.entity_type.replace(/_/g, " ")}</p>
+                 </div>
+                 <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Action</p>
+                    <ActionBadge action={selectedAudit.action} />
+                 </div>
+                 <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Project</p>
+                    <p className="text-sm">{selectedAudit.project_name || "—"}</p>
+                 </div>
+                 <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Performed By</p>
+                    <p className="text-sm">{selectedAudit.acted_by_role.replace(/_/g, " ")}</p>
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <p className="text-sm font-medium text-foreground">Change Summary</p>
+                 {(() => {
+                      let content: any = null;
+                      try {
+                        content = typeof selectedAudit.change_summary === 'string' 
+                          ? JSON.parse(selectedAudit.change_summary) 
+                          : selectedAudit.change_summary;
+                      } catch (e) {
+                         return <pre className="text-xs p-2 bg-muted rounded">{String(selectedAudit.change_summary)}</pre>;
+                      }
+
+                      if (!content || typeof content !== 'object') return <p className="text-xs text-muted-foreground">No details available</p>;
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Changed Fields Badge List */}
+                          {content.changed_fields && Array.isArray(content.changed_fields) && content.changed_fields.length > 0 && (
+                            <div className="flex flex-wrap gap-2 items-center bg-yellow-500/5 p-2 rounded-lg border border-yellow-500/10">
+                              <span className="text-xs font-bold text-yellow-600 mr-1">Changed:</span>
+                              {content.changed_fields.map((field: string) => (
+                                <Badge key={field} variant="outline" className="bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border-yellow-500/20 text-[10px] px-1.5 py-0.5 h-5">
+                                  {field}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Comparison Grid */}
+                          {(content.before || content.after) ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               {/* Before State */}
+                               {content.before && (
+                                 <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-3 border-b border-red-500/10 pb-2">
+                                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                                      <p className="text-xs font-bold text-red-600 uppercase tracking-wider">Before</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {Object.entries(content.before).map(([key, val]) => (
+                                        <div key={key} className="grid grid-cols-[1fr_2fr] gap-2 text-xs border-b border-red-500/5 pb-1 last:border-0 hover:bg-red-500/5 px-1 rounded transition-colors">
+                                          <span className="font-medium text-muted-foreground truncate" title={key}>{key}</span>
+                                          <span className="text-foreground break-words font-mono text-[10px] leading-relaxed">
+                                            {val === null ? <span className="text-muted-foreground italic">null</span> : 
+                                             typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                 </div>
+                               )}
+
+                               {/* After State */}
+                               {content.after && (
+                                 <div className="bg-green-500/5 border border-green-500/10 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-3 border-b border-green-500/10 pb-2">
+                                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                                      <p className="text-xs font-bold text-green-600 uppercase tracking-wider">After</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {Object.entries(content.after).map(([key, val]) => (
+                                        <div key={key} className="grid grid-cols-[1fr_2fr] gap-2 text-xs border-b border-green-500/5 pb-1 last:border-0 hover:bg-green-500/5 px-1 rounded transition-colors">
+                                          <span className="font-medium text-muted-foreground truncate" title={key}>{key}</span>
+                                          <span className="text-foreground break-words font-mono text-[10px] leading-relaxed">
+                                            {val === null ? <span className="text-muted-foreground italic">null</span> : 
+                                             typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                 </div>
+                               )}
+                            </div>
+                          ) : (
+                             // Fallback for objects without before/after (e.g. custom logs)
+                             <div className="p-4 rounded-lg bg-muted/50 border border-border font-mono text-xs overflow-x-auto">
+                                <pre>{JSON.stringify(content, null, 2)}</pre>
+                             </div>
+                          )}
+                        </div>
+                      );
+                  })()}
+              </div>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-border flex justify-end flex-shrink-0">
+               <button onClick={() => setSelectedAudit(null)}>Close</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

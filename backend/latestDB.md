@@ -313,6 +313,17 @@ CREATE TABLE "organization_purchase_managers" (
 	CONSTRAINT "opm_unique" UNIQUE("org_id","purchase_manager_id"),
 	CONSTRAINT "opm_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
+CREATE TABLE "organization_qa_engineers" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"org_id" uuid UNIQUE,
+	"qa_engineer_id" uuid UNIQUE,
+	"approved_by" uuid,
+	"status" text DEFAULT 'PENDING',
+	"approved_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "organization_qa_engineers_org_id_qa_engineer_id_key" UNIQUE("org_id","qa_engineer_id"),
+	CONSTRAINT "organization_qa_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
+);
 CREATE TABLE "organization_site_engineers" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"org_id" uuid UNIQUE,
@@ -425,6 +436,15 @@ CREATE TABLE "project_purchase_managers" (
 	CONSTRAINT "ppm_unique" UNIQUE("project_id","purchase_manager_id"),
 	CONSTRAINT "ppm_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
+CREATE TABLE "project_qa_engineers" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid UNIQUE,
+	"qa_engineer_id" uuid UNIQUE,
+	"status" text DEFAULT 'PENDING',
+	"assigned_at" timestamp DEFAULT now(),
+	CONSTRAINT "project_qa_engineers_project_id_qa_engineer_id_key" UNIQUE("project_id","qa_engineer_id"),
+	CONSTRAINT "project_qa_engineers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
+);
 CREATE TABLE "project_site_engineers" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"project_id" uuid UNIQUE,
@@ -494,6 +514,18 @@ CREATE TABLE "purchase_orders" (
 	"grn_created" boolean DEFAULT false,
 	CONSTRAINT "purchase_orders_status_check" CHECK (CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SENT'::text, 'ACKNOWLEDGED'::text]))))
 );
+CREATE TABLE "qa_engineers" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"name" text NOT NULL,
+	"email" text NOT NULL CONSTRAINT "qa_engineers_email_key" UNIQUE,
+	"phone" text NOT NULL CONSTRAINT "qa_engineers_phone_key" UNIQUE,
+	"password_hash" text NOT NULL,
+	"role" text DEFAULT 'QA_ENGINEER' NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	"push_notifications_enabled" boolean DEFAULT true,
+	"email_notifications_enabled" boolean DEFAULT false
+);
 CREATE TABLE "session" (
 	"sid" varchar PRIMARY KEY,
 	"sess" json NOT NULL,
@@ -510,6 +542,16 @@ CREATE TABLE "site_engineers" (
 	"updated_at" timestamp DEFAULT now(),
 	"push_notifications_enabled" boolean DEFAULT true,
 	"email_notifications_enabled" boolean DEFAULT false
+);
+CREATE TABLE "subcontractors" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"name" text NOT NULL,
+	"specialization" text,
+	"contact_name" text,
+	"contact_phone" text,
+	"contact_email" text,
+	"created_at" timestamp DEFAULT now(),
+	"org_id" uuid
 );
 CREATE TABLE "sync_action_log" (
 	"id" uuid PRIMARY KEY,
@@ -532,6 +574,35 @@ CREATE TABLE "sync_errors" (
 	"reason" text,
 	"payload" jsonb,
 	"created_at" timestamp DEFAULT now()
+);
+CREATE TABLE "task_quality_reviews" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_quality_reviews_task_id_key" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"rating" integer NOT NULL,
+	"remarks" text,
+	"reviewed_by" uuid NOT NULL,
+	"reviewed_at" timestamp DEFAULT now(),
+	CONSTRAINT "task_quality_reviews_rating_check" CHECK (CHECK (((rating >= 1) AND (rating <= 5))))
+);
+CREATE TABLE "task_speed_ratings" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_speed_ratings_task_id_key" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"rating" integer NOT NULL,
+	"derived_from_duration" boolean DEFAULT false,
+	"rated_by" uuid NOT NULL,
+	"rated_at" timestamp DEFAULT now(),
+	CONSTRAINT "task_speed_ratings_rating_check" CHECK (CHECK (((rating >= 1) AND (rating <= 5))))
+);
+CREATE TABLE "task_subcontractors" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"task_id" uuid NOT NULL CONSTRAINT "task_sub_unique" UNIQUE,
+	"subcontractor_id" uuid NOT NULL,
+	"assigned_by" uuid NOT NULL,
+	"assigned_at" timestamp DEFAULT now(),
+	"task_start_date" date,
+	"task_completed_at" timestamp
 );
 CREATE TABLE "tool_qr_codes" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -638,6 +709,9 @@ ALTER TABLE "organization_managers" ADD CONSTRAINT "organization_managers_manage
 ALTER TABLE "organization_managers" ADD CONSTRAINT "organization_managers_org_id_fkey" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE CASCADE;
 ALTER TABLE "organization_purchase_managers" ADD CONSTRAINT "opm_org_fkey" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE CASCADE;
 ALTER TABLE "organization_purchase_managers" ADD CONSTRAINT "opm_pm_fkey" FOREIGN KEY ("purchase_manager_id") REFERENCES "purchase_managers"("id") ON DELETE CASCADE;
+ALTER TABLE "organization_qa_engineers" ADD CONSTRAINT "organization_qa_engineers_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "managers"("id");
+ALTER TABLE "organization_qa_engineers" ADD CONSTRAINT "organization_qa_engineers_org_id_fkey" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE CASCADE;
+ALTER TABLE "organization_qa_engineers" ADD CONSTRAINT "organization_qa_engineers_qa_engineer_id_fkey" FOREIGN KEY ("qa_engineer_id") REFERENCES "qa_engineers"("id") ON DELETE CASCADE;
 ALTER TABLE "organization_site_engineers" ADD CONSTRAINT "organization_site_engineers_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "managers"("id");
 ALTER TABLE "organization_site_engineers" ADD CONSTRAINT "organization_site_engineers_org_id_fkey" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE CASCADE;
 ALTER TABLE "organization_site_engineers" ADD CONSTRAINT "organization_site_engineers_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id") ON DELETE CASCADE;
@@ -649,6 +723,8 @@ ALTER TABLE "project_managers" ADD CONSTRAINT "project_managers_manager_id_fkey"
 ALTER TABLE "project_managers" ADD CONSTRAINT "project_managers_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "project_purchase_managers" ADD CONSTRAINT "ppm_pm_fkey" FOREIGN KEY ("purchase_manager_id") REFERENCES "purchase_managers"("id") ON DELETE CASCADE;
 ALTER TABLE "project_purchase_managers" ADD CONSTRAINT "ppm_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "project_qa_engineers" ADD CONSTRAINT "project_qa_engineers_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "project_qa_engineers" ADD CONSTRAINT "project_qa_engineers_qa_engineer_id_fkey" FOREIGN KEY ("qa_engineer_id") REFERENCES "qa_engineers"("id") ON DELETE CASCADE;
 ALTER TABLE "project_site_engineers" ADD CONSTRAINT "project_site_engineers_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "project_site_engineers" ADD CONSTRAINT "project_site_engineers_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
 ALTER TABLE "projects" ADD CONSTRAINT "projects_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "managers"("id");
@@ -656,6 +732,13 @@ ALTER TABLE "projects" ADD CONSTRAINT "projects_org_id_fkey" FOREIGN KEY ("org_i
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "purchase_managers"("id") ON DELETE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_material_request_fkey" FOREIGN KEY ("material_request_id") REFERENCES "material_requests"("id") ON DELETE RESTRICT;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "po_project_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
+ALTER TABLE "subcontractors" ADD CONSTRAINT "subcontractors_org_id_fkey" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE CASCADE;
+ALTER TABLE "task_quality_reviews" ADD CONSTRAINT "fk_quality_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_quality_reviews" ADD CONSTRAINT "fk_quality_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
+ALTER TABLE "task_speed_ratings" ADD CONSTRAINT "fk_speed_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_speed_ratings" ADD CONSTRAINT "fk_speed_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
+ALTER TABLE "task_subcontractors" ADD CONSTRAINT "fk_task_sub_sub" FOREIGN KEY ("subcontractor_id") REFERENCES "subcontractors"("id") ON DELETE CASCADE;
+ALTER TABLE "task_subcontractors" ADD CONSTRAINT "fk_task_sub_task" FOREIGN KEY ("task_id") REFERENCES "plan_items"("id") ON DELETE CASCADE;
 ALTER TABLE "wage_rates" ADD CONSTRAINT "wage_rates_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "managers"("id");
 ALTER TABLE "wage_rates" ADD CONSTRAINT "wage_rates_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "wages" ADD CONSTRAINT "wages_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "managers"("id");
@@ -720,6 +803,10 @@ CREATE UNIQUE INDEX "organization_managers_org_id_manager_id_key" ON "organizati
 CREATE UNIQUE INDEX "organization_managers_pkey" ON "organization_managers" ("id");
 CREATE UNIQUE INDEX "opm_unique" ON "organization_purchase_managers" ("org_id","purchase_manager_id");
 CREATE UNIQUE INDEX "organization_purchase_managers_pkey" ON "organization_purchase_managers" ("id");
+CREATE INDEX "idx_org_qa_engineers_org" ON "organization_qa_engineers" ("org_id");
+CREATE INDEX "idx_org_qa_engineers_qa" ON "organization_qa_engineers" ("qa_engineer_id");
+CREATE UNIQUE INDEX "organization_qa_engineers_org_id_qa_engineer_id_key" ON "organization_qa_engineers" ("org_id","qa_engineer_id");
+CREATE UNIQUE INDEX "organization_qa_engineers_pkey" ON "organization_qa_engineers" ("id");
 CREATE UNIQUE INDEX "organization_site_engineers_org_id_site_engineer_id_key" ON "organization_site_engineers" ("org_id","site_engineer_id");
 CREATE UNIQUE INDEX "organization_site_engineers_pkey" ON "organization_site_engineers" ("id");
 CREATE UNIQUE INDEX "organizations_pkey" ON "organizations" ("id");
@@ -739,6 +826,10 @@ CREATE UNIQUE INDEX "project_managers_pkey" ON "project_managers" ("id");
 CREATE UNIQUE INDEX "project_managers_project_id_manager_id_key" ON "project_managers" ("project_id","manager_id");
 CREATE UNIQUE INDEX "ppm_unique" ON "project_purchase_managers" ("project_id","purchase_manager_id");
 CREATE UNIQUE INDEX "project_purchase_managers_pkey" ON "project_purchase_managers" ("id");
+CREATE INDEX "idx_project_qa_engineers_project" ON "project_qa_engineers" ("project_id");
+CREATE INDEX "idx_project_qa_engineers_qa" ON "project_qa_engineers" ("qa_engineer_id");
+CREATE UNIQUE INDEX "project_qa_engineers_pkey" ON "project_qa_engineers" ("id");
+CREATE UNIQUE INDEX "project_qa_engineers_project_id_qa_engineer_id_key" ON "project_qa_engineers" ("project_id","qa_engineer_id");
 CREATE UNIQUE INDEX "project_site_engineers_pkey" ON "project_site_engineers" ("id");
 CREATE UNIQUE INDEX "project_site_engineers_project_id_site_engineer_id_key" ON "project_site_engineers" ("project_id","site_engineer_id");
 CREATE UNIQUE INDEX "project_tools_pkey" ON "project_tools" ("id");
@@ -755,14 +846,29 @@ CREATE INDEX "idx_po_project" ON "purchase_orders" ("project_id");
 CREATE INDEX "idx_po_status" ON "purchase_orders" ("status");
 CREATE UNIQUE INDEX "purchase_orders_pkey" ON "purchase_orders" ("id");
 CREATE UNIQUE INDEX "purchase_orders_po_number_key" ON "purchase_orders" ("po_number");
+CREATE INDEX "idx_qa_engineer_email" ON "qa_engineers" ("email");
+CREATE UNIQUE INDEX "qa_engineers_email_key" ON "qa_engineers" ("email");
+CREATE UNIQUE INDEX "qa_engineers_phone_key" ON "qa_engineers" ("phone");
+CREATE UNIQUE INDEX "qa_engineers_pkey" ON "qa_engineers" ("id");
 CREATE INDEX "IDX_session_expire" ON "session" ("expire");
 CREATE UNIQUE INDEX "session_pkey" ON "session" ("sid");
 CREATE INDEX "idx_site_engineer_email" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_email_key" ON "site_engineers" ("email");
 CREATE UNIQUE INDEX "site_engineers_phone_key" ON "site_engineers" ("phone");
 CREATE UNIQUE INDEX "site_engineers_pkey" ON "site_engineers" ("id");
+CREATE INDEX "idx_subcontractors_org" ON "subcontractors" ("org_id");
+CREATE UNIQUE INDEX "subcontractors_pkey" ON "subcontractors" ("id");
 CREATE UNIQUE INDEX "sync_action_log_pkey" ON "sync_action_log" ("id");
 CREATE UNIQUE INDEX "sync_errors_pkey" ON "sync_errors" ("id");
+CREATE INDEX "idx_quality_reviews_sub" ON "task_quality_reviews" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_quality_reviews_pkey" ON "task_quality_reviews" ("id");
+CREATE UNIQUE INDEX "task_quality_reviews_task_id_key" ON "task_quality_reviews" ("task_id");
+CREATE INDEX "idx_speed_ratings_sub" ON "task_speed_ratings" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_speed_ratings_pkey" ON "task_speed_ratings" ("id");
+CREATE UNIQUE INDEX "task_speed_ratings_task_id_key" ON "task_speed_ratings" ("task_id");
+CREATE INDEX "idx_task_subcontractors_sub" ON "task_subcontractors" ("subcontractor_id");
+CREATE UNIQUE INDEX "task_sub_unique" ON "task_subcontractors" ("task_id");
+CREATE UNIQUE INDEX "task_subcontractors_pkey" ON "task_subcontractors" ("id");
 CREATE UNIQUE INDEX "tool_qr_codes_pkey" ON "tool_qr_codes" ("id");
 CREATE UNIQUE INDEX "tool_qr_codes_qr_token_key" ON "tool_qr_codes" ("qr_token");
 CREATE UNIQUE INDEX "tool_qr_unique_day" ON "tool_qr_codes" ("tool_id","valid_date");

@@ -65,9 +65,9 @@ const managerNavItems: NavItem[] = [
   { label: "Materials", href: "/manager/materials", icon: Package },
   { label: "GRN", href: "/manager/grn", icon: ClipboardCheck },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
-  { label: "Audit Logs", href: "/manager/audit", icon: History },
   { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },
   { label: "Reports", href: "/manager/reports", icon: BarChart },
+  { label: "Subcontractors", href: "/manager/subcontractors", icon: Users },
 ];
 
 const poManagerNavItems: NavItem[] = [
