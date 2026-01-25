@@ -65,6 +65,7 @@ router.get("/available", labourCheck, async (req, res) => {
            AND lr.category = wr.category
       WHERE lr.status = 'OPEN'
       AND lr.request_date >= CURRENT_DATE
+      AND (SELECT COUNT(*) FROM attendance WHERE project_id = lr.project_id AND attendance_date = lr.request_date AND status = 'APPROVED') < lr.required_count
       AND NOT EXISTS (
         SELECT 1 FROM organization_blacklist ob 
         WHERE ob.org_id = p.org_id AND ob.labour_id = $${paramIdx}
