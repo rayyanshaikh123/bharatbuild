@@ -156,6 +156,15 @@ class AuthService {
     }
   }
 
+  Future<void> logoutQAEngineer() async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/logout');
+    final res = await _client.post(uri);
+    await PersistentClient.clearCookies();
+    if (res.statusCode != 200) {
+      throw Exception('Logout failed: ${res.body}');
+    }
+  }
+
   /// Check current labour session. Returns user map if authenticated, null otherwise.
   Future<Map<String, dynamic>?> checkLabourSession() async {
     final uri = Uri.parse('$_base/labour/check-auth');
@@ -1257,5 +1266,43 @@ class AuthService {
       }
       rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>> qaEngineerLogin(String email, String password) async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/login');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    ).timeout(const Duration(seconds: 60));
+    
+    if (res.statusCode != 200) {
+      _throwError('Login failed', res);
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> qaEngineerRegister(
+    String name,
+    String email,
+    String phone,
+    String password,
+  ) async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/register');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+      }),
+    ).timeout(const Duration(seconds: 60));
+    
+    if (res.statusCode != 201) {
+      _throwError('Register failed', res);
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
   }
 }

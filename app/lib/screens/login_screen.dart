@@ -84,19 +84,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      if (!_formKey.currentState!.validate()) {
-        setState(() => _isLoading = false);
+      if (_role == 'engineer') {
+        if (!_formKey.currentState!.validate()) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
+        if (res['user'] != null) {
+          ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+        }
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/engineer-dashboard');
         return;
       }
 
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
-      final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
-      if (res['user'] != null) {
-        ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+      if (_role == 'qa_engineer') {
+        if (!_formKey.currentState!.validate()) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        final res = await ref.read(qaEngineerLoginProvider({'email': email, 'password': password}).future);
+        if (res['user'] != null) {
+          ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+        }
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/qa-flow');
+        return;
       }
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/engineer-dashboard');
     } catch (e) {
       if (!mounted) return;
       String errorMsg = e.toString();
@@ -146,6 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     items: [
                       DropdownMenuItem(value: 'engineer', child: Text('engineer'.tr())),
                       DropdownMenuItem(value: 'labour', child: Text('labour'.tr())),
+                      DropdownMenuItem(value: 'qa_engineer', child: Text('QA Engineer')),
                     ],
                     onChanged: (v) => setState(() {
                       final newRole = v ?? 'engineer';
