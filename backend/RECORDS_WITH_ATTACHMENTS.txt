@@ -1,0 +1,55 @@
+📋 RECORDS WITH ATTACHMENTS - IDs
+
+========================================
+PURCHASE ORDERS WITH PDF (8 total)
+========================================
+
+1. da13d5b4-6813-4872-ab00-ec9b3214a429 (PO-2026-7671, pearl, PDF 3.9 MB)
+2. 9eb1cd5b-0810-471d-88e6-b8690caf9d86 (PO-2026-7870, pearl, PDF 3.9 MB)
+3. 41e2b4d6-d73b-43de-8e37-e01bbd53b4a5 (PO-2026-4325, pearl, PDF 3.9 MB)
+4. 46fd7d45-64a9-45be-b8e9-616c7dba45c7 (PO-22605259, vasantdada patil, PDF 354 KB)
+5. 4223a7ad-8144-47f9-8d07-72defd1eac2f (PO-22606154, vasantdada patil, HEIC 2.6 MB)
+6. fcc129b4-a477-4387-b8bd-1c912930e50d (PO-22604545, vasantdada patil, HEIC 2.6 MB)
+7. cedb6793-2f6a-41d6-a515-2efe33005521 (PO-22605478, vasantdada patil, HEIC 2.6 MB)
+8. 97387e5f-b15c-4397-9510-b270111b8d60 (PO-22603077, vasantdada patil, HEIC 2.4 MB)
+
+========================================
+GRNs WITH BILL IMAGES (5 total)
+========================================
+
+1. 41161e19-3c35-4421-8010-2051c4be8021 (Royal Tiles, vasantdada patil, HEIC 2.4 MB)
+2. 1736385b-1420-4691-9286-1feda5af3416 (BuildMart, vasantdada patil, HEIC 2.4 MB)
+3. ce037a41-5b52-4dc9-99be-9733949e00d1 (Supreme Cement, vasantdada patil, HEIC 2.4 MB)
+4. 6bcc7983-6172-4a4e-b0af-8e5a45bc8046 (Steel India, vasantdada patil, HEIC 2.2 MB)
+5. f6177dd7-918b-422c-8a0d-5472e3615ad4 (Aggregate Solutions, vasantdada patil, HEIC 2.4 MB)
+
+========================================
+DPRs WITH MATERIAL USAGE DATA (13 total)
+========================================
+
+1. ba5a8c4b-f941-4c5b-92fe-f5a399d102ca
+2. 81218b8f-6419-4e5b-bc64-7684bd055fc1
+3. f3f93916-6ce3-4f32-8689-7016cd5527e2
+4. 7a664259-2123-4708-80f4-016b109a6c10
+5. e069ac18-95d4-4393-8f8e-2a5a915141e0
+6. 101bf4aa-b173-42b0-933e-2b18c8b4c593
+7. 1a78f077-c584-48d0-a601-0b092e834591
+8. a726f68c-3a16-4915-83bf-f3ae58fea28d
+9. a15f61ae-19a0-49e6-9b1d-56d8414613ba
+10-13. (Additional DPRs - run check_attachments.js for full list)
+
+========================================
+TESTING URLS
+========================================
+
+Purchase Orders:
+- /manager/purchase-orders/da13d5b4-6813-4872-ab00-ec9b3214a429
+- /manager/purchase-orders/97387e5f-b15c-4397-9510-b270111b8d60
+
+GRNs:
+- /manager/grn/41161e19-3c35-4421-8010-2051c4be8021
+- /manager/grn/ce037a41-5b52-4dc9-99be-9733949e00d1
+
+DPRs:
+- /manager/dpr (filter by material usage)
+

@@ -48,15 +48,16 @@ export default function MaterialStockPage() {
         if (orgsRes.organizations && orgsRes.organizations.length > 0) {
           const approvedOrg = orgsRes.organizations[0];
           const res = await managerProjects.getMyProjects(approvedOrg.id);
-        const activeProjects = res.projects.filter(
-          (p: any) =>
-            p.my_status === "ACTIVE" &&
-            (p.status === "ACTIVE" || p.status === "PLANNED"),
-        );
-        setProjects(activeProjects);
+          const activeProjects = res.projects.filter(
+            (p: any) =>
+              p.my_status === "ACTIVE" &&
+              (p.status === "ACTIVE" || p.status === "PLANNED"),
+          );
+          setProjects(activeProjects);
 
-        if (activeProjects.length > 0) {
-          setSelectedProject(activeProjects[0].id);
+          if (activeProjects.length > 0) {
+            setSelectedProject(activeProjects[0].id);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
@@ -240,7 +241,8 @@ function StockView({ stock }: { stock: MaterialStock[] }) {
 }
 
 function StockCard({ item }: { item: MaterialStock }) {
-  const isLowStock = item.available_quantity < 10;
+  const quantity = parseFloat(item.available_quantity?.toString() || "0");
+  const isLowStock = quantity < 10;
 
   return (
     <div className="glass-card rounded-2xl p-6 hover:shadow-lg transition-shadow">
@@ -267,7 +269,7 @@ function StockCard({ item }: { item: MaterialStock }) {
               isLowStock ? "text-orange-500" : "text-green-500"
             }`}
           >
-            {item.available_quantity.toFixed(2)}
+            {quantity.toFixed(2)}
           </span>
           <span className="text-sm text-muted-foreground">{item.unit}</span>
         </div>

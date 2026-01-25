@@ -194,7 +194,7 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
                         Text(
                           '${_getGreeting()},',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -218,11 +218,11 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2), width: 2),
+                          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2), width: 2),
                         ),
                         child: CircleAvatar(
                           radius: 22,
-                          backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                           child: Text(
                             displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
                             style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
@@ -243,6 +243,72 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
               child: _AttendanceSection(
                 isCheckingOut: _isCheckingOut,
                 onCheckOut: _handleCheckOut,
+              ),
+            ),
+          ),
+
+          // Tools & Quick Actions
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: theme.colorScheme.surface,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+                      ),
+                      child: InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LabourToolsScreen()),
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Icon(Icons.construction, color: Colors.orange, size: 32),
+                              const SizedBox(height: 8),
+                              Text('My Tools', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Material(
+                      color: theme.colorScheme.surface,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+                      ),
+                      child: InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Icon(Icons.history, color: Colors.blue, size: 32),
+                              const SizedBox(height: 8),
+                              Text('Work History', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -318,7 +384,7 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
                         Text('explore_work'.tr(), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                         Text(
                           'nearby_sites_and_jobs'.tr(),
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                         ),
                       ],
                     ),
@@ -329,7 +395,7 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
                     label: Text('set_current_as_primary'.tr(), style: const TextStyle(fontSize: 11)),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
                     ),
                   ),
                 ],
@@ -351,7 +417,7 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
       ),
       child: IconButton(
         icon: Badge(
@@ -454,7 +520,7 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
       child: Column(
         children: [
           const SizedBox(height: 60),
-          Icon(Icons.location_off_rounded, size: 64, color: Colors.grey.withOpacity(0.3)),
+          Icon(Icons.location_off_rounded, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text('no_work_nearby'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
         ],
@@ -485,9 +551,9 @@ class _HorizontalApplicationCard extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,7 +563,7 @@ class _HorizontalApplicationCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
               if (distance.isNotEmpty)
@@ -509,9 +575,9 @@ class _HorizontalApplicationCard extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              Text(application['category']?.toString().toUpperCase() ?? 'JOB', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5))),
+              Text(application['category']?.toString().toUpperCase() ?? 'JOB', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
               const Spacer(),
-              Icon(Icons.arrow_forward_ios, size: 10, color: theme.colorScheme.onSurface.withOpacity(0.3)),
+              Icon(Icons.arrow_forward_ios, size: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
             ],
           ),
           const SizedBox(height: 12),
@@ -547,9 +613,9 @@ class _UnifiedProjectCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15, offset: const Offset(0, 4)),
         ],
       ),
       child: Material(
@@ -570,7 +636,7 @@ class _UnifiedProjectCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(Icons.business_rounded, color: theme.colorScheme.primary),
@@ -631,7 +697,7 @@ class _UnifiedProjectCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondary.withOpacity(0.1),
+              color: theme.colorScheme.secondary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(distance, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -672,9 +738,9 @@ class _JobChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isFull ? Colors.grey[100] : theme.colorScheme.primary.withOpacity(0.05),
+          color: isFull ? Colors.grey[100] : theme.colorScheme.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isFull ? Colors.grey[200]! : theme.colorScheme.primary.withOpacity(0.1)),
+          border: Border.all(color: isFull ? Colors.grey[200]! : theme.colorScheme.primary.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -745,10 +811,10 @@ class _JobCardState extends ConsumerState<_JobCard> {
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -762,7 +828,7 @@ class _JobCardState extends ConsumerState<_JobCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -797,7 +863,7 @@ class _JobCardState extends ConsumerState<_JobCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -948,7 +1014,7 @@ class ApplicationsContent extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.description_outlined, size: 64, color: theme.colorScheme.primary),
@@ -1015,11 +1081,11 @@ class EarningsContent extends ConsumerWidget {
                       child: Center(
                         child: Column(
                           children: [
-                            Icon(Icons.history_toggle_off_rounded, size: 48, color: theme.colorScheme.onSurface.withOpacity(0.2)),
+                            Icon(Icons.history_toggle_off_rounded, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
                             const SizedBox(height: 12),
                             Text(
                               'no_earnings_yet'.tr(),
-                              style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.bold),
+                              style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4), fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -1058,7 +1124,7 @@ class EarningsContent extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.payments_outlined, size: 64, color: theme.colorScheme.primary),
@@ -1107,7 +1173,7 @@ class _EarningsSummary extends StatelessWidget {
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.primary.withOpacity(0.3),
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1122,7 +1188,7 @@ class _EarningsSummary extends StatelessWidget {
                   Text(
                     'total_earnings'.tr().toUpperCase(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -1131,7 +1197,7 @@ class _EarningsSummary extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -1155,7 +1221,7 @@ class _EarningsSummary extends StatelessWidget {
               Row(
                 children: [
                   _balanceSmallItem('unpaid'.tr(), '₹${unpaidEarnings.round()}'),
-                  Container(width: 1, height: 24, color: Colors.white.withOpacity(0.2), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                  Container(width: 1, height: 24, color: Colors.white.withValues(alpha: 0.2), margin: const EdgeInsets.symmetric(horizontal: 20)),
                   _balanceSmallItem('pending'.tr(), '₹${pendingEarnings.round()}'),
                 ],
               ),
@@ -1181,7 +1247,7 @@ class _EarningsSummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
       ],
@@ -1219,7 +1285,7 @@ class _EarningsSummary extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.06)),
+            border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.06)),
           ),
           child: LineChart(
             LineChartData(
@@ -1227,7 +1293,7 @@ class _EarningsSummary extends StatelessWidget {
                 show: true,
                 drawVerticalLine: false,
                 getDrawingHorizontalLine: (value) => FlLine(
-                  color: theme.colorScheme.outline.withOpacity(0.05),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.05),
                   strokeWidth: 1,
                 ),
               ),
@@ -1244,7 +1310,7 @@ class _EarningsSummary extends StatelessWidget {
                       final index = value.toInt();
                       return Padding(
                          padding: const EdgeInsets.only(top: 8.0),
-                         child: Text('W${index + 1}', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.bold, fontSize: 10)),
+                         child: Text('W${index + 1}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4), fontWeight: FontWeight.bold, fontSize: 10)),
                       );
                     },
                   ),
@@ -1255,7 +1321,7 @@ class _EarningsSummary extends StatelessWidget {
                     reservedSize: 42,
                     getTitlesWidget: (value, meta) {
                        if (value == 0) return const SizedBox.shrink();
-                       return Text('₹${NumberFormat.compact().format(value)}', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.bold, fontSize: 10));
+                       return Text('₹${NumberFormat.compact().format(value)}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4), fontWeight: FontWeight.bold, fontSize: 10));
                     },
                   ),
                 ),
@@ -1277,8 +1343,8 @@ class _EarningsSummary extends StatelessWidget {
                     show: true,
                     gradient: LinearGradient(
                       colors: [
-                        theme.colorScheme.primary.withOpacity(0.2),
-                        theme.colorScheme.primary.withOpacity(0),
+                        theme.colorScheme.primary.withValues(alpha: 0.2),
+                        theme.colorScheme.primary.withValues(alpha: 0),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -1327,7 +1393,7 @@ class _EarningsSummary extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.06)),
+            border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.06)),
           ),
           child: Row(
             children: [
@@ -1420,14 +1486,14 @@ class _WageCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(statusIcon, color: statusColor, size: 20),
@@ -1460,7 +1526,7 @@ class _WageCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text('PAID', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -1527,7 +1593,7 @@ class _ProjectBreakdown extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: theme.colorScheme.outline.withOpacity(0.08)),
+                  border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1537,7 +1603,7 @@ class _ProjectBreakdown extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontWeight: FontWeight.bold, fontSize: 11),
+                      style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -1593,7 +1659,7 @@ class _ApplicationCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1620,9 +1686,9 @@ class _ApplicationCard extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red.withOpacity(0.2)),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
                           ),
                           child: const Row(
                             children: [
@@ -1650,7 +1716,7 @@ class _ApplicationCard extends StatelessWidget {
                     child: Text(
                       application['location_text'] ?? 'Unknown Location',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -1659,7 +1725,7 @@ class _ApplicationCard extends StatelessWidget {
               const Divider(height: 24),
               Text(
                 'Applied on: ${application['joined_at']?.toString().split('T')[0] ?? ''}',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.4)),
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ),
             ],
           ),
@@ -1687,9 +1753,9 @@ class _ApplicationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         status.toUpperCase(),
@@ -1726,7 +1792,7 @@ class ProfileContent extends ConsumerWidget {
           const SizedBox(height: 20),
           CircleAvatar(
             radius: 50,
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             child: Text(
               user != null && user['name'] != null ? (user['name'] as String)[0].toUpperCase() : '?',
               style: TextStyle(fontSize: 32, color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
@@ -1739,7 +1805,7 @@ class ProfileContent extends ConsumerWidget {
           ),
           Text(
             user != null && user['phone'] != null ? user['phone'] as String : '',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 32),
 
@@ -1749,9 +1815,9 @@ class ProfileContent extends ConsumerWidget {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
@@ -1859,7 +1925,7 @@ class ProfileContent extends ConsumerWidget {
         trailing: const Icon(Icons.chevron_right),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
+          side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
         ),
       ),
     );
@@ -1915,11 +1981,11 @@ class _AttendanceSection extends ConsumerWidget {
         border: Border.all(
           color: isCheckedIn 
               ? theme.colorScheme.primary 
-              : (approvedApp != null ? theme.colorScheme.primary.withOpacity(0.5) : theme.colorScheme.outline.withOpacity(0.1))
+              : (approvedApp != null ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.outline.withValues(alpha: 0.1))
         ),
         boxShadow: [
           BoxShadow(
-            color: (isCheckedIn ? theme.colorScheme.primary : Colors.black).withOpacity(0.1),
+            color: (isCheckedIn ? theme.colorScheme.primary : Colors.black).withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1933,7 +1999,7 @@ class _AttendanceSection extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: (isCheckedIn ? Colors.white : theme.colorScheme.primary).withOpacity(0.1),
+                  color: (isCheckedIn ? Colors.white : theme.colorScheme.primary).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -1961,12 +2027,12 @@ class _AttendanceSection extends ConsumerWidget {
                           final dt = DateTime.parse(checkInStr).toLocal();
                           return Text(
                             'checked_in_at'.tr(args: [DateFormat('HH:mm').format(dt)]),
-                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white.withOpacity(0.8)),
+                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                           );
                         } catch (e) {
                           return Text(
                             'checked_in'.tr(),
-                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white.withOpacity(0.8)),
+                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                           );
                         }
                       })
@@ -1974,7 +2040,7 @@ class _AttendanceSection extends ConsumerWidget {
                       Text(
                         'Approved for Site • $locationText',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2009,7 +2075,7 @@ class _AttendanceSection extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: IconButton(
@@ -2189,7 +2255,7 @@ class _AttendancePlaceholder extends StatelessWidget {
       height: 160,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
       ),
     );
@@ -2236,7 +2302,7 @@ class EarningDetailScreen extends StatelessWidget {
                 children: [
                   Text(
                     DateFormat('EEEE, dd MMMM').format(DateTime.parse(date)).toUpperCase(),
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -2247,7 +2313,7 @@ class EarningDetailScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -2285,7 +2351,7 @@ class EarningDetailScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.06)),
+                border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.06)),
               ),
               child: Row(
                 children: [
@@ -2357,7 +2423,7 @@ class EarningDetailScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.06)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.06)),
       ),
       child: BarChart(
         BarChartData(

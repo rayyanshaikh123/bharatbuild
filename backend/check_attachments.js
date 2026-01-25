@@ -55,6 +55,7 @@ async function checkAttachments() {
     } else {
       poResult.rows.forEach((po, idx) => {
         console.log(`${idx + 1}. PO Number: ${po.po_number}`);
+        console.log(`   🆔 ID: ${po.id}`);
         console.log(`   Project: ${po.project_name}`);
         console.log(`   Vendor: ${po.vendor_name}`);
         console.log(`   Material Request: ${po.material_request_title}`);
@@ -123,6 +124,7 @@ async function checkAttachments() {
     } else {
       grnResult.rows.forEach((grn, idx) => {
         console.log(`${idx + 1}. PO Number: ${grn.po_number}`);
+        console.log(`   🆔 GRN ID: ${grn.id}`);
         console.log(`   Project: ${grn.project_name}`);
         console.log(`   Vendor: ${grn.vendor_name}`);
         console.log(`   Received By: ${grn.received_by_name}`);
@@ -199,6 +201,7 @@ async function checkAttachments() {
     } else {
       dprResult.rows.forEach((dpr, idx) => {
         console.log(`${idx + 1}. ${dpr.title}`);
+        console.log(`   🆔 DPR ID: ${dpr.id}`);
         console.log(`   Project: ${dpr.project_name}`);
         console.log(`   Engineer: ${dpr.engineer_name}`);
         console.log(`   Task: ${dpr.task_name || "N/A"}`);

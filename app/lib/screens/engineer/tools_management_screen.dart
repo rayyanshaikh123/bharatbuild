@@ -144,7 +144,7 @@ class _ToolsManagementScreenState extends ConsumerState<ToolsManagementScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(Icons.construction, color: statusColor, size: 24),
@@ -200,7 +200,7 @@ class _ToolsManagementScreenState extends ConsumerState<ToolsManagementScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
+                        color: Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -230,9 +230,9 @@ class _ToolsManagementScreenState extends ConsumerState<ToolsManagementScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status.toLowerCase().tr(),
@@ -488,7 +488,7 @@ class _ToolDetailsSheet extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
+                            color: statusColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(Icons.construction, color: statusColor, size: 32),
@@ -646,9 +646,9 @@ class _ToolDetailsSheet extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status.toLowerCase().tr(),
@@ -684,42 +684,42 @@ class _ToolDetailsSheet extends ConsumerWidget {
       context: parentContext,
       barrierDismissible: false,
       useRootNavigator: true,
-      builder: (dialogContext) => WillPopScope(
-        onWillPop: () async => false,
-        child: const Center(child: CircularProgressIndicator()),
+      builder: (dialogContext) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
       ),
     );
 
     try {
       // Call service directly to avoid provider caching issues
       final authService = ref.read(authServiceProvider);
-      print('[QR Generation] Starting QR generation for tool: ${tool['id']}');
+      debugPrint('[QR Generation] Starting QR generation for tool: ${tool['id']}');
       
       final qrData = await authService.generateToolQR(tool['id']);
-      print('[QR Generation] QR data received: ${qrData.keys}');
+      debugPrint('[QR Generation] QR data received: ${qrData.keys}');
       
       // Close loading dialog
       Navigator.of(parentContext, rootNavigator: true).pop();
 
       // Validate QR data structure
       if (qrData.containsKey('qr') && qrData['qr'] is Map) {
-        print('[QR Generation] QR data valid, preparing to show dialog');
-        print('[QR Generation] QR token: ${(qrData['qr'] as Map)['qr_token']}');
+        debugPrint('[QR Generation] QR data valid, preparing to show dialog');
+        debugPrint('[QR Generation] QR token: ${(qrData['qr'] as Map)['qr_token']}');
         
         // Use SchedulerBinding to ensure dialog is shown after frame is rendered
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          print('[QR Generation] PostFrameCallback - showing QR dialog');
+          debugPrint('[QR Generation] PostFrameCallback - showing QR dialog');
           showDialog(
             context: parentContext,
             barrierDismissible: true,
             useRootNavigator: true,
             builder: (dialogContext) {
               try {
-                print('[QR Generation] Building QR dialog widget');
+                debugPrint('[QR Generation] Building QR dialog widget');
                 return _QRCodeDialog(tool: tool, qrData: qrData);
               } catch (e, stackTrace) {
-                print('[QR Generation] Error building QR dialog: $e');
-                print('[QR Generation] Stack trace: $stackTrace');
+                debugPrint('[QR Generation] Error building QR dialog: $e');
+                debugPrint('[QR Generation] Stack trace: $stackTrace');
                 return AlertDialog(
                   title: const Text('Error'),
                   content: Text('Failed to display QR code: $e'),
@@ -733,14 +733,14 @@ class _ToolDetailsSheet extends ConsumerWidget {
               }
             },
           );
-          print('[QR Generation] QR dialog shown');
+          debugPrint('[QR Generation] QR dialog shown');
         });
       } else {
         throw Exception('Invalid QR data structure received from server');
       }
     } catch (e, stackTrace) {
-      print('[QR Generation] Error: $e');
-      print('[QR Generation] Stack trace: $stackTrace');
+      debugPrint('[QR Generation] Error: $e');
+      debugPrint('[QR Generation] Stack trace: $stackTrace');
       
       // Close loading dialog
       try {
@@ -871,7 +871,7 @@ class _QRCodeDialog extends StatelessWidget {
     final validDate = qr['valid_date'] as String? ?? '';
     final message = qrData['message'] as String? ?? 'QR code generated';
 
-    print('[QR Dialog] Building dialog with token length: ${qrToken.length}');
+    debugPrint('[QR Dialog] Building dialog with token length: ${qrToken.length}');
     
     if (qrToken.isEmpty) {
       return Dialog(
@@ -934,7 +934,7 @@ class _QRCodeDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1021,7 +1021,7 @@ class _ToolHistoryScreen extends ConsumerWidget {
           // Tool info header
           Container(
             padding: const EdgeInsets.all(16),
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Row(
               children: [
                 Icon(Icons.construction, color: theme.colorScheme.primary),
@@ -1104,7 +1104,7 @@ class _ToolHistoryScreen extends ConsumerWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: isReturned ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  backgroundColor: isReturned ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                   child: Icon(
                     isReturned ? Icons.check_circle : Icons.access_time,
                     color: isReturned ? Colors.green : Colors.orange,
@@ -1129,7 +1129,7 @@ class _ToolHistoryScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isReturned ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    color: isReturned ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

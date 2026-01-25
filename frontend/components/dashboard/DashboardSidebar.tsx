@@ -24,6 +24,11 @@ import {
   TrendingUp,
   ShieldAlert,
   ClipboardCheck,
+  AlertTriangle,
+  UserCog,
+  FileInput,
+  Timer,
+  Factory,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -42,8 +47,12 @@ const ownerNavItems: NavItem[] = [
   { label: "Plans", href: "/owner/plans", icon: Calendar },
   { label: "Timeline", href: "/owner/timeline", icon: Clock },
   { label: "Managers", href: "/owner/managers", icon: Users },
+  { label: "Subcontractors", href: "/owner/subcontractors", icon: UserCog },
   { label: "QA Engineers", href: "/owner/qa-engineers", icon: ClipboardCheck },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
+  { label: "Materials", href: "/owner/materials", icon: Package },
+  { label: "Purchase Orders", href: "/owner/purchase-orders", icon: FileText },
+  { label: "GRN", href: "/owner/grn", icon: ClipboardCheck },
   { label: "DPR", href: "/owner/dpr", icon: FileText },
   { label: "Dangerous Work", href: "/owner/dangerous-work", icon: ShieldAlert },
   { label: "Blacklist", href: "/owner/blacklist", icon: ShieldAlert },
@@ -55,7 +64,13 @@ const ownerNavItems: NavItem[] = [
 const managerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/manager", icon: LayoutDashboard },
   { label: "Projects", href: "/manager/projects", icon: Building2 },
+  {
+    label: "Project Requests",
+    href: "/manager/project-requests",
+    icon: FileInput,
+  },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
+  { label: "Subcontractors", href: "/manager/subcontractors", icon: UserCog },
   {
     label: "QA Engineers",
     href: "/manager/qa-engineers",
@@ -63,9 +78,16 @@ const managerNavItems: NavItem[] = [
   },
   { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
   { label: "Wages", href: "/manager/wages", icon: ReceiptIndianRupeeIcon },
+  { label: "Wage Rates", href: "/manager/wage-rates", icon: Settings },
+  { label: "Working Hours", href: "/manager/working-hours", icon: Timer },
   { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
-  { label: "Dangerous Work", href: "/manager/dangerous-work", icon: ShieldAlert },
+  {
+    label: "Dangerous Work",
+    href: "/manager/dangerous-work",
+    icon: ShieldAlert,
+  },
   { label: "Timeline", href: "/manager/timeline", icon: Clock },
+  { label: "Delays", href: "/manager/delays", icon: AlertTriangle },
 
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
   {
@@ -74,6 +96,7 @@ const managerNavItems: NavItem[] = [
     icon: FileText,
   },
   { label: "Materials", href: "/manager/materials", icon: Package },
+  { label: "Material Stock", href: "/manager/material-stock", icon: Factory },
   { label: "GRN", href: "/manager/grn", icon: ClipboardCheck },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
   { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },

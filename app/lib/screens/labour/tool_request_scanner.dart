@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:easy_localization/easy_localization.dart';
-import '../../services/auth_service.dart';
 import '../../providers/auth_providers.dart';
 
 class ToolRequestScanner extends ConsumerStatefulWidget {
@@ -179,7 +177,7 @@ class _ToolRequestScannerState extends ConsumerState<ToolRequestScanner> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Text(

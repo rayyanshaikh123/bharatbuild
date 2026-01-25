@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:intl/intl.dart';
 import '../../providers/labour_tools_provider.dart';
-import '../../providers/auth_providers.dart';
 import '../../theme/app_colors.dart';
 
 class LabourToolsScreen extends ConsumerStatefulWidget {
@@ -35,7 +34,6 @@ class _LabourToolsScreenState extends ConsumerState<LabourToolsScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     
     return Scaffold(
       appBar: AppBar(
@@ -164,7 +162,7 @@ class _LabourToolsScreenState extends ConsumerState<LabourToolsScreen> with Sing
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.symmetric(horizontal: 32),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -336,7 +334,7 @@ class _LabourToolsScreenState extends ConsumerState<LabourToolsScreen> with Sing
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
+            color: Colors.orange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(Icons.construction, color: Colors.orange),
@@ -364,7 +362,7 @@ class _LabourToolsScreenState extends ConsumerState<LabourToolsScreen> with Sing
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
+            color: Colors.orange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
           child:             Text(
@@ -464,7 +462,7 @@ class _LabourToolsScreenState extends ConsumerState<LabourToolsScreen> with Sing
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isReturned ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    color: isReturned ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
