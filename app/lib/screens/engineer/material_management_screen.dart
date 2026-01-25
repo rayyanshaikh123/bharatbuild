@@ -111,6 +111,35 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
     );
   }
 
+  void _issueMaterial(Map<String, dynamic> item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _IssueMaterialSheet(item: item),
+    );
+  }
+
+  Widget _buildRequestCard(dynamic request) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        title: Text('Request #${request['id']?.toString().substring(0, 8) ?? 'N/A'}'),
+        subtitle: Text(request['status'] ?? 'Pending'),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+
+  Widget _buildInventoryCard(dynamic stock) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        title: Text(stock['material_name'] ?? 'Unknown Item'),
+        subtitle: Text('Qty: ${stock['quantity'] ?? 0}'),
+      ),
+    );
+  }
+
   // ✅ Dummy widgets so file compiles (replace with your real implementations)
   Widget _buildRequestsList() {
     final currentProject = ref.watch(currentProjectProvider);
@@ -625,6 +654,31 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         ),
       );
     }
+  }
+}
+
+class _IssueMaterialSheet extends StatelessWidget {
+  final Map<String, dynamic> item;
+  const _IssueMaterialSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Issue Material', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          const Text('Material issuing functionality coming soon.'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
