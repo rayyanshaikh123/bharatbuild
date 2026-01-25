@@ -51,7 +51,29 @@
 
 ---
 
-### 4. Dangerous Work Permits ✅
+### 4. Material Flow (with Images) ✅
+
+**Script:** `seed_complete_data.js`
+
+**Data Created:**
+
+- 6 Material Requests (5 approved, 1 pending)
+  - OPC 53 Grade Cement
+  - TMT Bars 12mm
+  - River Sand
+  - 20mm Aggregate
+  - Red Clay Bricks
+  - Vitrified Tiles 2x2
+- 5 Purchase Orders with PDF/Image attachments
+  - Vendors: Supreme Cement Co., Steel India Ltd, BuildMart Suppliers, etc.
+  - All POs include uploaded documents (HEIC images or PDF)
+- 5 GRNs (Goods Receipt Notes) with bill images
+  - All GRNs include HEIC image attachments
+  - 4 approved, 1 pending
+
+---
+
+### 5. Dangerous Work Permits ✅
 
 **Script:** `seed_complete_data.js`
 
@@ -68,7 +90,7 @@
 
 ---
 
-### 5. Subcontractors ✅
+### 6. Subcontractors ✅
 
 **Script:** `seed_complete_data.js`
 
@@ -84,7 +106,7 @@
 
 ---
 
-### 6. Project Breaks (Delays) ✅
+### 7. Project Breaks (Delays) ✅
 
 **Script:** `seed_complete_data.js`
 
@@ -96,13 +118,13 @@
 
 ---
 
-### 7. Daily Progress Reports (DPRs) ✅
+### 8. Daily Progress Reports (DPRs) ✅
 
 **Script:** `seed_complete_data.js`
 
 **Data Created:**
 
-- 14 DPRs
+- 12-14 DPRs
 - Linked to plan items
 - Material usage tracking
 - Status: Pending, Approved
@@ -110,7 +132,7 @@
 
 ---
 
-### 8. Manual Labour ✅
+### 9. Manual Labour ✅
 
 **Script:** `seed_complete_data.js`
 
@@ -148,7 +170,7 @@ node seed_material_inventory.js
 # Step 3: Project timeline
 node seed_plans_timeline.js
 
-# Step 4: Complete additional data (DPRs, Dangerous Work, Subcontractors, Breaks, Manual Labour)
+# Step 4: Complete additional data (Material Flow with images, DPRs, Dangerous Work, Subcontractors, Breaks, Manual Labour)
 node seed_complete_data.js
 ```
 
@@ -186,8 +208,10 @@ node seed_complete_data.js
 
 ### Manager Dashboard:
 
-✅ DPR reviews (14 reports)  
-✅ Material approval workflow  
+✅ Material requests review (6 requests)  
+✅ Purchase order approvals (5 POs with attachments)  
+✅ GRN reviews with bill images (5 GRNs)  
+✅ DPR reviews (12-14 reports)  
 ✅ Attendance tracking (208 records)  
 ✅ Wage approvals (177 entries)  
 ✅ Dangerous work permits (15 requests)  
@@ -195,11 +219,19 @@ node seed_complete_data.js
 
 ### Engineer Features:
 
+✅ Material requests creation  
 ✅ DPR submissions  
+✅ GRN creation with images  
 ✅ Attendance marking  
-✅ Material requests  
 ✅ Dangerous work permits  
 ✅ Project breaks logging
+
+### Purchase Manager Features:
+
+✅ Material requests processing  
+✅ Purchase order creation with PDF/image attachments  
+✅ Vendor management  
+✅ GRN verification
 
 ---
 

@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Loader2, ArrowLeft, FileText, Image as ImageIcon, Check, Clock } from "lucide-react";
+import {
+  Package,
+  Loader2,
+  ArrowLeft,
+  FileText,
+  Image as ImageIcon,
+  Check,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ownerGRN, ownerProjects, GRN, Project } from "@/lib/api/owner";
+import { toast } from "sonner";
 
 export default function OwnerGRNPage() {
   const router = useRouter();
@@ -62,13 +71,34 @@ export default function OwnerGRNPage() {
 
   const handleViewImage = async (grnId: string, type: "bill" | "proof") => {
     try {
-      const blob = type === "bill" 
-        ? await ownerGRN.getBillImage(grnId)
-        : await ownerGRN.getProofImage(grnId);
+      const blob =
+        type === "bill"
+          ? await ownerGRN.getBillImage(grnId)
+          : await ownerGRN.getProofImage(grnId);
+
+      if (!blob || blob.size === 0) {
+        toast.error(
+          `${type === "bill" ? "Bill" : "Proof"} image not available`,
+        );
+        return;
+      }
+
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-    } catch (err) {
-      console.error("Failed to fetch image:", err);
+    } catch (err: any) {
+      // Only show error if it's not a 404 (image doesn't exist)
+      if (
+        err?.message &&
+        !err.message.includes("404") &&
+        !err.message.includes("not found")
+      ) {
+        console.error("Failed to fetch image:", err);
+        toast.error("Failed to load image");
+      } else {
+        toast.error(
+          `${type === "bill" ? "Bill" : "Proof"} image not available`,
+        );
+      }
     }
   };
 
@@ -128,7 +158,9 @@ export default function OwnerGRNPage() {
         ) : grns.length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground">No GRNs Found</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              No GRNs Found
+            </h3>
             <p className="text-muted-foreground mt-2">
               No goods receipt notes for this project yet.
             </p>
@@ -141,22 +173,35 @@ export default function OwnerGRNPage() {
                 className="p-4 bg-muted/30 border border-border/50 rounded-xl"
               >
                 <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    grn.status === "VERIFIED" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"
-                  }`}>
-                    {grn.status === "VERIFIED" ? <Check size={24} /> : <Clock size={24} />}
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      grn.status === "VERIFIED"
+                        ? "bg-green-500/10 text-green-600"
+                        : "bg-yellow-500/10 text-yellow-600"
+                    }`}
+                  >
+                    {grn.status === "VERIFIED" ? (
+                      <Check size={24} />
+                    ) : (
+                      <Clock size={24} />
+                    )}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-bold text-foreground">{grn.material_request_title}</h4>
+                    <h4 className="font-bold text-foreground">
+                      {grn.material_request_title}
+                    </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs text-muted-foreground">
                       <div>
-                        <span className="font-semibold">PO:</span> {grn.po_number}
+                        <span className="font-semibold">PO:</span>{" "}
+                        {grn.po_number}
                       </div>
                       <div>
-                        <span className="font-semibold">Vendor:</span> {grn.vendor_name}
+                        <span className="font-semibold">Vendor:</span>{" "}
+                        {grn.vendor_name}
                       </div>
                       <div>
-                        <span className="font-semibold">Engineer:</span> {grn.engineer_name}
+                        <span className="font-semibold">Engineer:</span>{" "}
+                        {grn.engineer_name}
                       </div>
                       <div>
                         <span className="font-semibold">Received:</span>{" "}

@@ -38,6 +38,7 @@ const CONFIG = {
   engineer_id: "4cfe936b-f454-4f0f-948c-70ebed4efcb6",
   engineer_name: "Rayyan",
   engineer_email: "rayyan.shaikhh@gmail.com",
+  purchase_manager_id: "a9c5f575-d926-40af-9c3f-5cc50ebb79a4",
 };
 
 // ========================================
@@ -182,6 +183,54 @@ const DELAY_REASONS = [
   "Worker illness/absence",
   "Power supply issues",
 ];
+
+// ========================================
+// MATERIAL DATA
+// ========================================
+const MATERIALS = [
+  {
+    name: "OPC 53 Grade Cement",
+    category: "CEMENT",
+    unit: "Bags",
+    unit_price: 450,
+  },
+  { name: "TMT Bars 12mm", category: "STEEL", unit: "Kg", unit_price: 63 },
+  { name: "River Sand", category: "SAND", unit: "CFT", unit_price: 45 },
+  {
+    name: "20mm Aggregate",
+    category: "AGGREGATES",
+    unit: "CFT",
+    unit_price: 48,
+  },
+  { name: "Red Clay Bricks", category: "BRICKS", unit: "Nos", unit_price: 8 },
+  {
+    name: "Vitrified Tiles 2x2",
+    category: "TILES",
+    unit: "Box",
+    unit_price: 850,
+  },
+];
+
+const VENDORS = [
+  {
+    name: "Supreme Cement Co.",
+    contact: "+919876543210",
+    speciality: "CEMENT",
+  },
+  { name: "Steel India Ltd", contact: "+919876543211", speciality: "STEEL" },
+  { name: "BuildMart Suppliers", contact: "+919876543212", speciality: "SAND" },
+  {
+    name: "Aggregate Solutions",
+    contact: "+919876543213",
+    speciality: "AGGREGATES",
+  },
+  { name: "Royal Tiles Depot", contact: "+919876543214", speciality: "TILES" },
+];
+
+function generatePONumber() {
+  const timestamp = Date.now().toString().slice(-8);
+  return `PO-${timestamp}`;
+}
 
 // ========================================
 // MAIN SEEDING FUNCTION
@@ -331,9 +380,193 @@ async function seedCompleteData() {
     );
 
     // ========================================
-    // 2. SEED SUBCONTRACTORS
+    // 2. SEED MATERIAL REQUESTS → POs → GRNs
     // ========================================
-    console.log("2. Seeding Subcontractors...");
+    console.log("2. Seeding Material Requests → Purchase Orders → GRNs...");
+
+    const materialRequests = [];
+    let materialRequestCount = 0;
+
+    // Create 6 material requests (one for each material type)
+    for (let i = 0; i < MATERIALS.length; i++) {
+      const material = MATERIALS[i];
+      const quantity = randomInt(50, 200);
+      const requestDate = randomDate(
+        new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      );
+
+      // 80% approved, 20% pending
+      const status = Math.random() < 0.8 ? "APPROVED" : "PENDING";
+
+      const result = await client.query(
+        `INSERT INTO material_requests (
+          project_id, site_engineer_id, title, category, quantity,
+          description, status, reviewed_by, reviewed_at, created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id, status`,
+        [
+          CONFIG.project_id,
+          CONFIG.engineer_id,
+          `${material.name} - ${quantity} ${material.unit}`,
+          material.category,
+          quantity,
+          `Request for ${material.name} for construction work`,
+          status,
+          status === "APPROVED" ? CONFIG.manager_id : null,
+          status === "APPROVED"
+            ? new Date(requestDate.getTime() + 2 * 60 * 60 * 1000)
+            : null,
+          requestDate,
+        ],
+      );
+
+      materialRequests.push({
+        id: result.rows[0].id,
+        material,
+        quantity,
+        status: result.rows[0].status,
+        createdAt: requestDate,
+      });
+      materialRequestCount++;
+    }
+
+    console.log(`  ✓ Created ${materialRequestCount} material requests`);
+
+    // Create Purchase Orders for approved requests
+    const purchaseOrders = [];
+    let poCount = 0;
+
+    for (const request of materialRequests) {
+      if (request.status !== "APPROVED") continue;
+
+      const vendor = VENDORS.find(
+        (v) => v.speciality === request.material.category,
+      );
+      if (!vendor) continue;
+
+      const poNumber = generatePONumber();
+      const items = [
+        {
+          material_name: request.material.name,
+          category: request.material.category,
+          quantity: request.quantity,
+          unit: request.material.unit,
+          unit_price: request.material.unit_price,
+          total_price: request.quantity * request.material.unit_price,
+        },
+      ];
+
+      const totalAmount = items[0].total_price;
+      const sentAt = new Date(request.createdAt.getTime() + 4 * 60 * 60 * 1000);
+
+      // Load image/PDF for attachment
+      const imageFiles = [
+        "IMG_3153.HEIC",
+        "IMG_3154.HEIC",
+        "IMG_3155.HEIC",
+        "A372_Exp_2.pdf",
+      ];
+      const randomImage = randomChoice(imageFiles);
+      const poPdfPath = path.join(__dirname, "imgs", randomImage);
+      const poPdfData = fs.readFileSync(poPdfPath);
+      const pdfMimeType = randomImage.endsWith(".pdf")
+        ? "application/pdf"
+        : "image/heic";
+
+      const poResult = await client.query(
+        `INSERT INTO purchase_orders (
+          material_request_id, project_id, po_number, vendor_name, vendor_contact,
+          items, total_amount, status, created_by, created_by_role, created_at, sent_at, po_pdf, po_pdf_mime
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'SENT', $8, 'PURCHASE_MANAGER', $9, $10, $11, $12)
+        RETURNING id`,
+        [
+          request.id,
+          CONFIG.project_id,
+          poNumber,
+          vendor.name,
+          vendor.contact,
+          JSON.stringify(items),
+          totalAmount,
+          CONFIG.purchase_manager_id,
+          request.createdAt,
+          sentAt,
+          poPdfData,
+          pdfMimeType,
+        ],
+      );
+
+      purchaseOrders.push({
+        id: poResult.rows[0].id,
+        requestId: request.id,
+        vendor,
+        items,
+        totalAmount,
+        sentAt,
+      });
+      poCount++;
+    }
+
+    console.log(`  ✓ Created ${poCount} purchase orders`);
+
+    // Create GRNs for POs
+    let grnCount = 0;
+
+    for (const po of purchaseOrders) {
+      const receivedAt = new Date(
+        po.sentAt.getTime() + randomInt(3, 6) * 24 * 60 * 60 * 1000,
+      );
+
+      const receivedItems = po.items.map((item) => ({
+        ...item,
+        received_quantity:
+          Math.random() < 0.9 ? item.quantity : Math.floor(item.quantity * 0.8),
+      }));
+
+      // 80% approved, 20% pending
+      const status = Math.random() < 0.8 ? "APPROVED" : "PENDING";
+
+      // Load image for GRN
+      const imageFiles = ["IMG_3153.HEIC", "IMG_3154.HEIC", "IMG_3155.HEIC"];
+      const randomImage = randomChoice(imageFiles);
+      const billImagePath = path.join(__dirname, "imgs", randomImage);
+      const billImageData = fs.readFileSync(billImagePath);
+
+      await client.query(
+        `INSERT INTO goods_receipt_notes (
+          project_id, purchase_order_id, material_request_id, received_items,
+          received_at, received_by, status, reviewed_by, reviewed_at, created_at, bill_image, bill_image_mime
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          CONFIG.project_id,
+          po.id,
+          po.requestId,
+          JSON.stringify(receivedItems),
+          receivedAt,
+          CONFIG.engineer_id,
+          status,
+          status === "APPROVED" ? CONFIG.manager_id : null,
+          status === "APPROVED"
+            ? new Date(receivedAt.getTime() + 3 * 60 * 60 * 1000)
+            : null,
+          receivedAt,
+          billImageData,
+          "image/heic",
+        ],
+      );
+
+      grnCount++;
+    }
+
+    console.log(`  ✓ Created ${grnCount} GRNs with images\n`);
+
+    // ========================================
+    // 3. SEED SUBCONTRACTORS
+    // ========================================
+    console.log("3. Seeding Subcontractors...");
     const subcontractorIds = [];
 
     for (const sub of SUBCONTRACTORS) {
@@ -413,9 +646,9 @@ async function seedCompleteData() {
     );
 
     // ========================================
-    // 3. SEED PROJECT BREAKS (Delays)
+    // 4. SEED PROJECT BREAKS (Delays)
     // ========================================
-    console.log("3. Seeding Project Breaks...");
+    console.log("4. Seeding Project Breaks...");
     let breakCount = 0;
 
     for (let i = 0; i < 10; i++) {
@@ -455,9 +688,9 @@ async function seedCompleteData() {
     console.log(`  ✓ Created ${breakCount} project breaks\n`);
 
     // ========================================
-    // 4. SKIP QA INSPECTIONS (No qa_inspections table in schema)
+    // 5. SKIP QA INSPECTIONS (No qa_inspections table in schema)
     // ========================================
-    console.log("4. Skipping QA Inspections (table not in schema)\n");
+    console.log("5. Skipping QA Inspections (table not in schema)\n");
 
     // ========================================
     // 6. SEED DPRs (Daily Progress Reports)
@@ -540,9 +773,9 @@ async function seedCompleteData() {
     console.log(`  ✓ Created ${dprCount} DPRs with material usage\n`);
 
     // ========================================
-    // 5. SEED MANUAL LABOUR
+    // 7. SEED MANUAL LABOUR
     // ========================================
-    console.log("5. Seeding Manual Labour...");
+    console.log("7. Seeding Manual Labour...");
     const manualLabourIds = [];
 
     for (const labour of MANUAL_LABOURS) {
@@ -581,6 +814,9 @@ async function seedCompleteData() {
     console.log("\nData Created:");
     console.log(`  • ${DANGEROUS_TASKS.length} dangerous task types`);
     console.log(`  • ${dangerousRequestCount} dangerous work requests`);
+    console.log(`  • ${materialRequestCount} material requests`);
+    console.log(`  • ${poCount} purchase orders with attachments`);
+    console.log(`  • ${grnCount} GRNs with images`);
     console.log(`  • ${SUBCONTRACTORS.length} subcontractors`);
     console.log(`  • ${taskSubcontractorCount} task assignments`);
     console.log(`  • ${breakCount} project breaks (delays)`);
