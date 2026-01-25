@@ -31,8 +31,8 @@ export const managerDpr = {
   },
   
   // Review DPR (approve/reject)
-  review: (dprId: string, status: 'APPROVED' | 'REJECTED', remarks?: string) => {
-    return api.patch<{ dpr: any }>(`/manager/dpr/dprs/${dprId}/review`, { status, remarks });
+  review: (dprId: string, status: 'APPROVED' | 'REJECTED', remarks?: string, material_usage?: any[]) => {
+    return api.patch<{ dpr: any }>(`/manager/dpr/dprs/${dprId}/review`, { status, remarks, material_usage });
   },
 
   // Get DPR image

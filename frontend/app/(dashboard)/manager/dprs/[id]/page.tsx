@@ -106,9 +106,9 @@ export default function DprReviewPage() {
         `DPR ${status === "APPROVED" ? "Approved" : "Rejected"} Successfully`,
       );
       router.push("/manager/dprs");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Review failed:", err);
-      toast.error("Failed to submit review");
+      toast.error(err.message || "Failed to submit review");
     } finally {
       setIsReviewing(false);
     }
