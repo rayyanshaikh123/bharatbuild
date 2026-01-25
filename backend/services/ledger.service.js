@@ -65,6 +65,23 @@ async function getProjectLedger(projectId, filters = {}) {
         WHERE w.project_id = $1::uuid 
           AND w.status = 'APPROVED'
           AND w.approved_at::date BETWEEN $2 AND $3
+          
+        UNION ALL
+
+        -- Adjustments
+        SELECT
+          la.date,
+          'ADJUSTMENT' as type,
+          la.id as reference_id,
+          la.description,
+          la.amount,
+          la.category,
+          m.name as approved_by_name,
+          la.created_at as approved_at
+        FROM ledger_adjustments la
+        LEFT JOIN managers m ON la.created_by = m.id
+        WHERE la.project_id = $1::uuid
+          AND la.date BETWEEN $2 AND $3
       )
       SELECT * FROM ledger_entries
       WHERE ($4::text IS NULL OR type = $4)
@@ -89,6 +106,13 @@ async function getProjectLedger(projectId, filters = {}) {
         FROM wages w
         WHERE w.project_id = $1::uuid AND w.status = 'APPROVED'
           AND w.approved_at::date BETWEEN $2 AND $3
+          
+        UNION ALL
+        
+        SELECT la.date, 'ADJUSTMENT' as type
+        FROM ledger_adjustments la
+        WHERE la.project_id = $1::uuid
+          AND la.date BETWEEN $2 AND $3
       )
       SELECT COUNT(*) as total
       FROM ledger_entries

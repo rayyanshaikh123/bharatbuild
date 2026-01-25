@@ -54,7 +54,7 @@ router.get("/organization-pending", managerCheck, async (req, res) => {
     res.json({ pending_engineers: result.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
@@ -206,9 +206,9 @@ router.get("/project/:projectId", managerCheck, async (req, res) => {
     );
 
     res.json({ qa_engineers: result.rows });
-  } catch (err) {
+  }  catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 

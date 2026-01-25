@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { managerProjects, Project } from "@/lib/api/manager";
+import { managerProjects, Project, managerDelays, DelayedItem } from "@/lib/api/manager";
 import { Loader2, Calendar, AlertTriangle, AlertCircle, CheckCircle2, XCircle, Filter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
