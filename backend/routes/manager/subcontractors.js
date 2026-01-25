@@ -79,6 +79,8 @@ router.get("/", managerCheck, async (req, res) => {
     const managerId = req.user.id;
     const { org_id } = req.query;
 
+    console.log("Fetching subcontractors for Manager:", managerId, "Org:", org_id);
+
     // Get manager's organizations
     const orgIds = await getManagerOrgIds(managerId);
 
@@ -96,11 +98,31 @@ router.get("/", managerCheck, async (req, res) => {
           .status(403)
           .json({ error: "Not authorized for this organization" });
       }
-      query = `SELECT * FROM subcontractors WHERE org_id = $1 ORDER BY created_at DESC`;
+      query = `SELECT s.*, 
+                 COALESCE(AVG(tsr.rating)::numeric(3,2), 0) as avg_speed_rating,
+                 COALESCE(AVG(tqr.rating)::numeric(3,2), 0) as avg_quality_rating,
+                 COUNT(DISTINCT ts.task_id) FILTER (WHERE ts.task_completed_at IS NOT NULL) as total_tasks_completed
+               FROM subcontractors s
+               LEFT JOIN task_subcontractors ts ON s.id = ts.subcontractor_id
+               LEFT JOIN task_speed_ratings tsr ON ts.task_id = tsr.task_id
+               LEFT JOIN task_quality_reviews tqr ON ts.task_id = tqr.task_id
+               WHERE s.org_id = $1 
+               GROUP BY s.id
+               ORDER BY s.created_at DESC`;
       params = [org_id];
     } else {
       // All organizations where manager is approved
-      query = `SELECT * FROM subcontractors WHERE org_id = ANY($1) ORDER BY created_at DESC`;
+      query = `SELECT s.*, 
+                 COALESCE(AVG(tsr.rating)::numeric(3,2), 0) as avg_speed_rating,
+                 COALESCE(AVG(tqr.rating)::numeric(3,2), 0) as avg_quality_rating,
+                 COUNT(DISTINCT ts.task_id) FILTER (WHERE ts.task_completed_at IS NOT NULL) as total_tasks_completed
+               FROM subcontractors s
+               LEFT JOIN task_subcontractors ts ON s.id = ts.subcontractor_id
+               LEFT JOIN task_speed_ratings tsr ON ts.task_id = tsr.task_id
+               LEFT JOIN task_quality_reviews tqr ON ts.task_id = tqr.task_id
+               WHERE s.org_id = ANY($1) 
+               GROUP BY s.id
+               ORDER BY s.created_at DESC`;
       params = [orgIds];
     }
 

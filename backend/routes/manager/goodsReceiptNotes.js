@@ -83,7 +83,7 @@ router.get("/:grnId", managerCheck, async (req, res) => {
               g.reviewed_by, g.created_at, g.received_at, g.reviewed_at,
               g.bill_image_mime, g.delivery_proof_image_mime,
               po.po_number, po.vendor_name, po.items AS po_items, po.total_amount,
-              mr.title AS material_request_title, mr.requested_items,
+              mr.title AS material_request_title, mr.quantity AS material_request_quantity,
               se.name AS received_by_name,
               m.name AS reviewed_by_name,
               p.name AS project_name

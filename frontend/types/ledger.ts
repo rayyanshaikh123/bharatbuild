@@ -83,7 +83,7 @@ export interface AuditLog {
   project_id: string | null; // UUID
   project_name: string | null;
   organization_id: string; // UUID
-  change_summary: string | null; // was changed_fields
+  change_summary: any | null; // was string | null
   created_at: string;
 }
 

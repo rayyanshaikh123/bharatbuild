@@ -95,8 +95,16 @@ router.get("/plans/:projectId", managerCheck, async (req, res) => {
     const plan = planResult.rows[0];
 
     // Get plan items
+    // Get plan items with subcontractor and rating info
     const itemsResult = await pool.query(
-      `SELECT * FROM plan_items WHERE plan_id = $1 ORDER BY period_start, created_at`,
+      `SELECT pi.*, 
+              ts.subcontractor_id,
+              tsr.rating as speed_rating
+       FROM plan_items pi
+       LEFT JOIN task_subcontractors ts ON pi.id = ts.task_id
+       LEFT JOIN task_speed_ratings tsr ON pi.id = tsr.task_id
+       WHERE pi.plan_id = $1 
+       ORDER BY pi.period_start, pi.created_at`,
       [plan.id],
     );
 
