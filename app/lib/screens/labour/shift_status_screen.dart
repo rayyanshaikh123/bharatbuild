@@ -33,6 +33,7 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
   Position? _currentLocalPos;
   Map<String, dynamic>? _localValidation;
   final GeofenceService _geofenceService = GeofenceService();
+  bool _isCheckingOut = false;
 
   @override
   void initState() {
@@ -496,9 +497,11 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                 ],
               ),
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.logout_rounded, size: 22),
-                label: Text('finish_shift'.tr(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                onPressed: () => _handleCheckOut(context),
+                icon: _isCheckingOut 
+                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.logout_rounded, size: 22),
+                label: Text(_isCheckingOut ? 'checking_out'.tr() : 'finish_shift'.tr(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                onPressed: _isCheckingOut ? null : () => _handleCheckOut(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   foregroundColor: Colors.white,
@@ -541,11 +544,38 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
     );
 
     if (confirmed == true) {
+      setState(() => _isCheckingOut = true);
       try {
         await ref.read(checkOutProvider.future);
-        if (context.mounted) Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        
+        // Ensure all providers are invalidated for fresh data
+        ref.invalidate(todayAttendanceProvider);
+        ref.invalidate(attendanceHistoryProvider);
+        ref.invalidate(liveStatusProvider);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checked_out_successfully'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Use pushReplacementNamed to ensure clean navigation
+          Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        }
       } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checkout_failed'.tr() + ': $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isCheckingOut = false);
+        }
       }
     }
   }
