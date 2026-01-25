@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Users, Search, Phone, Mail, User, Briefcase, Building } from "lucide-react";
+import { Loader2, Plus, Users, Phone, Mail, User, Briefcase, Star, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { managerOrganization, managerSubcontractors, ManagerOrgRequest, Subcontractor } from "@/lib/api/manager";
 import { toast } from "sonner";
 import { createPortal } from "react-dom";
+import { DataTable, Column } from "@/components/ui/DataTable";
+import { Badge } from "@/components/ui/badge";
 
 export default function SubcontractorsPage() {
   const router = useRouter();
   const [approvedOrg, setApprovedOrg] = useState<ManagerOrgRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Add Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -28,7 +29,7 @@ export default function SubcontractorsPage() {
     contact_email: ""
   });
 
-  // Extend Subcontractor type locally since api lib might not update instantly or we want to type hint better
+  // Extend Subcontractor type
   interface ExtendedSubcontractor extends Subcontractor {
     avg_speed_rating?: string | number;
     avg_quality_rating?: string | number;
@@ -88,11 +89,91 @@ export default function SubcontractorsPage() {
     }
   };
 
-  const filteredSubcontractors = subcontractors.filter(sub => 
-    sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sub.specialization?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sub.contact_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const columns: Column<ExtendedSubcontractor>[] = useMemo(() => [
+    {
+      key: "name",
+      label: "Company",
+      sortable: true,
+      render: (value: string, row: ExtendedSubcontractor) => (
+         <div>
+             <div className="font-bold flex items-center gap-2">
+                 <Briefcase size={14} className="text-primary" />
+                 {value}
+             </div>
+             {row.specialization && (
+                 <div className="text-xs text-muted-foreground mt-0.5 ml-5">
+                    {row.specialization}
+                 </div>
+             )}
+         </div>
+      )
+    },
+    {
+       key: "contact_name",
+       label: "Contact Person",
+       sortable: true,
+       render: (value: string) => (
+           <div className="flex items-center gap-2">
+               <User size={14} className="text-muted-foreground" />
+               <span className="font-medium">{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+       key: "contact_phone",
+       label: "Phone",
+       render: (value: string) => (
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+               <Phone size={14} />
+               <span>{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+       key: "contact_email",
+       label: "Email",
+       render: (value: string) => (
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+               <Mail size={14} />
+               <span className="truncate max-w-[150px]" title={value}>{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+        key: "avg_speed_rating",
+        label: "Performance",
+        sortable: true,
+        render: (_: unknown, row: ExtendedSubcontractor) => (
+             <div className="flex gap-4">
+                 <div className="flex flex-col items-center">
+                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Speed</span>
+                     <div className="flex items-center gap-1 font-bold">
+                         <span>{Number(row.avg_speed_rating || 0).toFixed(1)}</span>
+                         <Star size={10} className="fill-yellow-500 text-yellow-500" />
+                     </div>
+                 </div>
+                 <div className="flex flex-col items-center">
+                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Quality</span>
+                     <div className="flex items-center gap-1 font-bold">
+                         <span>{Number(row.avg_quality_rating || 0).toFixed(1)}</span>
+                         <Star size={10} className="fill-blue-500 text-blue-500" />
+                     </div>
+                 </div>
+             </div>
+        )
+    },
+    {
+        key: "total_tasks_completed",
+        label: "Tasks",
+        sortable: true,
+        width: "100px",
+        render: (value: number) => (
+             <Badge variant="secondary" className="font-mono">
+                 {value || 0}
+             </Badge>
+        )
+    }
+  ], []);
 
   if (isLoading) {
     return (
@@ -129,97 +210,16 @@ export default function SubcontractorsPage() {
         </Button>
       </div>
 
-      {/* Search & List */}
-      <div className="space-y-6">
-        <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <Input 
-               placeholder="Search subcontractors..." 
-               className="pl-9"
-               value={searchQuery}
-               onChange={e => setSearchQuery(e.target.value)}
-            />
-        </div>
-
-        {subcontractors.length === 0 ? (
-           <div className="text-center py-12 bg-muted/20 rounded-2xl border border-dashed border-border">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
-              <h3 className="text-lg font-bold">No Subcontractors Found</h3>
-              <p className="text-muted-foreground mb-4">Add your first subcontractor to start assigning tasks.</p>
-              <Button onClick={() => setShowAddModal(true)} variant="outline">Add New</Button>
-           </div>
-        ) : filteredSubcontractors.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No results found for "{searchQuery}"</p>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSubcontractors.map(sub => (
-                    <div key={sub.id} className="glass-card p-6 rounded-2xl hover:border-primary/30 transition-all group">
-                         <div className="flex items-start justify-between mb-4">
-                             <div className="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
-                                 <Briefcase size={24} />
-                             </div>
-                             {/* Actions could go here */}
-                         </div>
-                         
-                         <h3 className="text-lg font-bold mb-1 group-hover:text-primary transition-colors">{sub.name}</h3>
-                         {sub.specialization && (
-                             <span className="inline-block px-2 py-0.5 rounded-full bg-muted text-xs font-medium text-muted-foreground mb-4">
-                                {sub.specialization}
-                                {sub.specialization}
-                             </span>
-                         )}
-
-                         <div className="flex gap-4 mb-4 text-sm">
-                            <div className="flex flex-col">
-                                <span className="text-muted-foreground text-xs uppercase font-bold">Speed</span>
-                                <div className="flex items-center gap-1 font-bold text-foreground">
-                                    <span>{Number((sub as ExtendedSubcontractor).avg_speed_rating || 0).toFixed(1)}</span>
-                                    <span className="text-yellow-500">★</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-muted-foreground text-xs uppercase font-bold">Quality</span>
-                                <div className="flex items-center gap-1 font-bold text-foreground">
-                                    <span>{Number((sub as ExtendedSubcontractor).avg_quality_rating || 0).toFixed(1)}</span>
-                                    <span className="text-blue-500">★</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-muted-foreground text-xs uppercase font-bold">Tasks</span>
-                                <span className="font-bold text-foreground">{(sub as ExtendedSubcontractor).total_tasks_completed || 0}</span>
-                            </div>
-                         </div>
-
-                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-4 mt-2">
-                             {sub.contact_name && (
-                                 <div className="flex items-center gap-2">
-                                     <User size={14} />
-                                     <span>{sub.contact_name}</span>
-                                 </div>
-                             )}
-                             {sub.contact_phone && (
-                                 <div className="flex items-center gap-2">
-                                     <Phone size={14} />
-                                     <span>{sub.contact_phone}</span>
-                                 </div>
-                             )}
-                             {sub.contact_email && (
-                                 <div className="flex items-center gap-2">
-                                     <Mail size={14} />
-                                     <span className="truncate">{sub.contact_email}</span>
-                                 </div>
-                             )}
-                         </div>
-                         
-                         <Link href={`/manager/subcontractors/${sub.id}`} className="hidden">
-                             {/* Future: Detail Page */}
-                             <Button variant="ghost" className="w-full mt-4 text-xs h-8">View Details</Button>
-                         </Link>
-                    </div>
-                ))}
-            </div>
-        )}
-      </div>
+       <div className="space-y-6">
+          <DataTable 
+             data={subcontractors as ExtendedSubcontractor[]} 
+             columns={columns} 
+             searchable 
+             searchKeys={["name", "specialization", "contact_name"]}
+             itemsPerPage={10}
+             emptyMessage="No subcontractors found."
+          />
+       </div>
 
       {/* Add Modal */}
       {showAddModal && createPortal(

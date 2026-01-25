@@ -41,15 +41,15 @@ const ownerNavItems: NavItem[] = [
   { label: "Projects", href: "/owner/projects", icon: Building2 },
   { label: "Plans", href: "/owner/plans", icon: Calendar },
   { label: "Timeline", href: "/owner/timeline", icon: Clock },
-  { label: "DPR", href: "/owner/dpr", icon: FileText },
-  { label: "Materials", href: "/owner/materials", icon: Package },
-  { label: "Blacklist", href: "/owner/blacklist", icon: ShieldAlert },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "QA Engineers", href: "/owner/qa-engineers", icon: ClipboardCheck },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
-  { label: "Audit Logs", href: "/owner/audits", icon: History },
-  { label: "Analytics", href: "/owner/analytics", icon: TrendingUp },
+  { label: "DPR", href: "/owner/dpr", icon: FileText },
+  { label: "Dangerous Work", href: "/owner/dangerous-work", icon: ShieldAlert },
+  { label: "Blacklist", href: "/owner/blacklist", icon: ShieldAlert },
   { label: "Reports", href: "/owner/reports", icon: BarChart },
+  { label: "Analytics", href: "/owner/analytics", icon: TrendingUp },
+  { label: "Audit Logs", href: "/owner/audits", icon: History },
 ];
 
 const managerNavItems: NavItem[] = [
@@ -77,11 +77,13 @@ const managerNavItems: NavItem[] = [
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
   { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },
   { label: "Reports", href: "/manager/reports", icon: BarChart },
-  { label: "Subcontractors", href: "/manager/subcontractors", icon: Users },
+  { label: "Audit Logs", href: "/manager/audits", icon: History },
+  { label: "Profile", href: "/manager/profile", icon: Settings },
 ];
 
 const poManagerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/po-manager", icon: LayoutDashboard },
+  { label: "Organization", href: "/po-manager/organization", icon: Building2 },
   { label: "Projects", href: "/po-manager/projects", icon: Building2 },
   {
     label: "Material Requests",
@@ -94,6 +96,7 @@ const poManagerNavItems: NavItem[] = [
     icon: FileText,
   },
   { label: "GRN", href: "/po-manager/grn", icon: ClipboardCheck },
+  { label: "Profile", href: "/po-manager/profile", icon: Settings },
 ];
 
 export function DashboardSidebar() {

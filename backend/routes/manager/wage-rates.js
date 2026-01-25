@@ -66,7 +66,7 @@ router.post("/", managerCheck, async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   } finally {
     client.release();
   }
@@ -123,7 +123,7 @@ router.patch("/:id", managerCheck, async (req, res) => {
     res.json({ wage_rate: afterState });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
@@ -168,7 +168,7 @@ router.delete("/:id", managerCheck, async (req, res) => {
     res.json({ message: "Wage rate deleted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
@@ -197,7 +197,7 @@ router.get("/", managerCheck, async (req, res) => {
     res.json({ wage_rates: result.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 

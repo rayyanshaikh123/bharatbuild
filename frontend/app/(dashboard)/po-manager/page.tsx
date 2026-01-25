@@ -6,68 +6,39 @@ import { Building2, Loader2, Clock, CheckCircle2, MapPin, Phone, Package, FileTe
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { 
-  poManagerOrganization, 
-  poManagerDashboard, 
-  poManagerProjects,
-  PODashboardSummary, 
-  Organization, 
+  purchaseManagerOrganization, 
+  purchaseManagerDashboard, 
+  purchaseManagerProjects,
+  PurchaseManagerDashboardSummary, 
+  ApprovedOrganization, 
   Project 
-} from "@/lib/api/po-manager";
+} from "@/lib/api/purchase-manager";
 import { StatCard } from "@/components/ui/StatCard";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { QuickAction } from "@/components/dashboard/QuickAction";
 
 // Organization Status Component for PO Manager
-function OrganizationStatus({ onApproved }: { onApproved?: (org: Organization) => void }) {
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
+function OrganizationStatus({ onApproved }: { onApproved?: (org: ApprovedOrganization) => void }) {
+  const [organization, setOrganization] = useState<ApprovedOrganization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [joiningId, setJoiningId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      setError(null);
-      
-      // Try to get current organization status
-      try {
-        const statusRes = await poManagerOrganization.getStatus();
-        if (statusRes.organization) {
-          setOrganization(statusRes.organization);
-          if (statusRes.organization.status === "APPROVED" && onApproved) {
-            onApproved(statusRes.organization);
-          }
-          return;
-        }
-      } catch {
-        // No organization yet, fetch available ones
+      const res = await purchaseManagerOrganization.getMyOrganizations();
+      if (res.organizations && res.organizations.length > 0) {
+        const org = res.organizations[0];
+        setOrganization(org);
+        if (onApproved) onApproved(org);
       }
-      
-      // Fetch available organizations to join
-      const orgsRes = await poManagerOrganization.getAllOrganizations();
-      setAllOrganizations(orgsRes.organizations || []);
     } catch (err) {
       console.error("Failed to load organization data:", err);
-      setError("Failed to load organization data");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => { fetchData(); }, []);
-
-  const handleJoinRequest = async (orgId: string) => {
-    setJoiningId(orgId);
-    try {
-      await poManagerOrganization.joinOrganization(orgId);
-      fetchData();
-    } catch (err) {
-      console.error("Join request failed:", err);
-    } finally {
-      setJoiningId(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -77,16 +48,8 @@ function OrganizationStatus({ onApproved }: { onApproved?: (org: Organization) =
     );
   }
 
-  if (error) {
-    return (
-      <div className="glass-card rounded-2xl p-6 bg-red-50/50 dark:bg-red-500/5 border-red-200 dark:border-red-500/20">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      </div>
-    );
-  }
-
   // Organization approved
-  if (organization?.status === "APPROVED") {
+  if (organization) {
     return (
       <div className="glass-card rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -94,36 +57,14 @@ function OrganizationStatus({ onApproved }: { onApproved?: (org: Organization) =
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-foreground">{organization.name}</h3>
+            <h3 className="text-lg font-bold text-foreground">{organization.org_name}</h3>
             <p className="text-sm text-muted-foreground">Organization Approved</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          {organization.address && (
-            <span className="flex items-center gap-1"><MapPin size={14} />{organization.address}</span>
+          {organization.org_address && (
+            <span className="flex items-center gap-1"><MapPin size={14} />{organization.org_address}</span>
           )}
-          {organization.office_phone && (
-            <span className="flex items-center gap-1"><Phone size={14} />{organization.office_phone}</span>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Pending approval
-  if (organization?.status === "PENDING") {
-    return (
-      <div className="glass-card rounded-2xl p-6 bg-yellow-50/50 dark:bg-yellow-500/5">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-600">
-            <Clock size={24} />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Pending Approval</h3>
-            <p className="text-sm text-muted-foreground">
-              Your request to join <span className="font-semibold">{organization.name}</span> is pending.
-            </p>
-          </div>
         </div>
       </div>
     );
@@ -134,46 +75,20 @@ function OrganizationStatus({ onApproved }: { onApproved?: (org: Organization) =
     <div className="glass-card rounded-2xl p-6">
       <h3 className="text-lg font-bold text-foreground mb-2">Join an Organization</h3>
       <p className="text-sm text-muted-foreground mb-6">
-        Select an organization to send a join request. You need to be approved by the organization owner before you can access projects.
+        You need to join an organization to access projects and purchase orders.
       </p>
-      {allOrganizations.length === 0 ? (
-        <div className="text-center py-8">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No organizations available.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {allOrganizations.map((org) => (
-            <div key={org.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <Building2 size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-foreground">{org.name}</h4>
-                {org.address && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <MapPin size={12} />{org.address}
-                  </p>
-                )}
-              </div>
-              <Button 
-                size="sm" 
-                disabled={joiningId === org.id}
-                onClick={() => handleJoinRequest(org.id)}
-              >
-                {joiningId === org.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join"}
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+      <Link href="/po-manager/organization">
+        <Button>
+           Find Organization to Join
+        </Button>
+      </Link>
     </div>
   );
 }
 
 // Dashboard Stats
-function POManagerDashboardStats() {
-  const [summary, setSummary] = useState<PODashboardSummary | null>(null);
+function POManagerDashboardStats({ organizationId }: { organizationId: string }) {
+  const [summary, setSummary] = useState<PurchaseManagerDashboardSummary | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -182,8 +97,8 @@ function POManagerDashboardStats() {
       try {
         setIsLoading(true);
         const [summaryRes, projectsRes] = await Promise.all([
-          poManagerDashboard.getSummary(),
-          poManagerProjects.getMyProjects(),
+          purchaseManagerDashboard.getSummary(),
+          purchaseManagerProjects.getMyProjects(organizationId),
         ]);
         setSummary(summaryRes.summary);
         setProjects(projectsRes.projects || []);
@@ -193,8 +108,10 @@ function POManagerDashboardStats() {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
+    if (organizationId) {
+       fetchData();
+    }
+  }, [organizationId]);
 
   if (isLoading) {
     return (
@@ -211,27 +128,27 @@ function POManagerDashboardStats() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Pending Requests" 
-          value={summary?.pending_requests || 0} 
-          subtitle="Awaiting PO" 
+          value={summary?.pending_material_requests || 0} 
+          subtitle="Material Requests" 
           icon={Clock} 
         />
         <StatCard 
-          title="POs Generated Today" 
-          value={summary?.pos_generated_today || 0} 
-          subtitle="Today's output" 
+          title="Approved Requests" 
+          value={summary?.approved_material_requests || 0} 
+          subtitle="Ready for PO" 
+          icon={CheckCircle2} 
+        />
+        <StatCard 
+          title="Purchase Orders" 
+          value={summary?.purchase_orders_issued || 0} 
+          subtitle="Issued Total" 
           icon={FileText} 
         />
         <StatCard 
-          title="POs Sent This Week" 
-          value={summary?.pos_sent_this_week || 0} 
-          subtitle="Weekly total" 
+          title="Pending GRNs" 
+          value={summary?.pending_grns || 0} 
+          subtitle="Awaiting Delivery" 
           icon={Package} 
-        />
-        <StatCard 
-          title="Total Purchase Orders" 
-          value={summary?.total_pos || 0} 
-          subtitle="All time" 
-          icon={FolderKanban} 
         />
       </div>
 
@@ -273,7 +190,7 @@ function POManagerDashboardStats() {
 
 export default function POManagerDashboardPage() {
   const { user } = useAuth();
-  const [approvedOrg, setApprovedOrg] = useState<Organization | null>(null);
+  const [approvedOrg, setApprovedOrg] = useState<ApprovedOrganization | null>(null);
 
   const quickActions = [
     { title: "Material Requests", description: "Process approved requests", href: "/po-manager/material-requests", icon: Package },
@@ -283,7 +200,7 @@ export default function POManagerDashboardPage() {
   ];
 
   return (
-    <div className="space-y-8 pt-12 md:pt-0">
+    <div className="space-y-8 pt-12 md:pt-0 pb-12">
       <DashboardHeader
         userName={user?.name?.split(" ")[0]}
         title="Dashboard"
@@ -291,7 +208,7 @@ export default function POManagerDashboardPage() {
 
       <OrganizationStatus onApproved={setApprovedOrg} />
 
-      {approvedOrg && <POManagerDashboardStats />}
+      {approvedOrg && <POManagerDashboardStats organizationId={approvedOrg.org_id} />}
 
       <div>
         <h3 className="font-bold text-foreground text-lg mb-4">Quick Actions</h3>

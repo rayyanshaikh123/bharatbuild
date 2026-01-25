@@ -657,3 +657,366 @@ export const ownerMaterialOversight = {
       `/owner/material-oversight/projects/${projectId}/material-consumption`,
     ),
 };
+
+// ==================== OWNER QA ENGINEER REQUESTS API ====================
+
+export interface QAEngineerRequest {
+  id: string;
+  org_id: string;
+  qa_engineer_id: string;
+  approved_by?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  approved_at?: string;
+  created_at: string;
+  name: string;
+  email: string;
+  phone: string;
+  organization_name: string;
+}
+
+export const ownerQAEngineerRequests = {
+  getPending: () =>
+    api.get<{ pending_engineers: QAEngineerRequest[] }>("/owner/qa-engineer-requests/organization-pending"),
+};
+
+// ==================== OWNER SITE ENGINEERS API ====================
+
+export interface SiteEngineer {
+  id: string;
+  org_id: string;
+  site_engineer_id: string;
+  approved_by?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  approved_at?: string;
+  created_at: string;
+}
+
+export const ownerSiteEngineers = {
+  getAll: (organizationId: string) =>
+    api.get<{ siteEngineers: SiteEngineer[] }>(`/owner/organization-engineers/all/site-engineers?organizationId=${organizationId}`),
+
+  getById: (engineerId: string, organizationId: string) =>
+    api.get<{ siteEngineer: SiteEngineer }>(`/owner/organization-engineers/site-engineer/${engineerId}?organizationId=${organizationId}`),
+};
+
+// ==================== OWNER GRN API ====================
+
+export interface GRN {
+  id: string;
+  project_id: string;
+  purchase_order_id: string;
+  material_request_id: string;
+  site_engineer_id: string;
+  status: "CREATED" | "VERIFIED";
+  received_items: any;
+  remarks?: string;
+  verified_by?: string;
+  created_at: string;
+  received_at: string;
+  verified_at?: string;
+  bill_image_mime?: string;
+  proof_image_mime?: string;
+  project_name: string;
+  po_number: string;
+  vendor_name: string;
+  material_request_title: string;
+  engineer_name: string;
+  verified_by_name?: string;
+}
+
+export const ownerGRN = {
+  getByProject: (projectId: string) =>
+    api.get<{ grns: GRN[] }>(`/owner/grns?projectId=${projectId}`),
+
+  getBillImage: (grnId: string) =>
+    api.getBlob(`/owner/grns/${grnId}/bill-image`),
+
+  getProofImage: (grnId: string) =>
+    api.getBlob(`/owner/grns/${grnId}/proof-image`),
+};
+
+// ==================== OWNER PURCHASE ORDERS API ====================
+
+export interface PurchaseOrder {
+  id: string;
+  project_id: string;
+  material_request_id: string;
+  po_number: string;
+  vendor_name: string;
+  vendor_contact?: string;
+  items: any;
+  total_amount: number;
+  status: "DRAFT" | "SENT" | "ACKNOWLEDGED";
+  created_by: string;
+  created_at: string;
+  sent_at?: string;
+  po_pdf_mime?: string;
+  material_request_title: string;
+  material_request_description?: string;
+  project_name: string;
+  created_by_name: string;
+}
+
+export const ownerPurchaseOrders = {
+  getByProject: (projectId: string) =>
+    api.get<{ purchase_orders: PurchaseOrder[] }>(`/owner/purchase-orders?projectId=${projectId}`),
+
+  getById: (poId: string) =>
+    api.get<{ purchase_order: PurchaseOrder }>(`/owner/purchase-orders/${poId}`),
+
+  getPDF: (poId: string) =>
+    api.getBlob(`/owner/purchase-orders/${poId}/pdf`),
+};
+
+// ==================== OWNER LEDGER API ====================
+
+export interface LedgerEntry {
+  id: string;
+  project_id: string;
+  transaction_type: string;
+  category: string;
+  amount: number;
+  description?: string;
+  reference_id?: string;
+  created_at: string;
+  created_by: string;
+  created_by_role: string;
+}
+
+export interface ProjectLedger {
+  entries: LedgerEntry[];
+  summary: {
+    total_debit: number;
+    total_credit: number;
+    balance: number;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total_count: number;
+  };
+}
+
+export const ownerLedger = {
+  getProjectLedger: (projectId: string, filters?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("start_date", filters.startDate);
+    if (filters?.endDate) params.append("end_date", filters.endDate);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.page) params.append("page", filters.page.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+    return api.get<ProjectLedger>(`/owner/ledger/project/${projectId}?${params}`);
+  },
+};
+
+// ==================== OWNER SUBCONTRACTORS API ====================
+
+export interface Subcontractor {
+  id: string;
+  org_id: string;
+  name: string;
+  specialization?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  created_at: string;
+}
+
+export interface SubcontractorPerformance {
+  subcontractor_id: string;
+  subcontractor_name: string;
+  avg_speed_rating: number;
+  avg_quality_rating: number;
+  total_tasks_completed: number;
+  projects_involved: number;
+  task_breakdown: Array<{
+    task_id: string;
+    task_name: string;
+    project_id: string;
+    project_name: string;
+    speed_rating?: number;
+    quality_rating?: number;
+    task_start_date?: string;
+    task_completed_at?: string;
+  }>;
+}
+
+export const ownerSubcontractors = {
+  create: (data: {
+    org_id: string;
+    name: string;
+    specialization?: string;
+    contact_name?: string;
+    contact_phone?: string;
+    contact_email?: string;
+  }) =>
+    api.post<{ subcontractor: Subcontractor }>("/owner/subcontractors", data),
+
+  getAll: (orgId?: string) => {
+    const params = orgId ? `?org_id=${orgId}` : "";
+    return api.get<{ subcontractors: Subcontractor[] }>(`/owner/subcontractors${params}`);
+  },
+
+  getById: (id: string) =>
+    api.get<{ subcontractor: Subcontractor }>(`/owner/subcontractors/${id}`),
+
+  getPerformance: (id: string) =>
+    api.get<SubcontractorPerformance>(`/owner/subcontractors/${id}/performance`),
+};
+
+// ==================== OWNER DANGEROUS WORK API ====================
+
+export interface DangerousTask {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_by: string;
+  created_by_role: string;
+  created_at: string;
+  created_by_name: string;
+  project_name: string;
+  project_location: string;
+  total_requests: number;
+  approved_requests: number;
+  pending_requests: number;
+  rejected_requests: number;
+  expired_requests: number;
+}
+
+export interface DangerousTaskRequest {
+  id: string;
+  dangerous_task_id: string;
+  labour_id: string;
+  project_id: string;
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "EXPIRED";
+  requested_at: string;
+  approved_at?: string;
+  approved_by?: string;
+  approval_method: string;
+  task_name: string;
+  task_description?: string;
+  task_is_active: boolean;
+  labour_name: string;
+  labour_phone: string;
+  labour_skill: string;
+  approved_by_name?: string;
+  project_name: string;
+  project_location: string;
+}
+
+export interface DangerousWorkStatistics {
+  organization_statistics: {
+    total_projects: number;
+    total_dangerous_tasks: number;
+    active_tasks: number;
+    total_requests: number;
+    approved_requests: number;
+    pending_requests: number;
+    rejected_requests: number;
+    expired_requests: number;
+    unique_labours_involved: number;
+    unique_engineers_involved: number;
+    avg_approval_time_minutes: number;
+    approval_rate_percentage: number;
+  };
+  project_breakdown: Array<{
+    id: string;
+    name: string;
+    location_text: string;
+    project_status: string;
+    dangerous_tasks: number;
+    total_requests: number;
+    approved_requests: number;
+    pending_requests: number;
+  }>;
+  top_dangerous_tasks: Array<{
+    id: string;
+    name: string;
+    is_active: boolean;
+    project_name: string;
+    request_count: number;
+    approved_count: number;
+  }>;
+  skill_type_compliance: Array<{
+    skill_type: string;
+    unique_labours: number;
+    total_requests: number;
+    approved_requests: number;
+    expired_requests: number;
+  }>;
+}
+
+export interface ComplianceReport {
+  organization_name: string;
+  report_generated_at: string;
+  date_range: {
+    start: string;
+    end: string;
+  };
+  compliance_records: Array<{
+    request_id: string;
+    status: string;
+    requested_at: string;
+    approved_at?: string;
+    task_name: string;
+    task_description?: string;
+    labour_name: string;
+    labour_phone: string;
+    labour_skill: string;
+    project_name: string;
+    project_location: string;
+    engineer_name: string;
+    approved_by_name?: string;
+    approval_time_minutes?: number;
+  }>;
+}
+
+export const ownerDangerousWork = {
+  getTasks: (organizationId: string, projectId?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (projectId) params.append("projectId", projectId);
+    return api.get<{ dangerous_tasks: DangerousTask[] }>(`/owner/dangerous-work/tasks?${params}`);
+  },
+
+  getRequests: (filters: {
+    organizationId: string;
+    projectId?: string;
+    status?: string;
+    labourId?: string;
+    taskId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams();
+    params.append("organizationId", filters.organizationId);
+    if (filters.projectId) params.append("projectId", filters.projectId);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.labourId) params.append("labourId", filters.labourId);
+    if (filters.taskId) params.append("taskId", filters.taskId);
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    return api.get<{ task_requests: DangerousTaskRequest[] }>(`/owner/dangerous-work/requests?${params}`);
+  },
+
+  getStatistics: (organizationId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return api.get<DangerousWorkStatistics>(`/owner/dangerous-work/statistics?${params}`);
+  },
+
+  getComplianceReport: (organizationId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return api.get<ComplianceReport>(`/owner/dangerous-work/compliance-report?${params}`);
+  },
+};
