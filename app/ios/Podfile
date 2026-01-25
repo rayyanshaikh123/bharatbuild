@@ -43,6 +43,15 @@ post_install do |installer|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
     end
   end
+
+  # Fix readlink -f compatibility issue on macOS (BSD readlink doesn't support -f)
+  frameworks_script = File.join(__dir__, 'Pods', 'Target Support Files', 'Pods-Runner', 'Pods-Runner-frameworks.sh')
+  if File.exist?(frameworks_script)
+    content = File.read(frameworks_script)
+    content.gsub!('readlink -f', 'readlink')
+    File.write(frameworks_script, content)
+    puts "Patched Pods-Runner-frameworks.sh for macOS readlink compatibility"
+  end
 end
 
 

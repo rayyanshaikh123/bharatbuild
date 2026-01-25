@@ -38,21 +38,21 @@ router.get("/grns", managerCheck, async (req, res) => {
     // Get GRNs for this project (exclude BYTEA columns for performance)
     const result = await pool.query(
       `SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
-              g.site_engineer_id, g.status, g.received_items, g.remarks, 
-              g.verified_by, g.created_at, g.received_at, g.verified_at,
-              g.bill_image_mime, g.proof_image_mime,
+              g.received_by, g.status, g.received_items, g.remarks, 
+              g.reviewed_by, g.created_at, g.received_at, g.reviewed_at,
+              g.bill_image_mime, g.delivery_proof_image_mime,
               p.name AS project_name,
               po.po_number,
               po.vendor_name,
               mr.title AS material_request_title,
               se.name AS engineer_name,
-              m.name AS verified_by_name
-       FROM grns g
+              m.name AS reviewed_by_name
+       FROM goods_receipt_notes g
        JOIN projects p ON g.project_id = p.id
        JOIN purchase_orders po ON g.purchase_order_id = po.id
        JOIN material_requests mr ON g.material_request_id = mr.id
-       JOIN site_engineers se ON g.site_engineer_id = se.id
-       LEFT JOIN managers m ON g.verified_by = m.id
+       JOIN site_engineers se ON g.received_by = se.id
+       LEFT JOIN managers m ON g.reviewed_by = m.id
        WHERE g.project_id = $1
        ORDER BY g.created_at DESC`,
       [projectId],
@@ -79,7 +79,7 @@ router.patch("/grns/:grnId/verify", managerCheck, async (req, res) => {
     // Get GRN details
     const grnResult = await client.query(
       `SELECT g.*, p.org_id 
-       FROM grns g
+       FROM goods_receipt_notes g
        JOIN projects p ON g.project_id = p.id
        WHERE g.id = $1`,
       [grnId],
@@ -125,10 +125,10 @@ router.patch("/grns/:grnId/verify", managerCheck, async (req, res) => {
 
     // Update GRN status to VERIFIED
     const updateResult = await client.query(
-      `UPDATE grns 
+      `UPDATE goods_receipt_notes 
        SET status = 'VERIFIED', 
-           verified_by = $1, 
-           verified_at = NOW(),
+           reviewed_by = $1, 
+           reviewed_at = NOW(),
            remarks = COALESCE($2, remarks)
        WHERE id = $3
        RETURNING *`,
@@ -160,7 +160,7 @@ router.patch("/grns/:grnId/verify", managerCheck, async (req, res) => {
        (user_id, user_role, title, message, type, project_id, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        grn.site_engineer_id,
+        grn.received_by,
         "SITE_ENGINEER",
         "GRN Verified",
         "Your Goods Receipt Note has been verified by the project manager",
@@ -194,7 +194,7 @@ router.get("/grns/:grnId/bill-image", managerCheck, async (req, res) => {
     // Get GRN with bill image
     const result = await pool.query(
       `SELECT g.id, g.project_id, g.bill_image, g.bill_image_mime
-       FROM grns g
+       FROM goods_receipt_notes g
        WHERE g.id = $1`,
       [grnId],
     );
@@ -254,8 +254,8 @@ router.get("/grns/:grnId/proof-image", managerCheck, async (req, res) => {
 
     // Get GRN with proof image
     const result = await pool.query(
-      `SELECT g.id, g.project_id, g.proof_image, g.proof_image_mime
-       FROM grns g
+      `SELECT g.id, g.project_id, g.delivery_proof_image, g.delivery_proof_image_mime
+       FROM goods_receipt_notes g
        WHERE g.id = $1`,
       [grnId],
     );
@@ -288,19 +288,19 @@ router.get("/grns/:grnId/proof-image", managerCheck, async (req, res) => {
       });
     }
 
-    if (!grn.proof_image) {
+    if (!grn.delivery_proof_image) {
       return res.status(404).json({
         error: "Proof image not available for this GRN",
       });
     }
 
     // Stream image with correct headers
-    res.setHeader("Content-Type", grn.proof_image_mime || "image/jpeg");
+    res.setHeader("Content-Type", grn.delivery_proof_image_mime || "image/jpeg");
     res.setHeader(
       "Content-Disposition",
       `inline; filename="GRN_${grnId}_proof.jpg"`,
     );
-    res.send(grn.proof_image);
+    res.send(grn.delivery_proof_image);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

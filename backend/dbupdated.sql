@@ -195,6 +195,17 @@ CREATE TABLE "labours" (
 	"travel_radius_meters" integer,
 	CONSTRAINT "labours_skill_type_check" CHECK (CHECK ((skill_type = ANY (ARRAY['SKILLED'::text, 'SEMI_SKILLED'::text, 'UNSKILLED'::text]))))
 );
+CREATE TABLE "ledger_adjustments" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"created_by" uuid,
+	"date" date NOT NULL,
+	"description" text NOT NULL,
+	"amount" numeric NOT NULL,
+	"category" text DEFAULT 'ADJUSTMENT',
+	"notes" text,
+	"created_at" timestamp DEFAULT now()
+);
 CREATE TABLE "managers" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
 	"name" text NOT NULL,
@@ -718,6 +729,8 @@ ALTER TABLE "labour_request_participants" ADD CONSTRAINT "labour_request_partici
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_copied_from_fkey" FOREIGN KEY ("copied_from") REFERENCES "labour_requests"("id");
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "labour_requests" ADD CONSTRAINT "labour_requests_site_engineer_id_fkey" FOREIGN KEY ("site_engineer_id") REFERENCES "site_engineers"("id");
+ALTER TABLE "ledger_adjustments" ADD CONSTRAINT "ledger_adjustments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "managers"("id");
+ALTER TABLE "ledger_adjustments" ADD CONSTRAINT "ledger_adjustments_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "site_engineers"("id");
 ALTER TABLE "manual_attendance_labours" ADD CONSTRAINT "manual_attendance_labours_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;
 ALTER TABLE "material_bills" ADD CONSTRAINT "material_bills_grn_fkey" FOREIGN KEY ("grn_id") REFERENCES "goods_receipt_notes"("id") ON DELETE SET NULL;
@@ -812,6 +825,9 @@ CREATE INDEX "idx_labour_phone" ON "labours" ("phone");
 CREATE INDEX "idx_labours_categories" ON "labours" USING gin ("categories");
 CREATE UNIQUE INDEX "labours_phone_key" ON "labours" ("phone");
 CREATE UNIQUE INDEX "labours_pkey" ON "labours" ("id");
+CREATE INDEX "idx_ledger_adjustments_date" ON "ledger_adjustments" ("date");
+CREATE INDEX "idx_ledger_adjustments_project" ON "ledger_adjustments" ("project_id");
+CREATE UNIQUE INDEX "ledger_adjustments_pkey" ON "ledger_adjustments" ("id");
 CREATE INDEX "idx_manager_email" ON "managers" ("email");
 CREATE UNIQUE INDEX "managers_email_key" ON "managers" ("email");
 CREATE UNIQUE INDEX "managers_phone_key" ON "managers" ("phone");
