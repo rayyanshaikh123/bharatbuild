@@ -48,6 +48,8 @@ const ownerNavItems: NavItem[] = [
   { label: "Timeline", href: "/owner/timeline", icon: Clock },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Subcontractors", href: "/owner/subcontractors", icon: UserCog },
+  {label: "Materials", href: "/owner/materials", icon: Package},
+  {label: "Material-stock", href: "/owner/material-stock", icon: Package},
   { label: "QA Engineers", href: "/owner/qa-engineers", icon: ClipboardCheck },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
   { label: "Materials", href: "/owner/materials", icon: Package },

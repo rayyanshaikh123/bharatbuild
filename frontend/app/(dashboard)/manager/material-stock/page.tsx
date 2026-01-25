@@ -59,6 +59,7 @@ export default function MaterialStockPage() {
             setSelectedProject(activeProjects[0].id);
           }
         }
+        }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
         toast.error("Failed to load projects");
@@ -241,7 +242,7 @@ function StockView({ stock }: { stock: MaterialStock[] }) {
 }
 
 function StockCard({ item }: { item: MaterialStock }) {
-  const quantity = parseFloat(item.available_quantity?.toString() || "0");
+  const quantity = parseFloat(item.available_quantity as any) || 0;
   const isLowStock = quantity < 10;
 
   return (
