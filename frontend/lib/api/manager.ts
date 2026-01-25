@@ -647,5 +647,62 @@ export const managerSubcontractors = {
     }),
 };
 
+// ==================== MATERIAL STOCK API ====================
+
+export interface MaterialStock {
+  id: string;
+  project_id: string;
+  material_name: string;
+  category: string | null;
+  unit: string;
+  available_quantity: number;
+  last_updated_at: string;
+}
+
+export interface MaterialConsumption {
+  id: string;
+  project_id: string;
+  dpr_id: string | null;
+  material_name: string;
+  unit: string;
+  quantity_used: number;
+  recorded_at: string;
+  report_date: string | null;
+  dpr_title: string | null;
+  engineer_name: string | null;
+}
+
+export interface StockSummaryItem {
+  material_name: string;
+  category: string | null;
+  unit: string;
+  current_stock: number;
+  total_consumed: number;
+  last_updated_at: string;
+}
+
+export const managerMaterialStock = {
+  // Get project material stock
+  getProjectStock: (projectId: string) =>
+    api.get<{ stock: MaterialStock[] }>(
+      `/manager/material-stock/projects/${projectId}/material-stock`
+    ),
+
+  // Get material consumption history
+  getConsumptionHistory: (projectId: string) =>
+    api.get<{ consumption: MaterialConsumption[] }>(
+      `/manager/material-stock/projects/${projectId}/material-consumption`
+    ),
+
+  // Get stock summary with consumption
+  getStockSummary: (projectId: string) =>
+    api.get<{ summary: StockSummaryItem[] }>(
+      `/manager/material-stock/projects/${projectId}/stock-summary`
+    ),
+};
+
+
+
+
 
 

@@ -5,6 +5,7 @@ import '../../providers/material_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/current_project_provider.dart';
+import '../../providers/material_stock_provider.dart';
 import '../../theme/app_colors.dart';
 import 'material_request_form.dart';
 
@@ -21,7 +22,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -42,6 +43,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
           tabs: [
             Tab(text: 'requests'.tr()),
             Tab(text: 'inventory'.tr()),
+            Tab(text: 'Stock'),
           ],
         ),
       ),
@@ -50,6 +52,7 @@ class _MaterialManagementScreenState extends ConsumerState<MaterialManagementScr
         children: [
           _buildRequestsList(),
           _buildInventoryList(),
+          _buildStockAvailability(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -414,5 +417,198 @@ class _IssueMaterialSheetState extends ConsumerState<_IssueMaterialSheet> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('queued_offline'.tr()), backgroundColor: Colors.orange));
       }
     }
+  }
+
+  Widget _buildStockAvailability() {
+    final currentProject = ref.watch(currentProjectProvider);
+    
+    if (currentProject == null) {
+      return const Center(child: Text('No project selected'));
+    }
+
+    final projectId = currentProject['id'] as String;
+    final stockAsync = ref.watch(materialStockProvider(projectId));
+
+    return stockAsync.when(
+      data: (stockList) {
+        if (stockList.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No material stock available',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Stock will appear here after materials are received',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(materialStockProvider(projectId));
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: stockList.length,
+            itemBuilder: (context, index) {
+              final stock = stockList[index];
+              return _buildStockCard(stock);
+            },
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text('Error loading stock: $err', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(materialStockProvider(projectId)),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockCard(stock) {
+    final theme = Theme.of(context);
+    final availableQty = stock.availableQuantity;
+    final isLowStock = availableQty < 10; // Simple threshold
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stock.materialName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (stock.category != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            stock.category!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isLowStock ? Colors.orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isLowStock ? Colors.orange : Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${availableQty.toStringAsFixed(2)} ${stock.unit}',
+                        style: TextStyle(
+                          color: isLowStock ? Colors.orange[700] : Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStockStat(
+                    'Received',
+                    stock.totalReceived.toStringAsFixed(2),
+                    stock.unit,
+                    Icons.arrow_downward,
+                    Colors.blue,
+                  ),
+                ),
+                Expanded(
+                  child: _buildStockStat(
+                    'Consumed',
+                    stock.totalConsumed.toStringAsFixed(2),
+                    stock.unit,
+                    Icons.arrow_upward,
+                    Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockStat(String label, String value, String unit, IconData icon, Color color) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$value $unit',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
   }
 }

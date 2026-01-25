@@ -108,6 +108,7 @@ CREATE TABLE "dprs" (
 	"description" text,
 	"plan_id" uuid,
 	"plan_item_id" uuid,
+	"material_usage" jsonb DEFAULT '[]',
 	CONSTRAINT "dprs_project_id_site_engineer_id_report_date_key" UNIQUE("project_id","site_engineer_id","report_date"),
 	CONSTRAINT "dprs_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
 );
@@ -235,6 +236,18 @@ CREATE TABLE "material_bills" (
 	"bill_image_mime" text,
 	"grn_id" uuid,
 	CONSTRAINT "material_bills_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))))
+);
+CREATE TABLE "material_consumption_records" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL,
+	"dpr_id" uuid,
+	"material_name" text NOT NULL,
+	"unit" text NOT NULL,
+	"quantity_used" numeric NOT NULL,
+	"recorded_at" timestamp DEFAULT now(),
+	"recorded_by" uuid,
+	"recorded_by_role" text,
+	CONSTRAINT "mcr_role_check" CHECK (CHECK ((recorded_by_role = ANY (ARRAY['SITE_ENGINEER'::text, 'MANAGER'::text]))))
 );
 CREATE TABLE "material_ledger" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -428,6 +441,16 @@ CREATE TABLE "project_managers" (
 	"status" text NOT NULL,
 	CONSTRAINT "project_managers_project_id_manager_id_key" UNIQUE("project_id","manager_id"),
 	CONSTRAINT "project_managers_status_check" CHECK (CHECK ((status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'REJECTED'::text]))))
+);
+CREATE TABLE "project_material_stock" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	"project_id" uuid NOT NULL UNIQUE,
+	"material_name" text NOT NULL UNIQUE,
+	"category" text,
+	"unit" text NOT NULL UNIQUE,
+	"available_quantity" numeric DEFAULT '0' NOT NULL,
+	"last_updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "uniq_project_material" UNIQUE("project_id","material_name","unit")
 );
 CREATE TABLE "project_purchase_managers" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -770,6 +793,7 @@ CREATE INDEX "idx_dpr_items_dpr" ON "dpr_items" ("dpr_id");
 CREATE INDEX "idx_dpr_items_plan_item" ON "dpr_items" ("plan_item_id");
 CREATE UNIQUE INDEX "dprs_pkey" ON "dprs" ("id");
 CREATE UNIQUE INDEX "dprs_project_id_site_engineer_id_report_date_key" ON "dprs" ("project_id","site_engineer_id","report_date");
+CREATE INDEX "idx_dprs_material_usage" ON "dprs" USING gin ("material_usage");
 CREATE UNIQUE INDEX "goods_receipt_notes_pkey" ON "goods_receipt_notes" ("id");
 CREATE UNIQUE INDEX "grns_pkey" ON "grns" ("id");
 CREATE INDEX "idx_grn_po" ON "grns" ("purchase_order_id");
@@ -797,6 +821,7 @@ CREATE UNIQUE INDEX "manual_attendance_labours_pkey" ON "manual_attendance_labou
 CREATE UNIQUE INDEX "manual_attendance_labours_project_id_name_skill_key" ON "manual_attendance_labours" ("project_id","name","skill");
 CREATE INDEX "idx_material_bill_status" ON "material_bills" ("status");
 CREATE UNIQUE INDEX "material_bills_pkey" ON "material_bills" ("id");
+CREATE UNIQUE INDEX "material_consumption_records_pkey" ON "material_consumption_records" ("id");
 CREATE UNIQUE INDEX "material_ledger_pkey" ON "material_ledger" ("id");
 CREATE INDEX "idx_material_req_status" ON "material_requests" ("status");
 CREATE UNIQUE INDEX "material_requests_pkey" ON "material_requests" ("id");
@@ -830,6 +855,8 @@ CREATE UNIQUE INDEX "plans_project_id_key" ON "plans" ("project_id");
 CREATE UNIQUE INDEX "project_breaks_pkey" ON "project_breaks" ("id");
 CREATE UNIQUE INDEX "project_managers_pkey" ON "project_managers" ("id");
 CREATE UNIQUE INDEX "project_managers_project_id_manager_id_key" ON "project_managers" ("project_id","manager_id");
+CREATE UNIQUE INDEX "project_material_stock_pkey" ON "project_material_stock" ("id");
+CREATE UNIQUE INDEX "uniq_project_material" ON "project_material_stock" ("project_id","material_name","unit");
 CREATE UNIQUE INDEX "ppm_unique" ON "project_purchase_managers" ("project_id","purchase_manager_id");
 CREATE UNIQUE INDEX "project_purchase_managers_pkey" ON "project_purchase_managers" ("id");
 CREATE INDEX "idx_project_qa_engineers_project" ON "project_qa_engineers" ("project_id");

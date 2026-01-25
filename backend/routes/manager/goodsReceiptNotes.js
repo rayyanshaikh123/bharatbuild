@@ -248,21 +248,63 @@ router.patch("/:grnId/approve", managerCheck, async (req, res) => {
       [grn.purchase_order_id],
     );
 
-    // Insert material_ledger entries (movement_type = IN, source = BILL)
+    // Calculate total investment from PO items
+    let grnTotalValue = 0;
     for (const receivedItem of receivedItems) {
+      const poItem = poItems.find(
+        (item) => item.material_name === receivedItem.material_name,
+      );
+      if (poItem && poItem.unit_price) {
+        grnTotalValue +=
+          parseFloat(receivedItem.quantity_received) *
+          parseFloat(poItem.unit_price);
+      }
+    }
+
+    // Update project investment (projects.current_invested)
+    if (grnTotalValue > 0) {
+      await client.query(
+        `UPDATE projects 
+         SET current_invested = COALESCE(current_invested, 0) + $1
+         WHERE id = $2`,
+        [grnTotalValue, grn.project_id],
+      );
+    }
+
+    // Insert material_ledger entries (movement_type = IN, source = BILL)
+    // AND update project_material_stock
+    for (const receivedItem of receivedItems) {
+      // Insert into ledger for audit trail
       await client.query(
         `INSERT INTO material_ledger 
          (project_id, material_name, quantity, unit, movement_type, source, 
-          recorded_by_role, recorded_by_id, reference_id, reference_type, remarks)
-         VALUES ($1, $2, $3, $4, 'IN', 'BILL', 'MANAGER', $5, $6, 'GRN', $7)`,
+          recorded_by_role, recorded_by, remarks)
+         VALUES ($1, $2, $3, $4, 'IN', 'BILL', 'MANAGER', $5, $6)`,
         [
           grn.project_id,
           receivedItem.material_name,
           receivedItem.quantity_received,
           receivedItem.unit,
           managerId,
-          grnId,
           `GRN ${grn.po_number} - Approved by Manager`,
+        ],
+      );
+
+      // Upsert into project_material_stock (increase available quantity)
+      await client.query(
+        `INSERT INTO project_material_stock 
+         (project_id, material_name, category, unit, available_quantity, last_updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (project_id, material_name, unit)
+         DO UPDATE SET 
+           available_quantity = project_material_stock.available_quantity + $5,
+           last_updated_at = NOW()`,
+        [
+          grn.project_id,
+          receivedItem.material_name,
+          receivedItem.category || "General",
+          receivedItem.unit,
+          parseFloat(receivedItem.quantity_received),
         ],
       );
     }
