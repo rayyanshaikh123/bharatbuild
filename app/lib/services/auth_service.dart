@@ -504,6 +504,26 @@ class AuthService {
     throw Exception('Failed to fetch job details: ${res.body}');
   }
 
+  /* ---------------- PURCHASE ORDERS ---------------- */
+  Future<List<dynamic>> getSentPurchaseOrders(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/sent/list?projectId=$projectId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['purchase_orders'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch purchase orders: ${res.body}');
+  }
+
+  Future<List<int>> getPurchaseOrderPdf(String poId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/$poId/pdf');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return res.bodyBytes;
+    }
+    throw Exception('Failed to fetch PO PDF: ${res.body}');
+  }
+
   /* ---------------- PROJECTS ---------------- */
 
   Future<Map<String, dynamic>> getAllProjects() async {
@@ -943,18 +963,6 @@ class AuthService {
     if (res.statusCode != 200) {
       throw Exception('Failed to mark notification as read: ${res.body}');
     }
-  }
-
-  /* ---------------- PURCHASE ORDERS (ENGINEER) ---------------- */
-  Future<List<dynamic>> getSentPurchaseOrders(String projectId) async {
-    final uri = Uri.parse('$_base/engineer/purchase-orders/sent/list')
-        .replace(queryParameters: {'projectId': projectId});
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return body['purchase_orders'] as List<dynamic>;
-    }
-    throw Exception('Failed to fetch purchase orders: ${res.body}');
   }
 
   Future<Map<String, dynamic>> getPurchaseOrder(String poId) async {

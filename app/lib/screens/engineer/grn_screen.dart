@@ -6,6 +6,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/current_project_provider.dart';
 import '../../services/auth_service.dart';
@@ -325,6 +327,55 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
                   child: Text('Error loading purchase orders: ${error.toString()}'),
                 ),
               ),
+
+              if (_selectedPO != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue[100]!),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Vendor', style: TextStyle(color: Colors.blue[900], fontSize: 12)),
+                              Text(
+                                _selectedPO!['vendor_name'] ?? 'Unknown Vendor',
+                                style: TextStyle(color: Colors.blue[900], fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _showPODetails(_selectedPO!),
+                            icon: const Icon(Icons.visibility),
+                            label: const Text('View PO'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue[900],
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('PO Date: ${_selectedPO!['created_at']?.split('T')[0] ?? 'N/A'}', style: TextStyle(color: Colors.blue[800], fontSize: 13)),
+                          Text('Total: ₹${double.tryParse(_selectedPO!['total_amount']?.toString() ?? '0')?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Received Items Section
@@ -518,5 +569,103 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
               ],
             ),
     );
+  }
+  void _showPODetails(Map<String, dynamic> po) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Purchase Order Details', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 20),
+              
+              // PDF Button
+              if (po['po_pdf_mime'] != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _viewPdf(po),
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text('Download & View PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[50],
+                      foregroundColor: Colors.red[700],
+                      elevation: 0,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+
+              _detailRow('PO Number', po['po_number'] ?? 'N/A'),
+              _detailRow('Vendor', po['vendor_name'] ?? 'N/A'),
+              _detailRow('Date', po['created_at']?.split('T')[0] ?? 'N/A'),
+              _detailRow('Status', po['status'] ?? 'N/A'),
+              const Divider(height: 32),
+              Text('Items', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              ...(po['items'] as List<dynamic>? ?? []).map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(item['material_name'] ?? item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('${item['quantity']} ${item['unit']}', style: TextStyle(color: Colors.grey[700])),
+                  ],
+                ),
+              )).toList(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _viewPdf(Map<String, dynamic> po) async {
+    try {
+      // Show loading
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Downloading PDF...')),
+      );
+
+      final auth = ref.read(authServiceProvider);
+      final pdfBytes = await auth.getPurchaseOrderPdf(po['id'].toString());
+      
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/PO_${po['po_number']}.pdf');
+      await file.writeAsBytes(pdfBytes);
+      
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to open PDF: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

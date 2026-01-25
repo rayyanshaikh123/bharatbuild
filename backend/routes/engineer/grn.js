@@ -137,22 +137,21 @@ router.post(
 
       // Create GRN with images
       const grnResult = await client.query(
-        `INSERT INTO grns 
-       (project_id, purchase_order_id, material_request_id, site_engineer_id, received_items, remarks, status, 
-        bill_image, bill_image_mime, proof_image, proof_image_mime)
-       VALUES ($1, $2, $3, $4, $5, $6, 'CREATED', $7, $8, $9, $10)
-       RETURNING id, project_id, purchase_order_id, material_request_id, site_engineer_id, status, created_at, received_at`,
+        `INSERT INTO goods_receipt_notes 
+       (project_id, purchase_order_id, material_request_id, received_by, received_items, status, 
+        bill_image, bill_image_mime, delivery_proof_image, delivery_proof_image_mime)
+       VALUES ($1, $2, $3, $4, $5, 'PENDING', $6, $7, $8, $9)
+       RETURNING id, project_id, purchase_order_id, material_request_id, received_by, status, created_at, received_at`,
         [
           projectId,
           purchaseOrderId,
           materialRequestId,
           siteEngineerId,
           JSON.stringify(receivedItems),
-          remarks,
-          req.files.bill_image[0].buffer,
-          req.files.bill_image[0].mimetype,
-          req.files.proof_image[0].buffer,
-          req.files.proof_image[0].mimetype,
+          req.files?.bill_image?.[0]?.buffer || null,
+          req.files?.bill_image?.[0]?.mimetype || null,
+          req.files?.proof_image?.[0]?.buffer || null,
+          req.files?.proof_image?.[0]?.mimetype || null,
         ],
       );
 
@@ -164,6 +163,22 @@ router.post(
       const orgId = orgResult.rows[0]?.org_id;
 
       // Create audit log
+      const changeSummary = {
+        po_id: purchaseOrderId,
+        items_count: receivedItems.length,
+      };
+
+      // Add image info if present
+      if (req.files?.bill_image?.[0]) {
+        changeSummary.bill_image_size = req.files.bill_image[0].size;
+        changeSummary.bill_image_mime = req.files.bill_image[0].mimetype;
+      }
+      if (req.files?.proof_image?.[0]) {
+        changeSummary.delivery_proof_image_size = req.files.proof_image[0].size;
+        changeSummary.delivery_proof_image_mime =
+          req.files.proof_image[0].mimetype;
+      }
+
       await client.query(
         `INSERT INTO audit_logs 
        (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, organization_id, category, change_summary)
@@ -177,14 +192,7 @@ router.post(
           projectId,
           orgId,
           "PROCUREMENT",
-          JSON.stringify({
-            po_id: purchaseOrderId,
-            items_count: receivedItems.length,
-            bill_image_size: req.files.bill_image[0].size,
-            bill_image_mime: req.files.bill_image[0].mimetype,
-            proof_image_size: req.files.proof_image[0].size,
-            proof_image_mime: req.files.proof_image[0].mimetype,
-          }),
+          JSON.stringify(changeSummary),
         ],
       ); // Notify active project managers
       const managersResult = await client.query(
@@ -260,18 +268,18 @@ router.get("/grns", engineerCheck, async (req, res) => {
     // Get GRNs for this project (exclude BYTEA columns for performance)
     const result = await pool.query(
       `SELECT g.id, g.project_id, g.purchase_order_id, g.material_request_id, 
-              g.site_engineer_id, g.status, g.received_items, g.remarks, 
-              g.verified_by, g.created_at, g.received_at, g.verified_at,
-              g.bill_image_mime, g.proof_image_mime,
+              g.received_by, g.status, g.received_items, g.remarks, 
+              g.reviewed_by, g.created_at, g.received_at, g.reviewed_at,
+              g.bill_image_mime, g.delivery_proof_image_mime,
               p.name AS project_name,
               po.po_number,
               mr.title AS material_request_title,
-              m.name AS verified_by_name
-       FROM grns g
+              m.name AS reviewed_by_name
+       FROM goods_receipt_notes g
        JOIN projects p ON g.project_id = p.id
        JOIN purchase_orders po ON g.purchase_order_id = po.id
        JOIN material_requests mr ON g.material_request_id = mr.id
-       LEFT JOIN managers m ON g.verified_by = m.id
+       LEFT JOIN managers m ON g.reviewed_by = m.id
        WHERE g.project_id = $1
        ORDER BY g.created_at DESC`,
       [projectId],
@@ -293,7 +301,7 @@ router.get("/grns/:grnId/bill-image", engineerCheck, async (req, res) => {
     // Get GRN with bill image
     const result = await pool.query(
       `SELECT g.id, g.project_id, g.bill_image, g.bill_image_mime
-     FROM grns g
+     FROM goods_receipt_notes g
      WHERE g.id = $1`,
       [grnId],
     );
@@ -346,8 +354,8 @@ router.get("/grns/:grnId/proof-image", engineerCheck, async (req, res) => {
 
     // Get GRN with proof image
     const result = await pool.query(
-      `SELECT g.id, g.project_id, g.proof_image, g.proof_image_mime
-     FROM grns g
+      `SELECT g.id, g.project_id, g.delivery_proof_image, g.delivery_proof_image_mime
+     FROM goods_receipt_notes g
      WHERE g.id = $1`,
       [grnId],
     );
@@ -373,19 +381,22 @@ router.get("/grns/:grnId/proof-image", engineerCheck, async (req, res) => {
       });
     }
 
-    if (!grn.proof_image) {
+    if (!grn.delivery_proof_image) {
       return res.status(404).json({
         error: "Proof image not available for this GRN",
       });
     }
 
     // Stream image with correct headers
-    res.setHeader("Content-Type", grn.proof_image_mime || "image/jpeg");
+    res.setHeader(
+      "Content-Type",
+      grn.delivery_proof_image_mime || "image/jpeg",
+    );
     res.setHeader(
       "Content-Disposition",
       `inline; filename="GRN_${grnId}_proof.jpg"`,
     );
-    res.send(grn.proof_image);
+    res.send(grn.delivery_proof_image);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

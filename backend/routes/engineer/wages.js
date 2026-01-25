@@ -82,9 +82,9 @@ router.post("/submit", engineerCheck, async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO wages (attendance_id, labour_id, project_id, wage_type, rate, total_amount, worked_hours, status)
-             VALUES ($1, $2, $3, 'HOURLY', $4, $5, $6, 'PENDING')
+             VALUES ($1, $2, $3, 'HOURLY', $4, $5, $6, 'APPROVED')
              ON CONFLICT (attendance_id) 
-             DO UPDATE SET rate = $4, total_amount = $5, worked_hours = $6, status = 'PENDING'
+             DO UPDATE SET rate = $4, total_amount = $5, worked_hours = $6, status = 'APPROVED'
              RETURNING *`,
       [
         attendanceId,

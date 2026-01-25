@@ -68,6 +68,8 @@ dependencies:
   google_mlkit_face_detection: ^0.13.1
   image: ^4.7.2
   fl_chart: ^1.1.1
+  url_launcher: ^6.3.2
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:
