@@ -48,7 +48,7 @@ router.get("/delays/:projectId/analysis", managerCheck, async (req, res) => {
       `SELECT 
         pi.id, pi.task_name, pi.period_start, pi.period_end, 
         pi.status, pi.completed_at, pi.delay,
-        EXTRACT(DAY FROM (COALESCE(pi.completed_at, NOW()) - pi.period_end)) as delay_days,
+        EXTRACT(DAY FROM (COALESCE(pi.completed_at::timestamp, NOW()) - pi.period_end::timestamp)) as delay_days,
         p.project_id
        FROM plan_items pi
        JOIN plans p ON pi.plan_id = p.id

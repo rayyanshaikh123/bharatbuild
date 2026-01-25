@@ -1,6 +1,6 @@
 import "@/app/globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AuthGuard } from "@/components/dashboard/AuthGuard";
 
 export default function DashboardLayout({
@@ -51,13 +51,9 @@ export default function DashboardLayout({
           {/* Center accent orb */}
           <div className="fixed top-[50%] left-[40%] w-[300px] h-[300px] bg-primary/[0.03] blur-[100px] rounded-full z-0" />
 
-          {/* Sidebar */}
-          <DashboardSidebar />
-          
-          {/* Main content area */}
-          <main className="md:ml-72 min-h-screen relative z-10">
-            <div className="p-6 md:p-8">{children}</div>
-          </main>
+          {/* Dashboard Shell (Sidebar + Main Content) */}
+          <DashboardShell>{children}</DashboardShell>
+
           <script
             async
             crossOrigin="anonymous"

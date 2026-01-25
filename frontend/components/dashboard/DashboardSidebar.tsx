@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  ChevronLeft,
   Menu,
   X,
   Receipt,
@@ -29,6 +30,7 @@ import {
   FileInput,
   Timer,
   Factory,
+  BrainCircuit,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -43,13 +45,14 @@ interface NavItem {
 
 const ownerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
+  { label: "AI Insights", href: "/owner/ai", icon: BrainCircuit },
   { label: "Projects", href: "/owner/projects", icon: Building2 },
   { label: "Plans", href: "/owner/plans", icon: Calendar },
   { label: "Timeline", href: "/owner/timeline", icon: Clock },
   { label: "Managers", href: "/owner/managers", icon: Users },
   { label: "Subcontractors", href: "/owner/subcontractors", icon: UserCog },
-  {label: "Materials", href: "/owner/materials", icon: Package},
-  {label: "Material-stock", href: "/owner/material-stock", icon: Package},
+  { label: "Materials", href: "/owner/materials", icon: Package },
+  { label: "Material-stock", href: "/owner/material-stock", icon: Package },
   { label: "QA Engineers", href: "/owner/qa-engineers", icon: ClipboardCheck },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
   { label: "Materials", href: "/owner/materials", icon: Package },
@@ -65,6 +68,7 @@ const ownerNavItems: NavItem[] = [
 
 const managerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/manager", icon: LayoutDashboard },
+  { label: "AI Insights", href: "/manager/ai", icon: BrainCircuit },
   { label: "Projects", href: "/manager/projects", icon: Building2 },
   {
     label: "Project Requests",
@@ -125,10 +129,22 @@ const poManagerNavItems: NavItem[] = [
   { label: "Profile", href: "/po-manager/profile", icon: Settings },
 ];
 
-export function DashboardSidebar() {
+export function DashboardSidebar({
+  isCollapsed = false,
+  toggleCollapse,
+}: {
+  isCollapsed?: boolean;
+  toggleCollapse?: () => void;
+}) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Internal state fallback if not controlled
+  // const [internalCollapsed, setInternalCollapsed] = useState(false);
+  // const collapsed = isCollapsed ?? internalCollapsed;
+  // simplified: we assume it's controlled or defaults to false.
+  const collapsed = isCollapsed;
 
   const navItems =
     user?.role === "OWNER"
@@ -169,41 +185,71 @@ export function DashboardSidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-card border-r border-border z-40 transition-transform duration-300 md:translate-x-0 ${
+        className={`fixed left-0 top-0 h-full bg-card border-r border-border z-40 transition-all duration-300 ease-in-out md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${collapsed ? "w-20" : "w-72"}`}
       >
+        {/* Floating Toggle Button (Desktop) */}
+        <div className="hidden md:flex absolute -right-[12px] top-8 z-50">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleCollapse}
+            className="h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent hover:text-accent-foreground hover:scale-110 transition-all duration-200"
+          >
+            {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          </Button>
+        </div>
+
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-border">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground shadow-lg">
+          <div
+            className={`h-20 flex items-center border-b border-border transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-6"}`}
+          >
+            <Link href="/" className="flex items-center gap-3 overflow-hidden">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground shadow-lg flex-shrink-0 transition-transform duration-300 hover:scale-105">
                 <Construction size={22} />
               </div>
-              <span className="text-xl font-black tracking-tighter uppercase italic">
-                Bharat<span className="text-primary">Build</span>
-              </span>
+              <div
+                className={`flex flex-col transition-all duration-300 ${collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"}`}
+              >
+                <span className="text-xl font-black tracking-tighter uppercase italic whitespace-nowrap">
+                  Bharat<span className="text-primary">Build</span>
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest -mt-1">
+                  Enterprise
+                </span>
+              </div>
             </Link>
           </div>
 
           {/* User info */}
           {user && (
-            <div className="p-4 mx-4 mt-4 bg-muted/50 rounded-xl border border-border/50">
-              <p className="text-sm font-bold text-foreground truncate">
-                {user.name}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user.email}
-              </p>
-              <div className="mt-2 inline-flex items-center px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest rounded-md">
-                {user.role}
-              </div>
+            <div
+              className={`mx-4 mt-4 bg-muted/50 rounded-xl border border-border/50 transition-all ${collapsed ? "p-2 flex justify-center" : "p-4"}`}
+            >
+              {collapsed ? (
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                  {user.name?.[0]}
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </p>
+                  <div className="mt-2 inline-flex items-center px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest rounded-md">
+                    {user.role}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
               // For dashboard routes (exact base path), only match exact pathname
               const isDashboardRoute =
@@ -218,16 +264,23 @@ export function DashboardSidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={collapsed ? item.label : ""}
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
+                  } ${collapsed ? "justify-center px-2" : ""}`}
                 >
-                  <item.icon size={18} />
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {isActive && <ChevronRight size={14} className="ml-auto" />}
+                  <item.icon size={18} className="flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
+                  {!collapsed && isActive && (
+                    <ChevronRight size={14} className="ml-auto" />
+                  )}
                 </Link>
               );
             })}
@@ -235,20 +288,30 @@ export function DashboardSidebar() {
 
           {/* Bottom actions */}
           <div className="p-4 border-t border-border space-y-3">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-xs text-muted-foreground uppercase tracking-widest">
-                Theme
-              </span>
-              <ThemeToggle />
-            </div>
+            {!collapsed && (
+              <div className="flex items-center justify-between px-2">
+                <span className="text-xs text-muted-foreground uppercase tracking-widest">
+                  Theme
+                </span>
+                <ThemeToggle />
+              </div>
+            )}
+            {collapsed && (
+              <div className="flex justify-center">
+                <ThemeToggle />
+              </div>
+            )}
+
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:border-destructive"
+              className={`w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:border-destructive ${collapsed ? "justify-center px-0" : ""}`}
             >
               <LogOut size={18} />
-              Sign Out
+              {!collapsed && "Sign Out"}
             </Button>
+
+            {/* Collapse Toggle Removed from Bottom */}
           </div>
         </div>
       </aside>
