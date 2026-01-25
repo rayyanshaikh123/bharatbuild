@@ -5,10 +5,17 @@ import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { poManagerPurchaseOrders, poManagerProjects, PurchaseOrder, Project } from "@/lib/api/po-manager";
-import { Loader2, FileText, Filter, Upload, Eye, Send, Download } from "lucide-react";
+import { 
+  purchaseManagerPurchaseOrders, 
+  purchaseManagerProjects, 
+  purchaseManagerOrganization,
+  PurchaseOrder, 
+  Project 
+} from "@/lib/api/purchase-manager";
+import { Loader2, Filter, Upload, Send, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
+import Link from "next/link";
 
 // Project selector
 function ProjectSelector({
@@ -54,7 +61,7 @@ function UploadModal({
 
     try {
       setIsUploading(true);
-      await poManagerPurchaseOrders.uploadPDF(po.id, pdfUrl);
+      await purchaseManagerPurchaseOrders.uploadPDF(po.id, pdfUrl);
       toast.success("PO PDF URL saved successfully!");
       onUploaded();
       onClose();
@@ -115,8 +122,15 @@ export default function PurchaseOrdersPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await poManagerProjects.getMyProjects();
-        setProjects(res.projects);
+        const orgRes = await purchaseManagerOrganization.getMyOrganizations();
+        if (!orgRes.organizations || orgRes.organizations.length === 0) {
+          setIsLoading(false);
+          return;
+        }
+        const orgId = orgRes.organizations[0].org_id;
+
+        const res = await purchaseManagerProjects.getMyProjects(orgId);
+        setProjects(res.projects || []);
       } catch (err) {
         console.error("Failed to fetch projects:", err);
       } finally {
@@ -130,10 +144,11 @@ export default function PurchaseOrdersPage() {
   const fetchPOs = async () => {
     try {
       setIsLoadingPOs(true);
-      const res = await poManagerPurchaseOrders.getAll(selectedProjectId || undefined);
-      setPurchaseOrders(res.purchase_orders);
+      const res = await purchaseManagerPurchaseOrders.getAll(selectedProjectId || undefined);
+      setPurchaseOrders(res.purchase_orders || []);
     } catch (err) {
       console.error("Failed to fetch POs:", err);
+      toast.error("Failed to load purchase orders");
     } finally {
       setIsLoadingPOs(false);
     }
@@ -196,16 +211,18 @@ export default function PurchaseOrdersPage() {
         render: (value: string) => new Date(value).toLocaleDateString(),
       },
       {
-        key: "actions",
+        key: "id", // Assuming ID is key for actions
         label: "Actions",
         width: "150px",
-        render: (_: unknown, row: PurchaseOrder) => (
+        render: (_: unknown, row: any) => (
           <div className="flex gap-2">
             {row.po_pdf_url ? (
-              <Button size="sm" variant="outline" className="gap-1">
-                <Download size={14} />
-                PDF
-              </Button>
+               <Link href={row.po_pdf_url} target="_blank">
+                <Button size="sm" variant="outline" className="gap-1">
+                  <Download size={14} />
+                  PDF
+                </Button>
+               </Link>
             ) : (
               <Button 
                 size="sm" 
@@ -223,7 +240,7 @@ export default function PurchaseOrdersPage() {
                   className="gap-1"
                   onClick={async () => {
                     try {
-                      await poManagerPurchaseOrders.send(row.id);
+                      await purchaseManagerPurchaseOrders.send(row.id);
                       toast.success("PO sent to site engineer!");
                       fetchPOs();
                     } catch (err) {
@@ -266,6 +283,9 @@ export default function PurchaseOrdersPage() {
           selected={selectedProjectId} 
           onSelect={setSelectedProjectId} 
         />
+        <div className="ml-auto">
+            {/* Create PO manually? Maybe not, should go via Material Requests mostly. */}
+        </div>
       </div>
 
       {/* PO Table */}
@@ -281,7 +301,6 @@ export default function PurchaseOrdersPage() {
           searchable
           searchKeys={["po_number", "project_name", "vendor_name"]}
           emptyMessage="No purchase orders found."
-          itemsPerPage={15}
         />
       )}
 

@@ -166,6 +166,10 @@ app.use("/owner/purchase-orders", require("./routes/owner/purchaseOrders"));
 app.use("/owner", require("./routes/owner/grn"));
 app.use("/owner/dangerous-work", require("./routes/owner/dangerousWork"));
 app.use("/owner/subcontractors", require("./routes/owner/subcontractors"));
+app.use(
+  "/owner/qa-engineer-requests",
+  require("./routes/owner/qaEngineerRequests"),
+);
 
 /* ---------------- MANAGER ROUTES ---------------- */
 app.use("/manager", require("./routes/manager/manager"));
