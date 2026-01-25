@@ -98,7 +98,6 @@ const poManagerNavItems: NavItem[] = [
     href: "/po-manager/purchase-orders",
     icon: FileText,
   },
-  { label: "GRN", href: "/po-manager/grn", icon: ClipboardCheck },
   { label: "Profile", href: "/po-manager/profile", icon: Settings },
 ];
 

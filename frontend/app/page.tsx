@@ -17,7 +17,10 @@ import {
   Twitter,
   Linkedin,
   Mail,
+  Smartphone,
+  Play,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 // ThemeToggle removed for static landing page colors
 import BlueprintTower from '@/components/tower/BlueprintTower';
@@ -174,134 +177,148 @@ const LandingPage = () => {
         </div>
       </section>
 
-{/* 3. DOWNLOAD THE APP SECTION */}
-      <section className="min-h-screen flex flex-col items-center justify-center p-6 py-24 relative overflow-hidden" style={{ background: '#ffffff' }}>
-        {/* Background Elements */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(15,23,42,0.06) 1px, transparent 1px)', backgroundSize: '22px 22px', opacity: 0.08, zIndex: 0 }}></div>
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] blur-[150px] rounded-full" style={{ background: 'rgba(249, 115, 22, 0.08)' }}></div>
-        <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] blur-[150px] rounded-full" style={{ background: 'rgba(249, 115, 22, 0.06)' }}></div>
+      {/* 3. MOBILE APP SECTION */}
+      <section className="py-24 px-6 bg-white overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="flex-1 space-y-8 text-left">
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border" style={{ background: '#F8FAFC', borderColor: '#E2E8F0' }}>
+                <Smartphone size={14} style={{ color: '#F97316' }} />
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#64748B' }}>Now Available for Field Teams</span>
+              </div>
+              
+              <h2 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none" style={{ color: '#0F172A' }}>
+                Industrial <br />
+                <span style={{ color: '#F97316' }}>Mobility</span>
+              </h2>
+              
+              <p className="text-lg font-medium leading-relaxed max-w-xl" style={{ color: '#64748B' }}>
+                Stay connected to the site grid from anywhere. BharatBuild Mobile provides real-time telemetry, offline-first reporting, and automated geofence verification for your entire field workforce.
+              </p>
 
-        <div className="max-w-7xl w-full relative z-10">
-          {/* Section Header */}
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border mb-8 animate-fade-in shadow-sm" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
-              <Activity size={12} style={{ color: '#F97316' }} className="animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#64748B' }}>Mobile Command Center</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <span className="text-sm font-bold text-slate-700">Real-time Site Sync</span>
+                </div>
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <span className="text-sm font-bold text-slate-700">Offline DPR Mode</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4 pt-8">
+                <Button className="h-14 px-8 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center gap-3 transition-all hover:scale-[1.02]">
+                  <Smartphone size={20} />
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase font-bold opacity-70">Download on</div>
+                    <div className="text-sm font-black">App Store</div>
+                  </div>
+                </Button>
+                <Button className="h-14 px-8 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center gap-3 transition-all hover:scale-[1.02]">
+                  <Play size={20} fill="white" />
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase font-bold opacity-70">Get it on</div>
+                    <div className="text-sm font-black">Google Play</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 relative min-h-[600px] flex items-center justify-center">
+              <div className="absolute inset-0 bg-brand-orange/5 blur-[120px] rounded-full transform scale-75 animate-pulse"></div>
+              
+              {/* Technical HUD Overlays */}
+              <div className="absolute -top-10 -left-10 w-32 h-32 border-l border-t border-brand-orange/20 pointer-events-none hidden lg:block">
+                <div className="absolute top-2 left-2 text-[8px] font-mono text-brand-orange/40 uppercase tracking-[0.3em]">UI_MODE::MOBILE_SYNC</div>
+                <div className="absolute top-6 left-2 flex gap-1">
+                   <div className="w-1 h-3 bg-brand-orange/20"></div>
+                   <div className="w-1 h-2 bg-brand-orange/20"></div>
+                   <div className="w-1 h-4 bg-brand-orange/40"></div>
+                </div>
+              </div>
+
+              <div className="relative w-full max-w-[500px] h-[500px]">
+                {/* Main Phone (Portrait) */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[60%] z-20 animate-float">
+                  <div className="relative drop-shadow-[0_45px_45px_rgba(0,0,0,0.5)]">
+                    <Image 
+                      src="/img 2-portrait.png" 
+                      alt="BharatBuild Mobile Dashboard" 
+                      width={500} 
+                      height={1000}
+                      className="w-full h-auto rounded-[2.5rem]"
+                    />
+                  </div>
+                </div>
+
+                {/* Floating HUD Elements */}
+                <div className="absolute top-[15%] -right-8 bg-white/20 backdrop-blur-xl border border-white/30 p-4 rounded-2xl shadow-2xl animate-float [animation-delay:-3s] z-30 hidden md:block">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                      <span className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Active_Uplink</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-200/50 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-orange w-[88%] rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-[20%] -left-16 bg-[#0F172A]/90 backdrop-blur-md p-5 rounded-2xl shadow-2xl animate-float [animation-delay:-1.5s] z-30 hidden md:block border border-white/5">
+                  <div className="space-y-3">
+                    <div className="flex gap-1.5">
+                      {[1,2,3,4].map(i => <div key={i} className={`h-1.5 w-6 rounded-sm ${i < 4 ? 'bg-brand-orange' : 'bg-brand-orange/20'}`}></div>)}
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Grid Connectivity</div>
+                      <div className="text-xs font-black text-white italic tracking-tighter uppercase">Industrial_Session::Stable</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-32">
+            <div className="text-center mb-16">
+              <h3 className="text-sm font-black uppercase tracking-[0.4em] text-slate-400 mb-2">Core capabilities</h3>
+              <div className="w-12 h-1 bg-brand-orange mx-auto rounded-full"></div>
             </div>
             
-            <h2 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none mb-6" style={{ color: '#0F172A' }}>
-              Field Control <br />
-              <span style={{ color: '#F97316' }}>On The Go</span>
-            </h2>
-            <p className="text-xl font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: '#64748B' }}>
-              Full-spectrum site management from your mobile device. iOS and Android ready.
-            </p>
-          </div>
-
-          {/* Mobile Mockups */}
-          <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto mb-16">
-            {/* iOS Mockup */}
-            <div className="relative group">
-              <div className="absolute inset-0 blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, #F97316, #FB923C)' }}></div>
-              <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-[3rem] p-3 shadow-2xl transform group-hover:scale-105 transition-transform duration-500">
-                {/* Phone Frame */}
-                <div className="bg-white rounded-[2.5rem] overflow-hidden relative" style={{ aspectRatio: '9/19.5' }}>
-                  {/* Notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-10"></div>
-                  
-                  {/* Screenshot Placeholder */}
-                  <div className="w-full h-full flex items-center justify-center relative" style={{ background: 'linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)' }}>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
-                      <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: '#F97316' }}>
-                        <Construction size={40} style={{ color: '#ffffff' }} />
-                      </div>
-                      <div className="text-center">
-                        <h3 className="text-2xl font-black uppercase tracking-tight mb-2" style={{ color: '#0F172A' }}>BharatBuild</h3>
-                        <p className="text-sm font-medium" style={{ color: '#64748B' }}>iOS App Coming Soon</p>
-                      </div>
-                    </div>
-                  </div>
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <div className="text-center p-8 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 group" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-transform group-hover:scale-110" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
+                  <Zap size={32} style={{ color: '#F97316' }} />
                 </div>
+                <h3 className="text-xl font-black uppercase mb-3" style={{ color: '#0F172A' }}>Real-time Sync</h3>
+                <p className="text-sm font-medium leading-relaxed" style={{ color: '#64748B' }}>Instant updates across all devices, ensuring everyone on site is aligned with the latest telemetry.</p>
               </div>
-              
-              {/* Download Badge */}
-              <div className="mt-8 flex justify-center">
-                <button className="flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all hover:scale-105" style={{ background: '#0F172A', borderColor: '#0F172A' }}>
-                  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="white">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                  </svg>
-                  <div className="text-left">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#94A3B8' }}>Download on the</p>
-                    <p className="text-lg font-black uppercase tracking-tight" style={{ color: '#ffffff' }}>App Store</p>
-                  </div>
-                </button>
-              </div>
-            </div>
 
-            {/* Android Mockup */}
-            <div className="relative group">
-              <div className="absolute inset-0 blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, #F97316, #FB923C)' }}></div>
-              <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-[3rem] p-3 shadow-2xl transform group-hover:scale-105 transition-transform duration-500">
-                {/* Phone Frame */}
-                <div className="bg-white rounded-[2.5rem] overflow-hidden relative" style={{ aspectRatio: '9/19.5' }}>
-                  {/* Screenshot Placeholder */}
-                  <div className="w-full h-full flex items-center justify-center relative" style={{ background: 'linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)' }}>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
-                      <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: '#F97316' }}>
-                        <Construction size={40} style={{ color: '#ffffff' }} />
-                      </div>
-                      <div className="text-center">
-                        <h3 className="text-2xl font-black uppercase tracking-tight mb-2" style={{ color: '#0F172A' }}>BharatBuild</h3>
-                        <p className="text-sm font-medium" style={{ color: '#64748B' }}>Android App Coming Soon</p>
-                      </div>
-                    </div>
-                  </div>
+              <div className="text-center p-8 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 group" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-transform group-hover:scale-110" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
+                  <Layers size={32} style={{ color: '#F97316' }} />
                 </div>
+                <h3 className="text-xl font-black uppercase mb-3" style={{ color: '#0F172A' }}>Offline Ready</h3>
+                <p className="text-sm font-medium leading-relaxed" style={{ color: '#64748B' }}>Work flawlessly in remote sites. Sync automatically when connectivity is restored without data loss.</p>
               </div>
-              
-              {/* Download Badge */}
-              <div className="mt-8 flex justify-center">
-                <button className="flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all hover:scale-105" style={{ background: '#0F172A', borderColor: '#0F172A' }}>
-                  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="white">
-                    <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
-                  </svg>
-                  <div className="text-left">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#94A3B8' }}>Get it on</p>
-                    <p className="text-lg font-black uppercase tracking-tight" style={{ color: '#ffffff' }}>Google Play</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="text-center p-6 rounded-2xl border transition-all hover:shadow-lg" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
-                <Zap size={28} style={{ color: '#F97316' }} />
+              <div className="text-center p-8 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 group" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-transform group-hover:scale-110" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
+                  <ShieldCheck size={32} style={{ color: '#F97316' }} />
+                </div>
+                <h3 className="text-xl font-black uppercase mb-3" style={{ color: '#0F172A' }}>Secure Access</h3>
+                <p className="text-sm font-medium leading-relaxed" style={{ color: '#64748B' }}>Enterprise-grade security with encrypted local storage and biometric authentication support.</p>
               </div>
-              <h3 className="text-lg font-black uppercase mb-2" style={{ color: '#0F172A' }}>Real-time Sync</h3>
-              <p className="text-sm font-medium" style={{ color: '#64748B' }}>Instant updates across all devices</p>
-            </div>
-
-            <div className="text-center p-6 rounded-2xl border transition-all hover:shadow-lg" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
-                <Layers size={28} style={{ color: '#F97316' }} />
-              </div>
-              <h3 className="text-lg font-black uppercase mb-2" style={{ color: '#0F172A' }}>Offline Ready</h3>
-              <p className="text-sm font-medium" style={{ color: '#64748B' }}>Work without connectivity</p>
-            </div>
-
-            <div className="text-center p-6 rounded-2xl border transition-all hover:shadow-lg" style={{ background: '#ffffff', borderColor: '#E2E8F0' }}>
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(249, 115, 22, 0.1)' }}>
-                <ShieldCheck size={28} style={{ color: '#F97316' }} />
-              </div>
-              <h3 className="text-lg font-black uppercase mb-2" style={{ color: '#0F172A' }}>Secure Access</h3>
-              <p className="text-sm font-medium" style={{ color: '#64748B' }}>Enterprise-grade security</p>
             </div>
           </div>
         </div>
       </section>
+      
 
       {/* 4. FINAL CALL TO ACTION */}
       <section className="h-screen flex flex-col items-center justify-center p-6 relative z-20 overflow-hidden dot-grid" style={{ color: '#ffffff', background: '#0F172A' }}>
@@ -336,6 +353,11 @@ const LandingPage = () => {
           from { transform: rotate(360deg); }
           to { transform: rotate(0deg); }
         }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(1deg); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
         .animate-spin-slow { animation: spin-slow 20s linear infinite; }
         .animate-spin-reverse-slow { animation: spin-reverse-slow 25s linear infinite; }
       `}</style>
