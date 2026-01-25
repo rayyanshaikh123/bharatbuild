@@ -224,7 +224,7 @@ class JobDetailsScreen extends ConsumerWidget {
                 _sectionTitle(theme, 'requirements'.tr()),
                 const SizedBox(height: 16),
                 _requirementRow(Icons.people_alt_outlined, '${job['required_count']} workers needed'),
-                _requirementRow(Icons.calendar_month_outlined, 'Starting: ${job['request_date']?.toString().split('T')[0] ?? 'ASAP'}'),
+                _requirementRow(Icons.calendar_month_outlined, 'Starting: ${job['request_date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(job['request_date'].toString())) : 'ASAP'}'),
                 
                 const SizedBox(height: 100), // Padding for bottom FAB
               ],
@@ -321,10 +321,11 @@ class JobDetailsScreen extends ConsumerWidget {
         // Clean up error message
         String msg = e.toString();
         if (msg.contains('Exception:')) {
-          msg = msg.split('Exception:').last.trim();
+          msg = msg.replaceAll('Exception:', '').trim();
         }
         if (msg.contains(':')) {
-           msg = msg.split(':').last.trim();
+           final parts = msg.split(':');
+           msg = parts.length > 1 ? parts.last.trim() : msg.trim();
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

@@ -28,12 +28,24 @@ router.post("/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
 
-    await pool.query(
-      "INSERT INTO qa_engineers (name, email, phone, password_hash) VALUES ($1, $2, $3, $4)",
+    const newUser = await pool.query(
+      "INSERT INTO qa_engineers (name, email, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, role",
       [name, email, phone, hash],
     );
 
-    res.status(201).json({ message: "QA Engineer registered successfully" });
+    const user = newUser.rows[0];
+
+    req.login(user, (err) => {
+      if (err) {
+        console.error(err);
+        return res
+          .status(500)
+          .json({ error: "Login failed after registration" });
+      }
+      res
+        .status(201)
+        .json({ message: "QA Engineer registered successfully", user });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -45,6 +57,7 @@ router.post(
   "/login",
   passport.authenticate("qa-engineer-local"),
   (req, res) => {
+    console.log("QA Engineer logged in:", req.user);
     res.json({ message: "Login successful", user: req.user });
   },
 );

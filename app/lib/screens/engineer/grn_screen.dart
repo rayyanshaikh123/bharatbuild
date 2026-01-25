@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/current_project_provider.dart';
 import '../../services/auth_service.dart';
@@ -126,6 +127,18 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
         throw Exception('No project selected');
       }
 
+      // Get current location for geofence validation
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (e) {
+        // Location fetch failed, but continue without coordinates (backend will skip validation)
+        print('Failed to get location: $e');
+      }
+
       final auth = ref.read(authServiceProvider);
       
       // Prepare received items for backend
@@ -148,6 +161,8 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
         remarks: _remarksController.text.trim().isEmpty ? null : _remarksController.text.trim(),
         billImage: File(_billImage!.path),
         proofImage: File(_proofImage!.path),
+        latitude: position?.latitude,
+        longitude: position?.longitude,
       );
 
       if (!mounted) return;
@@ -158,9 +173,15 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
+      
+      String errorMessage = 'Error: ${e.toString()}';
+      if (e.toString().contains('OUTSIDE_PROJECT_GEOFENCE')) {
+        errorMessage = 'You must be inside the project site to create GRN entries';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${e.toString()}'),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
         ),
       );

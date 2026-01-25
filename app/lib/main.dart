@@ -38,6 +38,9 @@ import 'screens/engineer/tasks_screen.dart';
 
 import 'screens/engineer/my_organizations_page.dart';
 import 'screens/engineer/my_projects_page.dart';
+import 'screens/qa/qa_flow.dart';
+import 'screens/qa/qa_organization_list_screen.dart';
+import 'screens/qa/qa_join_project_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -98,6 +101,7 @@ class MyApp extends ConsumerWidget {
           '/labour-flow': (_) => const LabourFlowScreen(),
           '/engineer-edit-profile': (_) => const EditProfileScreen(),
           '/engineer-settings': (_) => const AccountSettingsScreen(),
+          '/qa-flow': (_) => const QAFlowScreen(),
           '/engineer-notifications': (_) => const NotificationsScreen(),
           '/notifications': (_) => const NotificationsScreen(),
           '/engineer-labour-requests': (_) => const LabourRequestsScreen(),
@@ -110,6 +114,9 @@ class MyApp extends ConsumerWidget {
           '/engineer-tasks': (_) => const TasksScreen(),
           '/engineer-my-organizations': (_) => const MyOrganizationsScreen(),
           '/engineer-my-projects': (_) => const MyProjectsScreen(),
+          '/qa-flow': (_) => const QAFlowScreen(),
+          '/qa-organization': (_) => const QAOrganizationListScreen(),
+          '/qa-join-project': (_) => const QAJoinProjectScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify-email') {

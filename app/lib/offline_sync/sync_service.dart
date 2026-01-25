@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../storage/sqlite_service.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/attendance_provider.dart';
 
 final syncServiceProvider = Provider((ref) => SyncService(ref));
 
@@ -72,11 +73,13 @@ class SyncService {
   }
 
   Future<void> _refreshAfterSync() async {
-    // Invalidate relevant providers to pull fresh data from backend
-    // This ensures local caches are updated with official backend IDs/State
-    // ref.invalidate(availableJobsProvider);
-    // ref.invalidate(todayAttendanceProvider);
-    // etc.
+    // Invalidate providers to force refresh from backend
+    _ref.invalidate(liveStatusProvider);
+    _ref.invalidate(attendanceHistoryProvider);
+    _ref.invalidate(todayAttendanceProvider);
+    
+    // Also refresh dangerous work service related if needed, though they are usually methods not providers
+    // But invalidating user/auth state might be good if we have it
   }
 
   Future<int> performManualSync() async {

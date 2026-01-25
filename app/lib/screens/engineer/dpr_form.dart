@@ -74,23 +74,11 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
     try {
       final project = ref.read(currentProjectProvider);
       
-      // 1. Submit Material Usage (Parallel)
-      for (var mat in _materialUsage) {
-        if (project != null) {
-          await ref.read(recordMovementProvider({
-            'project_id': project['project_id'] ?? project['id'],
-            'material_name': mat['material_name'],
-            'category': 'Construction', // Simplified
-            'quantity': mat['quantity'],
-            'unit': mat['unit'] ?? 'units',
-            'movement_type': 'OUT',
-            'source': 'DPR_CONSUMPTION',
-            'remarks': 'Used in DPR: ${_titleController.text}',
-          }).future);
-        }
-      }
+      // NOTE: Material usage is now sent with DPR payload
+      // Stock will be deducted when Manager approves the DPR
+      // (Removed separate inventory recording to avoid double deduction)
 
-      // 2. Submit DPR
+      // 2. Submit DPR with material_usage
       String? base64Image;
       String? mimeType;
       
@@ -139,6 +127,12 @@ class _DPRFormScreenState extends ConsumerState<DPRFormScreen> {
         'report_image': base64Image,
         'report_image_mime': mimeType,
         'items': _reportedItems,
+        // NEW: Add material_usage to DPR payload
+        'material_usage': _materialUsage.map((mat) => {
+          'material_name': mat['material_name'],
+          'quantity_used': mat['quantity'],
+          'unit': mat['unit'] ?? 'units',
+        }).toList(),
       };
 
       final success = await ref.read(createDPRProvider(payload).future);

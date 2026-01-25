@@ -62,7 +62,13 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
       report_image,
       report_image_mime,
       items, // array of { plan_item_id, quantity_done, remarks }
+      material_usage, // NEW: array of { material_name, quantity_used, unit }
     } = req.body;
+
+    // Validate material_usage format if provided
+    if (material_usage && !Array.isArray(material_usage)) {
+      return res.status(400).json({ error: "material_usage must be an array" });
+    }
 
     // Check if engineer is ACTIVE in project
     const access = await verifyEngineerAccess(engineerId, projectId);
@@ -76,8 +82,8 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
 
     const result = await client.query(
       `INSERT INTO dprs (project_id, site_engineer_id, title, description, 
-       plan_id, plan_item_id, report_date, report_image, report_image_mime)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       plan_id, plan_item_id, report_date, report_image, report_image_mime, material_usage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (project_id, site_engineer_id, report_date) 
        DO UPDATE SET 
          title = EXCLUDED.title,
@@ -86,6 +92,7 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
          plan_item_id = EXCLUDED.plan_item_id,
          report_image = EXCLUDED.report_image,
          report_image_mime = EXCLUDED.report_image_mime,
+         material_usage = EXCLUDED.material_usage,
          status = 'PENDING',
          submitted_at = NOW()
        RETURNING *`,
@@ -99,6 +106,7 @@ router.post("/projects/:projectId/dprs", engineerCheck, async (req, res) => {
         report_date,
         report_image ? Buffer.from(report_image, "base64") : null,
         report_image_mime || null,
+        JSON.stringify(material_usage || []), // NEW: Store material_usage
       ],
     );
 

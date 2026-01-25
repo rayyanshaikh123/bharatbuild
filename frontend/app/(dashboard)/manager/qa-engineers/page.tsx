@@ -1,223 +1,115 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Shield, Loader2, ArrowLeft, Briefcase, Plus, X, Check, Trash2, Mail, Phone } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  managerQAEngineerRequests,
-  managerOrganization,
-  managerProjects,
-  QAEngineerRequest,
-  ProjectQAEngineer,
-  Project
-} from "@/lib/api/manager";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DataTable, Column } from "@/components/ui/DataTable";
+  Users,
+  Loader2,
+  ArrowLeft,
+  Mail,
+  Phone,
+  Check,
+  X,
+  Clock,
+  CheckCircle2,
+  Filter,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Link from "next/link";
+import { managerOrganization, ManagerOrgRequest } from "@/lib/api/manager";
+import { managerQARequests, QAProjectRequest } from "@/lib/api/manager-qa";
 
 export default function ManagerQAEngineersPage() {
-  const [activeTab, setActiveTab] = useState<"requests" | "assignments">("requests");
-  const [pendingRequests, setPendingRequests] = useState<QAEngineerRequest[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [projectEngineers, setProjectEngineers] = useState<ProjectQAEngineer[]>([]);
-  
-  // Loading states
+  const [approvedOrg, setApprovedOrg] = useState<ManagerOrgRequest | null>(
+    null,
+  );
+  const [requests, setRequests] = useState<QAProjectRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Stats
-  const [approvedQAs, setApprovedQAs] = useState<QAEngineerRequest[]>([]); // For assignment dropdown
-
-  const pendingColumns: Column<QAEngineerRequest>[] = useMemo(
-    () => [
-      {
-        key: "name",
-        label: "Engineer Name",
-        sortable: true,
-        render: (value: string) => <span className="font-semibold">{value}</span>,
-      },
-      {
-        key: "email",
-        label: "Contact",
-        render: (_: any, row: QAEngineerRequest) => (
-            <div className="flex flex-col text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Mail size={12}/> {row.email}</span>
-                {row.phone && <span className="flex items-center gap-1"><Phone size={12}/> {row.phone}</span>}
-            </div>
-        )
-      },
-      {
-        key: "organization_name",
-        label: "Organization",
-        render: (value: string) => <span className="text-sm">{value}</span>
-      },
-      {
-          key: "id",
-          label: "Actions",
-          width: "180px",
-          render: (id: string) => (
-            <div className="flex gap-2">
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-red-500/30 text-red-600 hover:bg-red-500/10 h-8"
-                    disabled={isProcessing === id}
-                    onClick={() => handleDecision(id, "REJECT")}
-                >
-                    <X size={14} className="mr-1" /> Reject
-                </Button>
-                <Button
-                    size="sm"
-                    className="h-8"
-                    disabled={isProcessing === id}
-                    onClick={() => handleDecision(id, "APPROVE")}
-                >
-                    {isProcessing === id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check size={14} className="mr-1" /> Approve</>}
-                </Button>
-            </div>
-          )
-      }
-    ],
-    [isProcessing]
-  );
-
-  const assignedColumns: Column<ProjectQAEngineer>[] = useMemo(
-      () => [
-        {
-          key: "name",
-          label: "Engineer",
-          sortable: true,
-          render: (value: string) => (
-             <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                     <Shield size={14} />
-                 </div>
-                 <span className="font-medium">{value}</span>
-             </div>
-          )
-        },
-        {
-          key: "assigned_at",
-          label: "Assigned Date",
-          sortable: true,
-          render: (value: string) => <span className="text-sm">{new Date(value).toLocaleDateString()}</span>
-        },
-        {
-            key: "qa_engineer_id",
-            label: "Actions",
-            width: "100px",
-            render: (id: string, row: ProjectQAEngineer) => (
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={isProcessing === id}
-                    onClick={() => handleRemoveFromProject(id)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                >
-                    {isProcessing === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={16} />}
-                </Button>
-            )
-        }
-      ],
-      [isProcessing]
-  );
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (selectedProject && activeTab === "assignments") {
-      fetchProjectEngineers(selectedProject);
-    }
-  }, [selectedProject, activeTab]);
-
-  const fetchInitialData = async () => {
+  const fetchData = async () => {
     try {
       setIsLoading(true);
-      // 1. Get Organization
-      const orgRes = await managerOrganization.getMyOrganizations();
-      if (orgRes.organizations && orgRes.organizations.length > 0) {
-        const orgId = orgRes.organizations[0].org_id;
 
-        // 2. Get Pending Requests
-        const requestsRes = await managerQAEngineerRequests.getOrgPending();
-        setPendingRequests(requestsRes.pending_engineers || []);
+      const reqsRes = await managerOrganization.getMyRequests();
+      const approved = reqsRes.requests?.find((r) => r.status === "APPROVED");
 
-        // 3. Get Projects (for assignments tab)
-        const projectsRes = await managerProjects.getMyProjects(orgId);
-        setProjects(projectsRes.projects || []);
-        if (projectsRes.projects.length > 0) {
-          setSelectedProject(projectsRes.projects[0].id);
-        }
+      if (approved) {
+        setApprovedOrg(approved);
+
+        const qaReqsRes = await managerQARequests.getRequests();
+        setRequests(qaReqsRes.requests || []);
       }
     } catch (err) {
-      console.error("Failed to fetch data:", err);
+      console.error("Failed to fetch:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchProjectEngineers = async (projectId: string) => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleDecision = async (
+    requestId: string,
+    status: "APPROVED" | "REJECTED",
+  ) => {
+    setProcessingId(requestId);
     try {
-      setIsLoadingProject(true);
-      const res = await managerQAEngineerRequests.getProjectEngineers(projectId);
-      setProjectEngineers(res.qa_engineers || []);
+      await managerQARequests.updateStatus(requestId, status);
+      fetchData();
     } catch (err) {
-      console.error("Failed to fetch project engineers:", err);
+      console.error("Failed to update:", err);
     } finally {
-      setIsLoadingProject(false);
+      setProcessingId(null);
     }
   };
 
-  const handleOrgDecision = async (requestId: string, action: "APPROVE" | "REJECT") => {
-    try {
-      setIsProcessing(requestId);
-      await managerQAEngineerRequests.updateOrgStatus(requestId, action);
-      // Refresh list
-      const res = await managerQAEngineerRequests.getOrgPending();
-      setPendingRequests(res.pending_engineers || []);
-    } catch (err) {
-      console.error("Failed to update status:", err);
-    } finally {
-      setIsProcessing(null);
-    }
-  };
+  const filteredRequests = requests.filter((req) => {
+    if (statusFilter === "all") return true;
+    return req.status === statusFilter;
+  });
 
-  const handleAssignToProject = async (qaEngineerId: string) => {
-    if (!selectedProject) return;
-    try {
-      setIsProcessing("assign");
-      await managerQAEngineerRequests.assignToProject(selectedProject, qaEngineerId);
-      fetchProjectEngineers(selectedProject);
-    } catch (err) {
-      console.error("Failed to assign engineer:", err);
-    } finally {
-      setIsProcessing(null);
-    }
-  };
-
-  const handleRemoveFromProject = async (qaEngineerId: string) => {
-    if (!selectedProject) return;
-    try {
-      setIsProcessing(qaEngineerId);
-      await managerQAEngineerRequests.removeFromProject(selectedProject, qaEngineerId);
-      fetchProjectEngineers(selectedProject);
-    } catch (err) {
-      console.error("Failed to remove engineer:", err);
-    } finally {
-      setIsProcessing(null);
-    }
-  };
+  const pendingRequests = filteredRequests.filter(
+    (r) => r.status === "PENDING",
+  );
+  const otherRequests = filteredRequests.filter((r) => r.status !== "PENDING");
 
   if (isLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!approvedOrg) {
+    return (
+      <div className="text-center py-12">
+        <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-foreground">Not Approved</h2>
+        <p className="text-muted-foreground mt-2">
+          Join an organization first.
+        </p>
+        <Link href="/manager">
+          <Button className="mt-4">Go to Dashboard</Button>
+        </Link>
       </div>
     );
   }
@@ -231,157 +123,177 @@ export default function ManagerQAEngineersPage() {
             <ArrowLeft size={16} className="mr-2" /> Back
           </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-black tracking-tight text-foreground uppercase italic">
             QA <span className="text-primary">Engineers</span>
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage organization requests and project assignments
+            Approve project join requests from QA Engineers
           </p>
         </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Requests</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-border pb-1">
-        <button
-          onClick={() => setActiveTab("requests")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "requests"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Organization Requests
-          {pendingRequests.length > 0 && (
-            <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
-              {pendingRequests.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("assignments")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "assignments"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Project Assignments
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        {activeTab === "requests" ? (
-           <>
-              <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
-                Pending Approval ({pendingRequests.length})
-              </h3>
-              <DataTable
-                 data={pendingRequests}
-                 columns={pendingColumns}
-                 searchable
-                 searchKeys={["name", "email", "organization_name"]}
-                 emptyMessage="No pending requests found."
-              />
-           </>
-        ) : (
-           <div className="space-y-6">
-            {/* Project Selector */}
-            {projects.length > 0 && (
-                <div className="bg-muted/30 border border-border rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Briefcase className="text-muted-foreground" size={20} />
-                    <span className="font-semibold text-foreground">Select Project:</span>
-                    <Select value={selectedProject} onValueChange={setSelectedProject}>
-                    <SelectTrigger className="w-[200px]">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                </div>
-                
-                <AssignEngineerDialog 
-                    onAssign={handleAssignToProject} 
-                    isProcessing={isProcessing === "assign"}
-                />
-                </div>
-            )}
-
-            <div>
-                <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
-                Assigned Engineers ({projectEngineers.length})
-                </h3>
-                {isLoadingProject ? (
-                    <div className="flex justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                ) : (
-                    <DataTable
-                        data={projectEngineers}
-                        columns={assignedColumns}
-                        searchable
-                        searchKeys={["name", "email"]}
-                        emptyMessage="No QA Engineers assigned to this project."
-                    />
-                )}
+      {/* Pending Requests */}
+      {pendingRequests.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-600">
+              <Clock size={20} />
             </div>
-           </div>
-        )}
-      </div>
-    </div>
-  );
-
-  function handleDecision(id: string, action: "APPROVE" | "REJECT") {
-    handleOrgDecision(id, action);
-  }
-
-  // Define handleOrgDecision if it wasn't captured in previous context or ensure it is accessible. 
-  // It was defined in the component scope in previous versions. 
-  // We need to make sure we didn't remove it or scope it out.
-  // Ideally, handleDecision calls the handleOrgDecision defined in the component.
-}
-
-// Dialog Component
-function AssignEngineerDialog({ onAssign, isProcessing }: { onAssign: (id: string) => void, isProcessing: boolean }) {
-  const [qaId, setQaId] = useState("");
-  
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus size={16} className="mr-2" /> Assign Engineer
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Assign QA Engineer</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>QA Engineer ID</Label>
-            <input 
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Enter QA Engineer ID"
-              value={qaId} 
-              onChange={(e) => setQaId(e.target.value)} 
-            />
-            <p className="text-xs text-muted-foreground">Enter the ID of an approved QA Engineer from your organization.</p>
+            <div>
+              <h3 className="font-bold text-lg text-foreground">
+                Pending Requests
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {pendingRequests.length} awaiting your review
+              </p>
+            </div>
           </div>
-          <Button 
-            className="w-full" 
-            disabled={!qaId || isProcessing}
-            onClick={() => onAssign(qaId)}
-          >
-            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Assign to Project
-          </Button>
+
+          <div className="space-y-3">
+            {pendingRequests.map((request) => (
+              <div
+                key={request.id}
+                className="bg-background border border-border rounded-xl p-4 hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">
+                      {request.name}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Project:{" "}
+                      <span className="font-medium text-foreground">
+                        {request.project_name}
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Mail size={14} /> {request.email}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Phone size={14} /> {request.phone}
+                      </span>
+                      <span className="text-xs bg-muted px-2 py-1 rounded">
+                        Requested:{" "}
+                        {new Date(request.requested_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-500 text-green-600 hover:bg-green-50"
+                      onClick={() =>
+                        handleDecision(request.request_id, "APPROVED")
+                      }
+                      disabled={processingId === request.request_id}
+                    >
+                      {processingId === request.request_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Check size={16} className="mr-1" /> Approve
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500 text-red-600 hover:bg-red-50"
+                      onClick={() =>
+                        handleDecision(request.request_id, "REJECTED")
+                      }
+                      disabled={processingId === request.request_id}
+                    >
+                      <X size={16} className="mr-1" /> Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+
+      {/* Other Requests Table */}
+      {otherRequests.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600">
+              <CheckCircle2 size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-foreground">
+                Request History
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Approved and rejected requests
+              </p>
+            </div>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {otherRequests.map((request) => (
+                <TableRow key={request.id}>
+                  <TableCell className="font-medium">{request.name}</TableCell>
+                  <TableCell>{request.email}</TableCell>
+                  <TableCell>{request.project_name}</TableCell>
+                  <TableCell>
+                    {new Date(request.requested_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                        request.status === "APPROVED"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {request.status}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {filteredRequests.length === 0 && (
+        <div className="text-center py-12 bg-card border border-border rounded-2xl">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground">No Requests</h2>
+          <p className="text-muted-foreground mt-2">
+            {statusFilter === "all"
+              ? "No QA Engineer project requests yet"
+              : `No ${statusFilter.toLowerCase()} requests`}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

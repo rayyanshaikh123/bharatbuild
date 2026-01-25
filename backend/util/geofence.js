@@ -124,7 +124,12 @@ async function validateGeofence(pool, projectId, latitude, longitude) {
 
     // Support POLYGON type geofencing
     if (type === "POLYGON" && geofence.polygon) {
-      const dist = distanceToPolygon(latitude, longitude, geofence.polygon);
+      // Apply India-specific Lat/Lng swap heuristic for robustness
+      const polygon = geofence.polygon.map((p) => {
+        if (p[0] > 50 && p[1] < 45) return [p[1], p[0]]; // [lng, lat] -> [lat, lon]
+        return p;
+      });
+      const dist = distanceToPolygon(latitude, longitude, polygon);
       return {
         isValid: dist <= GRACE_BUFFER,
         distance: Math.round(Math.max(0, dist)),

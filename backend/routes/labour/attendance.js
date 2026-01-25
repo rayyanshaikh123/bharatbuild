@@ -8,6 +8,7 @@ const {
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
 const { checkCategoryCapacity } = require("../../util/wageCalculator");
+const { getISTDate, getISTHour } = require("../../util/dateUtils");
 
 /* ---------------- CHECK-IN ---------------- */
 router.post("/check-in", labourCheck, async (req, res) => {
@@ -97,38 +98,15 @@ router.post("/check-in", labourCheck, async (req, res) => {
       [project_id],
     );
 
-    if (projectRes.rows.length > 0) {
-      const projectCheckInTime = projectRes.rows[0].check_in_time;
+    // 4. Check attendance creation time window (Starting at 4 AM IST)
+    const currentHour = getISTHour();
+    const today = getISTDate();
 
-      if (projectCheckInTime) {
-        // Parse project check-in time (format: HH:MM:SS)
-        const [checkInHour, checkInMinute] = projectCheckInTime
-          .split(":")
-          .map(Number);
-
-        // Get current time in IST
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-
-        // Calculate allowed check-in time (project check-in + 2 hours)
-        let allowedHour = checkInHour + 2;
-        let allowedMinute = checkInMinute;
-
-        // Convert current time and allowed time to minutes for comparison
-        const currentTimeInMinutes = currentHour * 60 + currentMinute;
-        const allowedTimeInMinutes = allowedHour * 60 + allowedMinute;
-
-        if (currentTimeInMinutes < allowedTimeInMinutes) {
-          const allowedTimeStr = `${String(allowedHour).padStart(2, "0")}:${String(allowedMinute).padStart(2, "0")}`;
-          return res.status(403).json({
-            error: "Attendance creation not allowed yet",
-            message: `Attendance can only be created after ${allowedTimeStr}`,
-            project_check_in_time: projectCheckInTime,
-            allowed_from: allowedTimeStr,
-          });
-        }
-      }
+    if (currentHour < 4) {
+      return res.status(403).json({
+        error: "Attendance creation not allowed yet",
+        message: "Attendance can only be created after 04:00 AM",
+      });
     }
 
     // 5. Check if project break is active
@@ -160,8 +138,8 @@ router.post("/check-in", labourCheck, async (req, res) => {
     // GEO-FENCE ATTENDANCE: Auto-approved, is_manual=false
     let attendanceRes = await client.query(
       `SELECT id, entry_exit_count, max_allowed_exits FROM attendance 
-             WHERE labour_id = $1 AND project_id = $2 AND attendance_date = CURRENT_DATE`,
-      [labourId, project_id],
+             WHERE labour_id = $1 AND project_id = $2 AND attendance_date = $3`,
+      [labourId, project_id, today],
     );
 
     let attendanceId;
@@ -170,9 +148,9 @@ router.post("/check-in", labourCheck, async (req, res) => {
       // Create new attendance record - AUTO-APPROVED for geo-fence check-in
       const newAttendance = await client.query(
         `INSERT INTO attendance (labour_id, project_id, attendance_date, status, is_manual, last_event_at)
-               VALUES ($1, $2, CURRENT_DATE, 'APPROVED', false, CURRENT_TIMESTAMP)
+               VALUES ($1, $2, $3, 'APPROVED', false, CURRENT_TIMESTAMP)
                RETURNING id, entry_exit_count, max_allowed_exits`,
-        [labourId, project_id],
+        [labourId, project_id, today],
       );
       attendanceId = newAttendance.rows[0].id;
       isNewAttendance = true;
@@ -433,6 +411,7 @@ router.get("/history", labourCheck, async (req, res) => {
 router.get("/today", labourCheck, async (req, res) => {
   try {
     const labourId = req.user.id;
+    const today = getISTDate();
     const result = await pool.query(
       `SELECT a.id, a.project_id, a.labour_id, a.attendance_date, a.status,
               a.work_hours, a.entry_exit_count, a.max_allowed_exits,
@@ -449,9 +428,9 @@ router.get("/today", labourCheck, async (req, res) => {
               ) as active_session
        FROM attendance a
        JOIN projects p ON a.project_id = p.id
-       WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE
+       WHERE a.labour_id = $1 AND a.attendance_date = $2
        ORDER BY a.id DESC LIMIT 1`,
-      [labourId],
+      [labourId, today],
     );
     res.json({ attendance: result.rows[0] || null });
   } catch (err) {
@@ -471,13 +450,14 @@ router.post("/track", labourCheck, async (req, res) => {
     }
 
     // 1. Find active attendance
+    const today = getISTDate();
     const attendanceRes = await pool.query(
       `SELECT a.*, p.org_id 
        FROM attendance a
        JOIN projects p ON a.project_id = p.id
-       WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE 
+       WHERE a.labour_id = $1 AND a.attendance_date = $2 
        ORDER BY a.id DESC LIMIT 1`,
-      [labourId],
+      [labourId, today],
     );
 
     if (attendanceRes.rows.length === 0) {
@@ -688,9 +668,11 @@ router.get("/live-status", labourCheck, async (req, res) => {
   try {
     const labourId = req.user.id;
 
+    const today = getISTDate();
     const result = await pool.query(
       `SELECT a.id, a.project_id, a.work_hours, a.is_currently_breached, a.geofence_breach_count,
               p.name as project_name, p.geofence, p.geofence_radius,
+              p.check_in_time as shift_check_in, p.check_out_time as shift_check_out,
               l.skill_type, l.categories,
               (
                 SELECT hourly_rate FROM wage_rates wr 
@@ -712,9 +694,9 @@ router.get("/live-status", labourCheck, async (req, res) => {
        FROM attendance a
        JOIN projects p ON a.project_id = p.id
        JOIN labours l ON a.labour_id = l.id
-       WHERE a.labour_id = $1 AND a.attendance_date = CURRENT_DATE
+       WHERE a.labour_id = $1 AND a.attendance_date = $2
        ORDER BY a.id DESC LIMIT 1`,
-      [labourId],
+      [labourId, today],
     );
 
     if (result.rows.length === 0) {
@@ -739,13 +721,21 @@ router.get("/live-status", labourCheck, async (req, res) => {
 
     res.json({
       status: data.current_session_start ? "WORKING" : "ON_BREAK",
+      project_id: data.project_id,
       project_name: data.project_name,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      geofence: data.geofence,
+      geofence_radius: data.geofence_radius,
       is_inside: !data.is_currently_breached,
       breach_count: data.geofence_breach_count,
       work_hours_today: totalHours.toFixed(2),
       estimated_wages: estimatedWages,
       hourly_rate: hourlyRate,
       session_start: data.current_session_start,
+      check_in: data.current_session_start, // for compatibility
+      shift_start: data.shift_check_in,
+      shift_end: data.shift_check_out,
     });
   } catch (err) {
     console.error(err);

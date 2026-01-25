@@ -13,8 +13,19 @@ class ToolRequestScanner extends ConsumerStatefulWidget {
 }
 
 class _ToolRequestScannerState extends ConsumerState<ToolRequestScanner> {
-  final MobileScannerController _controller = MobileScannerController();
+  final MobileScannerController _controller = MobileScannerController(
+    autoStart: false,
+  );
   bool _isScanning = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start camera after a short delay to allow UI to settle
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _controller.start();
+    });
+  }
 
   @override
   void dispose() {
@@ -32,7 +43,7 @@ class _ToolRequestScannerState extends ConsumerState<ToolRequestScanner> {
     if (code == null || code.isEmpty) return;
 
     setState(() => _isScanning = false);
-    _controller.stop();
+    // _controller.stop(); // Don't stop here, let dispose handle it to prevent black screen
 
     try {
       showDialog(
@@ -95,7 +106,10 @@ class _ToolRequestScannerState extends ConsumerState<ToolRequestScanner> {
                 onPressed: () {
                   Navigator.pop(context);
                   setState(() => _isScanning = true);
-                  _controller.start();
+                  // Add delay to prevent camera resource conflict
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    _controller.start();
+                  });
                 },
                 child: const Text('Try Again'),
               ),
@@ -122,6 +136,9 @@ class _ToolRequestScannerState extends ConsumerState<ToolRequestScanner> {
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              return Container(color: Colors.black);
+            },
           ),
           // Overlay
           Center(

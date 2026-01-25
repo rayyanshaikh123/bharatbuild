@@ -4,6 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../services/dangerous_work_service.dart';
 import '../../providers/attendance_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
+import '../../providers/auth_providers.dart';
 
 class DangerousWorkRequestScreen extends ConsumerStatefulWidget {
   const DangerousWorkRequestScreen({super.key});
@@ -18,6 +20,8 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
   List<dynamic> _tasks = [];
   List<dynamic> _myRequests = [];
   Map<String, dynamic>? _activeOtp;
+  Map<String, dynamic>? _selectedProject;
+  List<dynamic> _availableProjects = [];
 
   @override
   void initState() {
@@ -28,16 +32,46 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
+      final service = ref.read(dangerousWorkServiceProvider);
+      final authService = ref.read(authServiceProvider);
+      
+      // 1. Try to get project from live status
       final status = ref.read(liveStatusProvider).value;
-      if (status == null || status['project_id'] == null) {
-        throw Exception('No active project found');
+      String? projectId = status?['project_id']?.toString();
+
+      // 2. If no live project, fetch all projects
+      if (projectId == null) {
+        final projectsRes = await authService.getAllProjects(); // Assuming this returns {projects: []}
+        final projects = projectsRes['projects'] as List<dynamic>;
+        
+        if (mounted) {
+          setState(() {
+            _availableProjects = projects;
+            if (_selectedProject == null && projects.isNotEmpty) {
+              _selectedProject = projects.first;
+              projectId = _selectedProject!['id'].toString();
+            } else if (_selectedProject != null) {
+              projectId = _selectedProject!['id'].toString();
+            }
+          });
+        }
+      } else {
+        // If live status implies a project, use it but also fetch details if possible
+        if (mounted && _selectedProject == null) {
+           setState(() {
+             _selectedProject = {'id': projectId, 'name': status?['project_name'] ?? 'Current Site'};
+           });
+        }
       }
 
-      final projectId = status['project_id'].toString();
-      final service = ref.read(dangerousWorkServiceProvider);
-      
-      final tasks = await service.getAvailableTasks(projectId);
-      final myRequests = await service.getMyRequests(projectId);
+      if (projectId == null) {
+        // Still no project?
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final tasks = await service.getAvailableTasks(projectId!);
+      final myRequests = await service.getMyRequests(projectId!);
 
       if (mounted) {
         setState(() {
@@ -49,7 +83,10 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        // Only show error if it's not just "No active project"
+        if (!e.toString().contains("No active project")) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
       }
     }
   }
@@ -59,8 +96,14 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
     
     setState(() => _isLoading = true);
     try {
-      final status = ref.read(liveStatusProvider).value;
-      final projectId = status!['project_id'].toString();
+      String? projectId = _selectedProject?['id']?.toString();
+      if (projectId == null) {
+         final status = ref.read(liveStatusProvider).value;
+         projectId = status?['project_id']?.toString();
+      }
+      
+      if (projectId == null) return;
+
       final service = ref.read(dangerousWorkServiceProvider);
 
       await service.createRequest(_selectedTaskId!, projectId);
@@ -203,6 +246,8 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildProjectSelector(theme),
+                const SizedBox(height: 24),
                 _buildTaskSelection(theme),
                 const SizedBox(height: 32),
                 _buildMyRequestsList(theme),
@@ -334,6 +379,62 @@ class _DangerousWorkRequestScreenState extends ConsumerState<DangerousWorkReques
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildProjectSelector(ThemeData theme) {
+    if (_availableProjects.isEmpty && _selectedProject != null) {
+      // Just show current project info if no list fetched (means live status used)
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on, color: Colors.green),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Current Active Site', style: TextStyle(color: Colors.green[700], fontSize: 12)),
+                  Text(_selectedProject!['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_availableProjects.isEmpty) return const SizedBox.shrink();
+
+    return DropdownButtonFormField<String>(
+      value: _selectedProject?['id']?.toString(),
+      hint: const Text('Select Construction Site'),
+      items: _availableProjects.map<DropdownMenuItem<String>>((p) => DropdownMenuItem(
+        value: p['id'].toString(),
+        child: Text(p['name']),
+      )).toList(),
+      onChanged: (val) {
+        if (val == null) return;
+        final proj = _availableProjects.firstWhere((p) => p['id'].toString() == val, orElse: () => null);
+        if (proj != null) {
+          setState(() {
+            _selectedProject = proj;
+          });
+          _loadData(); // Reload tasks for new project
+        }
+      },
+      decoration: InputDecoration(
+        labelText: 'Construction Site',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: theme.cardColor,
+      ),
     );
   }
 

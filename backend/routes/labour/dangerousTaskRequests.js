@@ -28,16 +28,37 @@ router.post("/", labourCheck, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Verify labour is assigned to this project
+    console.log(
+      `[DangerousTaskReq] Checking assignment for Labour: ${labourId}, Project: ${projectId}`,
+    );
+
+    // Verify labour is assigned to this project via labour_request_participants
     const labourProjectCheck = await client.query(
-      `SELECT pl.id 
-       FROM project_labours pl
-       WHERE pl.project_id = $1 AND pl.labour_id = $2 AND pl.status = 'APPROVED'`,
+      `SELECT lrp.id, lrp.status 
+       FROM labour_request_participants lrp
+       JOIN labour_requests lr ON lrp.labour_request_id = lr.id
+       WHERE lr.project_id = $1 AND lrp.labour_id = $2`,
       [projectId, labourId],
     );
 
-    if (labourProjectCheck.rows.length === 0) {
+    console.log(
+      `[DangerousTaskReq] Found ${labourProjectCheck.rows.length} assignment records.`,
+    );
+    if (labourProjectCheck.rows.length > 0) {
+      console.log(
+        `[DangerousTaskReq] First record status: ${labourProjectCheck.rows[0].status}`,
+      );
+    }
+
+    const authorizedRecord = labourProjectCheck.rows.find((r) =>
+      ["APPROVED", "ACTIVE", "PENDING"].includes(r.status),
+    );
+
+    if (!authorizedRecord) {
       await client.query("ROLLBACK");
+      console.warn(
+        `[DangerousTaskReq] Access denied. No APPROVED/ACTIVE/PENDING record found.`,
+      );
       return res
         .status(403)
         .json({ error: "You are not assigned to this project" });
@@ -469,15 +490,36 @@ router.get("/available-tasks", labourCheck, async (req, res) => {
       return res.status(400).json({ error: "projectId is required" });
     }
 
-    // Verify labour is assigned to this project
+    console.log(
+      `[DangerousTaskReq] GET Tasks - Checking assignment for Labour: ${labourId}, Project: ${projectId}`,
+    );
+
+    // Verify labour is assigned to this project via labour_request_participants
     const labourProjectCheck = await pool.query(
-      `SELECT pl.id 
-       FROM project_labours pl
-       WHERE pl.project_id = $1 AND pl.labour_id = $2 AND pl.status = 'APPROVED'`,
+      `SELECT lrp.id, lrp.status 
+       FROM labour_request_participants lrp
+       JOIN labour_requests lr ON lrp.labour_request_id = lr.id
+       WHERE lr.project_id = $1 AND lrp.labour_id = $2`,
       [projectId, labourId],
     );
 
-    if (labourProjectCheck.rows.length === 0) {
+    console.log(
+      `[DangerousTaskReq] GET Tasks - Found ${labourProjectCheck.rows.length} records.`,
+    );
+    if (labourProjectCheck.rows.length > 0) {
+      console.log(
+        `[DangerousTaskReq] GET Tasks - First record status: ${labourProjectCheck.rows[0].status}`,
+      );
+    }
+
+    const authorizedRecord = labourProjectCheck.rows.find((r) =>
+      ["APPROVED", "ACTIVE", "PENDING"].includes(r.status),
+    );
+
+    if (!authorizedRecord) {
+      console.warn(
+        `[DangerousTaskReq] GET Tasks - Access denied. No APPROVED/ACTIVE/PENDING record found.`,
+      );
       return res
         .status(403)
         .json({ error: "You are not assigned to this project" });

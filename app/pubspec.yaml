@@ -66,6 +66,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.0
   google_mlkit_face_detection: ^0.13.1
   image: ^4.7.2
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:

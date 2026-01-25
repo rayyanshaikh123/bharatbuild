@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../../db");
 const engineerCheck = require("../../middleware/engineerCheck");
+const { verifyEngineerAccess } = require("../../util/engineerPermissions");
+const bcrypt = require("bcrypt");
 
 /* ============================================================
    DANGEROUS TASKS MANAGEMENT (SITE ENGINEER)
@@ -25,19 +27,19 @@ router.post("/", engineerCheck, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Verify engineer is assigned to this project
-    const projectCheck = await client.query(
-      `SELECT pse.id 
-       FROM project_site_engineers pse
-       WHERE pse.project_id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
-      [projectId, engineerId],
+    console.log(
+      `[DangerousTask] Creating task for Engineer: ${engineerId}, Project: ${projectId}`,
     );
 
-    if (projectCheck.rows.length === 0) {
+    // Verify engineer is assigned to this project using unified utility
+    const access = await verifyEngineerAccess(engineerId, projectId);
+
+    console.log(`[DangerousTask] Access result: ${JSON.stringify(access)}`);
+
+    if (!access.allowed) {
+      console.warn(`[DangerousTask] Access denied: ${access.error}`);
       await client.query("ROLLBACK");
-      return res
-        .status(403)
-        .json({ error: "You are not assigned to this project" });
+      return res.status(403).json({ error: access.error });
     }
 
     // Create dangerous task
@@ -96,18 +98,15 @@ router.get("/", engineerCheck, async (req, res) => {
       return res.status(400).json({ error: "projectId is required" });
     }
 
-    // Verify engineer is assigned to this project
-    const projectCheck = await pool.query(
-      `SELECT pse.id 
-       FROM project_site_engineers pse
-       WHERE pse.project_id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
-      [projectId, engineerId],
+    console.log(
+      `[DangerousTask] Fetching tasks for Project: ${projectId}, Engineer: ${engineerId}`,
     );
 
-    if (projectCheck.rows.length === 0) {
-      return res
-        .status(403)
-        .json({ error: "You are not assigned to this project" });
+    // Verify engineer is assigned to this project using unified utility
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
+      console.warn(`[DangerousTask] GET Access denied: ${access.error}`);
+      return res.status(403).json({ error: access.error });
     }
 
     // Get all dangerous tasks for this project
@@ -142,23 +141,25 @@ router.patch("/:id", engineerCheck, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Get existing task and verify ownership
-    const taskCheck = await client.query(
-      `SELECT dt.id, dt.project_id, dt.name, dt.is_active
-       FROM dangerous_tasks dt
-       JOIN project_site_engineers pse ON dt.project_id = pse.project_id
-       WHERE dt.id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
-      [id, engineerId],
+    // Get existing task
+    const taskInfo = await client.query(
+      `SELECT dt.id, dt.project_id FROM dangerous_tasks dt WHERE dt.id = $1`,
+      [id],
     );
 
-    if (taskCheck.rows.length === 0) {
+    if (taskInfo.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res
-        .status(404)
-        .json({ error: "Dangerous task not found or access denied" });
+      return res.status(404).json({ error: "Dangerous task not found" });
     }
 
-    const task = taskCheck.rows[0];
+    const task = taskInfo.rows[0];
+
+    // Verify engineer has access to the project this task belongs to
+    const access = await verifyEngineerAccess(engineerId, task.project_id);
+    if (!access.allowed) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: access.error });
+    }
 
     // Build update query dynamically
     const updates = [];
@@ -236,49 +237,176 @@ router.patch("/:id", engineerCheck, async (req, res) => {
 router.get("/requests", engineerCheck, async (req, res) => {
   try {
     const engineerId = req.user.id;
-    const { projectId } = req.query;
+    const { projectId, status } = req.query;
 
     if (!projectId) {
       return res.status(400).json({ error: "projectId is required" });
     }
 
-    // Verify engineer is assigned to this project
-    const projectCheck = await pool.query(
-      `SELECT pse.id 
-       FROM project_site_engineers pse
-       WHERE pse.project_id = $1 AND pse.site_engineer_id = $2 AND pse.status = 'APPROVED'`,
-      [projectId, engineerId],
+    console.log(
+      `[DangerousTask] Fetching requests for Project: ${projectId}, Engineer: ${engineerId}`,
     );
 
-    if (projectCheck.rows.length === 0) {
-      return res
-        .status(403)
-        .json({ error: "You are not assigned to this project" });
+    // Verify engineer is assigned to this project using unified utility
+    const access = await verifyEngineerAccess(engineerId, projectId);
+    if (!access.allowed) {
+      console.warn(`[DangerousTask] Requests Access denied: ${access.error}`);
+      return res.status(403).json({ error: access.error });
     }
 
-    // Get all task requests for this project
-    const result = await pool.query(
-      `SELECT dtr.id, dtr.dangerous_task_id, dtr.labour_id, dtr.project_id,
-              dtr.status, dtr.requested_at, dtr.approved_at, dtr.approved_by,
-              dtr.approval_method,
-              dt.name AS task_name,
-              dt.description AS task_description,
-              l.name AS labour_name,
-              l.phone AS labour_phone,
-              ase.name AS approved_by_name
-       FROM dangerous_task_requests dtr
-       JOIN dangerous_tasks dt ON dtr.dangerous_task_id = dt.id
-       JOIN labours l ON dtr.labour_id = l.id
-       LEFT JOIN site_engineers ase ON dtr.approved_by = ase.id
-       WHERE dtr.project_id = $1
-       ORDER BY dtr.requested_at DESC`,
-      [projectId],
-    );
+    // Get all task requests for this project with optional status filter
+    let query = `
+      SELECT dtr.id, dtr.dangerous_task_id, dtr.labour_id, dtr.project_id,
+             dtr.status, dtr.requested_at, dtr.approved_at, dtr.approved_by,
+             dtr.approval_method,
+             dt.name AS task_name,
+             dt.description AS task_description,
+             l.name AS labour_name,
+             l.phone AS labour_phone,
+             ase.name AS approved_by_name
+      FROM dangerous_task_requests dtr
+      JOIN dangerous_tasks dt ON dtr.dangerous_task_id = dt.id
+      JOIN labours l ON dtr.labour_id = l.id
+      LEFT JOIN site_engineers ase ON dtr.approved_by = ase.id
+      WHERE dtr.project_id = $1
+    `;
 
+    const params = [projectId];
+    if (status) {
+      query += " AND dtr.status = $2";
+      params.push(status);
+    }
+
+    query += " ORDER BY dtr.requested_at DESC";
+
+    const result = await pool.query(query, params);
     res.json({ task_requests: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* -------------------- AUTHORIZE TASK REQUEST (VERIFY OTP) -------------------- */
+router.post("/authorize", engineerCheck, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const engineerId = req.user.id;
+    const { requestId, otp } = req.body;
+
+    if (!requestId || !otp) {
+      return res.status(400).json({ error: "requestId and otp are required" });
+    }
+
+    await client.query("BEGIN");
+
+    // 1. Get request details
+    const requestCheck = await client.query(
+      `SELECT dtr.id, dtr.project_id, dtr.status, dt.name AS task_name, l.name AS labour_name
+       FROM dangerous_task_requests dtr
+       JOIN dangerous_tasks dt ON dtr.dangerous_task_id = dt.id
+       JOIN labours l ON dtr.labour_id = l.id
+       WHERE dtr.id = $1`,
+      [requestId],
+    );
+
+    if (requestCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Task request not found" });
+    }
+
+    const request = requestCheck.rows[0];
+
+    // 2. Verify engineer is assigned to this project
+    const access = await verifyEngineerAccess(engineerId, request.project_id);
+    if (!access.allowed) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: access.error });
+    }
+
+    if (request.status !== "REQUESTED") {
+      await client.query("ROLLBACK");
+      return res
+        .status(400)
+        .json({ error: `Cannot authorize. Status is ${request.status}` });
+    }
+
+    // 3. Get latest OTP
+    const otpCheck = await client.query(
+      `SELECT id, otp_hash, expires_at, verified
+       FROM dangerous_task_otps
+       WHERE task_request_id = $1
+       ORDER BY created_at DESC LIMIT 1`,
+      [requestId],
+    );
+
+    if (otpCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "No OTP found for this request" });
+    }
+
+    const otpRecord = otpCheck.rows[0];
+
+    if (otpRecord.verified) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "OTP already used" });
+    }
+
+    if (new Date(otpRecord.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "OTP has expired" });
+    }
+
+    // 4. Verify OTP
+    const isValid = await bcrypt.compare(otp, otpRecord.otp_hash);
+    if (!isValid) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+
+    // 5. APPROVE request
+    await client.query(
+      `UPDATE dangerous_task_requests
+       SET status = 'APPROVED', approved_at = NOW(), approved_by = $1, approval_method = 'OTP'
+       WHERE id = $2`,
+      [engineerId, requestId],
+    );
+
+    await client.query(
+      `UPDATE dangerous_task_otps SET verified = true, verified_at = NOW() WHERE id = $1`,
+      [otpRecord.id],
+    );
+
+    // Audit Log
+    await client.query(
+      `INSERT INTO audit_logs 
+       (entity_type, entity_id, action, acted_by_role, acted_by_id, project_id, category, change_summary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        "DANGEROUS_TASK_REQUEST",
+        requestId,
+        "APPROVED",
+        "SITE_ENGINEER",
+        engineerId,
+        request.project_id,
+        "SAFETY",
+        JSON.stringify({
+          task_name: request.task_name,
+          labour_name: request.labour_name,
+          approval_method: "OTP",
+        }),
+      ],
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: "Authorization successful", status: "APPROVED" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 

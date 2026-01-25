@@ -366,8 +366,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     
     // Check if inside geofence if location is available
     bool isInside = false;
+    Map<String, dynamic>? validation;
     if (_currentPosition != null && _selectedProject != null) {
-      final validation = GeofenceService().validateGeofence(
+      validation = GeofenceService().validateGeofence(
         _currentPosition!.latitude, 
         _currentPosition!.longitude, 
         _selectedProject
@@ -399,7 +400,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isInside ? 'Inside Site' : 'Outside site (Attendance tracking will be paused)',
+                    isInside ? 'Inside Site' : 'Outside site (${validation?['distance'] ?? '...'}m away)',
                     style: TextStyle(
                       color: isInside ? Colors.green[700] : Colors.orange[700], 
                       fontSize: 12, 

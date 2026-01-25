@@ -152,6 +152,10 @@ app.use("/owner/plan", require("./routes/owner/plan"));
 app.use("/owner/labour-request", require("./routes/owner/labourRequest"));
 app.use("/owner/dpr", require("./routes/owner/dpr"));
 app.use("/owner/material", require("./routes/owner/material"));
+app.use(
+  "/owner/material-oversight",
+  require("./routes/owner/materialOversight"),
+);
 app.use("/owner/wages", require("./routes/owner/wages"));
 app.use("/owner/analytics", require("./routes/owner/analytics"));
 app.use("/owner/audits", require("./routes/owner/audit"));
@@ -198,6 +202,7 @@ app.use("/manager/plan", require("./routes/manager/plan"));
 app.use("/manager/labour-request", require("./routes/manager/labourRequest"));
 app.use("/manager/dpr", require("./routes/manager/dpr"));
 app.use("/manager/material", require("./routes/manager/material"));
+app.use("/manager/material-stock", require("./routes/manager/materialStock"));
 app.use("/manager/wages", require("./routes/manager/wages"));
 app.use("/manager/wage-rates", require("./routes/manager/wage-rates"));
 app.use("/manager/working-hours", require("./routes/manager/workingHours"));
@@ -262,6 +267,7 @@ app.use(
 app.use("/engineer/dpr", require("./routes/engineer/dpr"));
 app.use("/engineer/attendance", require("./routes/engineer/attendance"));
 app.use("/engineer/material", require("./routes/engineer/material"));
+app.use("/engineer/material-stock", require("./routes/engineer/materialStock"));
 app.use("/engineer/wages", require("./routes/engineer/wages"));
 app.use("/engineer/tools", require("./routes/engineer/tools"));
 app.use("/engineer/fast", require("./routes/engineer/fast/graphql"));
