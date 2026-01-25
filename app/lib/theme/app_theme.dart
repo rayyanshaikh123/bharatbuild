@@ -4,8 +4,10 @@ import 'app_colors.dart';
 export 'app_text_theme.dart';
 
 class AppTheme {
-  static ThemeData light() {
+  static ThemeData light(Locale? locale) {
     final base = ThemeData.light();
+    final textTheme = _getLocaleTextTheme(base.textTheme, locale);
+    
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
@@ -21,13 +23,13 @@ class AppTheme {
         foregroundColor: AppColors.foreground,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: textTheme.titleLarge?.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.foreground,
         ),
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+      textTheme: textTheme.apply(
         bodyColor: AppColors.foreground,
         displayColor: AppColors.foreground,
       ),
@@ -78,8 +80,10 @@ class AppTheme {
     );
   }
 
-  static ThemeData dark() {
+  static ThemeData dark(Locale? locale) {
     final base = ThemeData.dark();
+    final textTheme = _getLocaleTextTheme(base.textTheme, locale);
+
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.backgroundDark,
       primaryColor: AppColors.primary,
@@ -95,13 +99,13 @@ class AppTheme {
         foregroundColor: AppColors.foregroundDark,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: textTheme.titleLarge?.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.foregroundDark,
         ),
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+      textTheme: textTheme.apply(
         bodyColor: AppColors.foregroundDark,
         displayColor: AppColors.foregroundDark,
       ),
@@ -150,5 +154,25 @@ class AppTheme {
         ),
       ),
     );
+  }
+
+  static TextTheme _getLocaleTextTheme(TextTheme base, Locale? locale) {
+    final lang = locale?.languageCode ?? 'en';
+    
+    // 1. Mono: IBM Plex Mono (accessible via specific styles if needed, or default fallback)
+    // 2. Serif: Merriweather
+    // 3. Sans: Plus Jakarta Sans (Main)
+
+    // Regional Fallbacks
+    if (lang == 'hi' || lang == 'mr') { // Hindi, Marathi
+      return GoogleFonts.tiroDevanagariHindiTextTheme(base);
+    } else if (lang == 'ta') { // Tamil
+      return GoogleFonts.notoSansTamilTextTheme(base);
+    } else if (lang == 'gu') { // Gujarati
+      return GoogleFonts.notoSansGujaratiTextTheme(base);
+    }
+
+    // Default: Plus Jakarta Sans
+    return GoogleFonts.plusJakartaSansTextTheme(base);
   }
 }

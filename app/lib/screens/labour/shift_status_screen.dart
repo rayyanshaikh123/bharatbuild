@@ -462,22 +462,7 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
           ),
           const SizedBox(width: 12),
         ],
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.surface,
-            foregroundColor: theme.colorScheme.onSurface,
-            minimumSize: const Size(72, 72),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
-            ),
-            elevation: 0,
-          ),
-          child: const Icon(Icons.restaurant_rounded, size: 24),
-        ),
-        const SizedBox(width: 12),
+
         if (isWorking)
           Expanded(
             child: Container(
@@ -560,8 +545,8 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          // Use pushReplacementNamed to ensure clean navigation
-          Navigator.pushReplacementNamed(context, '/labour-dashboard');
+          // Use pushNamedAndRemoveUntil to ensure clean navigation
+          Navigator.pushNamedAndRemoveUntil(context, '/labour-dashboard', (route) => false);
         }
       } catch (e) {
         if (context.mounted) {

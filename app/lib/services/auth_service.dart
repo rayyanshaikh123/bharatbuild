@@ -19,11 +19,13 @@ class AuthService {
   String _extractErrorMessage(http.Response response) {
     try {
       final body = jsonDecode(response.body);
-      if (body is Map && body.containsKey('error')) {
-        return body['error'] as String;
-      }
-      if (body is Map && body.containsKey('message')) {
-        return body['message'] as String;
+      if (body is Map) {
+        if (body.containsKey('error') && body['error'] != null) {
+          return body['error'].toString();
+        }
+        if (body.containsKey('message') && body['message'] != null) {
+          return body['message'].toString();
+        }
       }
     } catch (_) {
       // If parsing fails, return the raw body
@@ -582,7 +584,9 @@ class AuthService {
     );
     if (res.statusCode == 201) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['attendance'] as Map<String, dynamic>;
+      // Backend returns { attendance_id, session, message }
+      // We wrap it or return it directly. The provider expects a Map.
+      return data;
     }
     throw Exception('Check-in failed: ${res.body}');
   }

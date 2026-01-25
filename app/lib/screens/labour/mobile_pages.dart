@@ -110,6 +110,56 @@ class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent>
     }
   }
 
+  Future<void> _handleCheckOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('finish_shift'.tr()),
+        content: Text('checkout_confirmation'.tr()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('cancel'.tr())),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: Text('confirm'.tr())),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isCheckingOut = true);
+      try {
+        await ref.read(checkOutProvider.future);
+
+        // Ensure all providers are invalidated for fresh data
+        ref.invalidate(todayAttendanceProvider);
+        ref.invalidate(attendanceHistoryProvider);
+        ref.invalidate(liveStatusProvider);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checked_out_successfully'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Use pushReplacementNamed to ensure clean navigation
+          Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checkout_failed'.tr() + ': $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isCheckingOut = false);
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1815,55 +1865,6 @@ class ProfileContent extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleCheckOut(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('finish_shift'.tr()),
-        content: Text('checkout_confirmation'.tr()),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('cancel'.tr())),
-          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: Text('confirm'.tr())),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      setState(() => _isCheckingOut = true);
-      try {
-        await ref.read(checkOutProvider.future);
-
-        // Ensure all providers are invalidated for fresh data
-        ref.invalidate(todayAttendanceProvider);
-        ref.invalidate(attendanceHistoryProvider);
-        ref.invalidate(liveStatusProvider);
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('checked_out_successfully'.tr()),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // Use pushReplacementNamed to ensure clean navigation
-          Navigator.pushReplacementNamed(context, '/labour-dashboard');
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('checkout_failed'.tr() + ': $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isCheckingOut = false);
-        }
-      }
-    }
-  }
 }
 
 class _AttendanceSection extends ConsumerWidget {
@@ -2176,6 +2177,7 @@ class _AttendanceSection extends ConsumerWidget {
       }
     }
   }
+}
 
 
 

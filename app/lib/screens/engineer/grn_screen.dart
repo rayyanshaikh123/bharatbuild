@@ -280,10 +280,10 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       prefixIcon: const Icon(Icons.shopping_cart),
                     ),
-                    items: pos.map((po) {
+                    items: pos.where((p) => p is Map).map((po) {
                       final poNumber = po['po_number'] ?? 'N/A';
                       final vendorName = po['vendor_name'] ?? 'Unknown Vendor';
-                      final totalAmount = po['total_amount'] ?? 0;
+                      final totalAmount = double.tryParse(po['total_amount']?.toString() ?? '0') ?? 0.0;
                       return DropdownMenuItem<String>(
                         value: po['id'] as String,
                         child: Column(
