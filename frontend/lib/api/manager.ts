@@ -841,3 +841,139 @@ export const managerMaterialStock = {
       `/manager/material-stock/projects/${projectId}/stock-summary`,
     ),
 };
+
+// ==================== MANAGER DANGEROUS WORK API ====================
+
+export interface DangerousTask {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  total_requests: number;
+  approved_requests: number;
+  pending_requests: number;
+  rejected_requests: number;
+  expired_requests: number;
+  created_by_name: string;
+}
+
+export interface DangerousTaskRequest {
+  id: string;
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "EXPIRED";
+  requested_at: string;
+  approved_at?: string;
+  task_name: string;
+  labour_name: string;
+  project_name: string;
+}
+
+export interface DangerousWorkStatistics {
+  statistics: {
+    total_dangerous_tasks: number;
+    active_tasks: number;
+    total_requests: number;
+    approved_requests: number;
+    pending_requests: number;
+    rejected_requests: number;
+    expired_requests: number;
+    avg_approval_time_minutes: number;
+  };
+  top_dangerous_tasks: Array<{
+    id: string;
+    name: string;
+    request_count: number;
+    approved_count: number;
+  }>;
+  labour_compliance: Array<{
+    id: string;
+    name: string;
+    skill_type: string;
+    total_requests: number;
+    approved_requests: number;
+    expired_requests: number;
+  }>;
+}
+
+export const managerDangerousWork = {
+  getTasks: (projectId: string) =>
+    api.get<{ dangerous_tasks: DangerousTask[] }>(`/manager/dangerous-work/tasks?projectId=${projectId}`),
+
+  getRequests: (filters: {
+    projectId: string;
+    status?: string;
+    labourId?: string;
+    taskId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams();
+    params.append("projectId", filters.projectId);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.labourId) params.append("labourId", filters.labourId);
+    if (filters.taskId) params.append("taskId", filters.taskId);
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    return api.get<{ task_requests: DangerousTaskRequest[] }>(`/manager/dangerous-work/requests?${params}`);
+  },
+
+  getStatistics: (projectId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ projectId });
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return api.get<DangerousWorkStatistics>(`/manager/dangerous-work/statistics?${params}`);
+  },
+
+  getLabourHistory: (projectId: string, labourId: string) =>
+    api.get<{ history: DangerousTaskRequest[] }>(
+      `/manager/dangerous-work/labour/${labourId}/history?projectId=${projectId}`
+    ),
+};
+
+// ==================== MANAGER DELAYS API ====================
+
+export interface DelayedItem {
+  plan_item_id: string;
+  project_id: string;
+  task_name: string;
+  period_end: string;
+  delay_days: number;
+  status: string;
+  delay?: string;
+}
+
+export const managerDelays = {
+  // Get delays for a project
+  getProjectDelays: (projectId: string) =>
+    api.get<{ delayed_items: DelayedItem[] }>(`/manager/delays/project/${projectId}`),
+
+  // Update status of delayed item
+  updatePlanItemStatus: (
+    itemId: string,
+    data: { status: string; delay?: string; completed_at?: string }
+  ) => api.patch<{ plan_item: any }>(`/manager/delays/plan-items/${itemId}/status`, data),
+};
+
+// ==================== MANAGER LEAVE ORGANIZATION API ====================
+
+export const managerLeaveOrganization = {
+  leave: () =>
+    api.post<{ message: string; removed_from_projects: number }>("/manager/organization/leave", {}),
+};
+
+// ==================== MANAGER WORKING HOURS API ====================
+
+export const managerWorkingHours = {
+  // Get project working hours
+  get: (projectId: string) =>
+    api.get<{ working_hours: { check_in_time: string; check_out_time: string } }>(
+      `/manager/working-hours/${projectId}`
+    ),
+
+  // Update project working hours (Creator only)
+  update: (projectId: string, data: { check_in_time: string; check_out_time: string }) =>
+    api.put<{
+      message: string;
+      working_hours: { check_in_time: string; check_out_time: string };
+    }>(`/manager/working-hours/${projectId}`, data),
+};
