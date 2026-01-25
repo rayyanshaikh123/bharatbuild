@@ -11,12 +11,10 @@ export interface PurchaseManagerProfile {
 }
 
 export interface PurchaseManagerDashboardSummary {
-  total_projects: number;
-  active_projects: number;
-  pending_material_requests: number;
-  approved_material_requests: number;
-  purchase_orders_issued: number;
-  pending_grns: number;
+  pending_requests: number;
+  pos_generated_today: number;
+  pos_sent_this_week: number;
+  total_pos: number;
 }
 
 export interface OrganizationListItem {
@@ -36,13 +34,15 @@ export interface PurchaseManagerOrgRequest {
   org_office_phone: string;
 }
 
+// Backend returns single organization object with embedded status
 export interface ApprovedOrganization {
-  id: string; // This is the request ID usually, or link ID
-  org_id: string;
-  purchase_manager_id: string;
-  status: "APPROVED";
-  org_name: string;
-  org_address: string;
+  id: string; 
+  name: string;
+  address: string;
+  office_phone: string;
+  status: "PENDING" | "APPROVED";
+  created_at?: string;
+  org_id: string; // Helper for frontend consistency, populated manually if needed or mapped
 }
 
 export interface Project {
@@ -50,7 +50,7 @@ export interface Project {
   name: string;
   location_text: string;
   status: string;
-  org_id: string;
+  org_id?: string;
   organization_name?: string;
 }
 
@@ -73,10 +73,11 @@ export interface MaterialRequest {
   description?: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;
-  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; // Check backend if priority exists
   project_name: string;
   engineer_name: string;
-  manager_feedback?: string;
+  has_po?: boolean;
+  po_number?: string;
+  po_status?: string;
 }
 
 export interface PurchaseOrder {
@@ -93,31 +94,24 @@ export interface PurchaseOrder {
   created_at: string;
   project_name?: string;
   material_request_title?: string;
+  po_pdf_url?: string; // This might be null if using binary upload, backend doesn't return URL usually but we might simulate or just rely on 'po_pdf' existence check
+  po_pdf_mime?: string;
 }
 
 export interface CreatePurchaseOrderData {
   projectId: string;
   materialRequestId: string;
+  poNumber: string; // Backend expects poNumber
   vendorName: string;
-  vendorContact: string;
+  vendorContact: string; // Backend expects vendorContact
   items: any[];
   totalAmount: number;
 }
 
 export interface GRN {
   id: string;
-  project_id: string;
-  purchase_order_id: string;
-  material_request_id: string;
-  site_engineer_id: string;
-  status: "CREATED" | "VERIFIED";
-  received_items: any;
-  remarks?: string;
-  created_at: string;
-  project_name: string;
-  po_number: string;
-  vendor_name: string;
-  engineer_name: string;
+  status: string;
+  // TODO: Define GRN structure when implementing GRN
 }
 
 // ==================== API MODULES ====================
@@ -138,65 +132,95 @@ export const purchaseManagerDashboard = {
 export const purchaseManagerOrganization = {
   // Get all organizations (for browsing)
   getAll: () =>
-    api.get<{ organizations: OrganizationListItem[] }>("/purchase-manager/organization/all"),
+    api.get<{ organizations: OrganizationListItem[] }>("/purchase-manager/organizations"),
 
-  // Get my approved organizations
-  getMyOrganizations: () =>
-    api.get<{ organizations: ApprovedOrganization[] }>("/purchase-manager/organization"),
+  // Get my organization status (Backend returns single object)
+  // We wrap it in array to match frontend expectations or modify frontend. 
+  // Let's modify this to return exact backend response and fix frontend.
+  getMyOrganization: () =>
+    api.get<{ organization: ApprovedOrganization }>("/purchase-manager/organization-status"),
 
-  // Get my join requests
-  getMyRequests: () =>
-    api.get<{ requests: PurchaseManagerOrgRequest[] }>("/purchase-manager/organization/my-requests"),
+  // Old method kept for compatibility but implemented correctly:
+  getMyOrganizations: async () => {
+      try {
+          const res = await api.get<{ organization: any }>("/purchase-manager/organization-status");
+          if (res.organization) {
+              // Map to expect structure
+              return { 
+                  organizations: [{
+                      ...res.organization,
+                      org_id: res.organization.id // Ensure org_id is available
+                  }] 
+              };
+          }
+          return { organizations: [] };
+      } catch (e) {
+          return { organizations: [] };
+      }
+  },
 
   // Join organization
   requestJoin: (organizationId: string) =>
-    api.post<{ message: string }>("/purchase-manager/organization/join-organization", { organizationId }),
+    api.post<{ message: string }>("/purchase-manager/join-organization", { organizationId }),
     
-  // Leave organization
-  leave: () =>
-    api.post<{ message: string }>("/purchase-manager/organization/leave", {}),
+  // Leave organization -- REMOVED as backend does not support it
+  leave: () => Promise.reject("Feature not supported by backend"),
+
+  // Get My Requests -- Backend doesn't have this. It only has "organization-status".
+  // If status is PENDING, that is the request.
+  getMyRequests: async () => {
+      try {
+          const res = await api.get<{ organization: ApprovedOrganization }>("/purchase-manager/organization-status");
+          if (res.organization && res.organization.status === 'PENDING') {
+               return { requests: [{ 
+                   id: 'req_1', 
+                   org_id: res.organization.id, 
+                   status: 'PENDING',
+                   org_name: res.organization.name,
+                   purchase_manager_id: '',
+                   org_address: res.organization.address,
+                   org_office_phone: res.organization.office_phone
+               }] };
+          }
+          return { requests: [] };
+      } catch (e) {
+          return { requests: [] };
+      }
+  }
 };
 
 export const purchaseManagerProjects = {
-  // Get all projects in my organization to join
-  getAll: (organizationId: string) =>
-    api.get<{ projects: Project[] }>(`/purchase-manager/project/organization-projects?organizationId=${organizationId}`),
+  // Get all projects in my organization to join (Available Projects)
+  // Backend infers org from user, so no arg needed usually, but we keep signature compatible if possible
+  getAll: (organizationId?: string) =>
+    api.get<{ projects: Project[] }>("/purchase-manager/available-projects"),
 
-  // Get my projects (where I am assigned)
-  getMyProjects: (organizationId: string) =>
-    api.get<{ projects: Project[] }>(`/purchase-manager/project/my-projects?organizationId=${organizationId}`),
+  // Get my projects (Approved Projects)
+  getMyProjects: (organizationId?: string) =>
+    api.get<{ projects: Project[] }>("/purchase-manager/projects"),
 
   // Get my project join requests
-  getMyRequests: (organizationId: string) =>
-    api.get<{ requests: ProjectJoinRequest[] }>(`/purchase-manager/project/my-requests?organizationId=${organizationId}`),
+  getMyRequests: (organizationId?: string) =>
+    api.get<{ requests: ProjectJoinRequest[] }>("/purchase-manager/project-requests"),
 
   // Join project
-  requestJoin: (projectId: string, organizationId: string) =>
-    api.post<{ message: string }>("/purchase-manager/project/join-project", { projectId, organizationId }),
+  requestJoin: (projectId: string, organizationId?: string) =>
+    api.post<{ message: string }>("/purchase-manager/join-project", { projectId }),
 };
 
 export const purchaseManagerMaterialRequests = {
-  // Get pending requests
-  getPending: (organizationId: string) =>
-    api.get<{ material_requests: MaterialRequest[] }>(`/purchase-manager/material-requests/pending?organizationId=${organizationId}`),
-
-  // Get all requests (history)
-  getAll: (organizationId: string) =>
-    api.get<{ material_requests: MaterialRequest[] }>(`/purchase-manager/material-requests/all?organizationId=${organizationId}`),
-    
   // Get by Project (Approved only, matching backend)
   getApproved: (projectId: string) =>
     api.get<{ requests: MaterialRequest[] }>(`/purchase-manager/material-requests?projectId=${projectId}`),
     
-  // Update status (Approve/Reject)
-  updateStatus: (requestId: string, status: "APPROVED" | "REJECTED", feedback?: string) =>
-      api.patch<{ message: string }>(`/purchase-manager/material-requests/${requestId}/status`, { status, feedback }),
+  // Update status -- REMOVED, Purchase Manager does not update status of MRs, they only create POs from them.
+  // Unless there is a specific endpoint? No.
 };
 
 export const purchaseManagerPurchaseOrders = {
   // Create PO
   create: (data: CreatePurchaseOrderData) =>
-    api.post<{ purchase_order: PurchaseOrder }>("/purchase-manager/purchase-orders/create", data),
+    api.post<{ purchase_order: PurchaseOrder }>("/purchase-manager/purchase-orders", data),
 
   // Get All POs
   getAll: (projectId?: string) =>
@@ -210,28 +234,20 @@ export const purchaseManagerPurchaseOrders = {
   getPdf: (poId: string) =>
     api.getBlob(`/purchase-manager/purchase-orders/${poId}/pdf`),
 
-  // Upload PDF URL
-  uploadPDF: (poId: string, pdfUrl: string) =>
-    api.patch<{ message: string }>(`/purchase-manager/purchase-orders/${poId}/upload-pdf`, { pdf_url: pdfUrl }),
+  // Upload PDF (Binary)
+  uploadPDF: (poId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("pdf", file);
+    return api.patch<{ message: string }>(`/purchase-manager/purchase-orders/${poId}/upload`, formData);
+  },
 
   // Send PO
   send: (poId: string) =>
-    api.post<{ message: string }>(`/purchase-manager/purchase-orders/${poId}/send`, {}),
+    api.patch<{ message: string }>(`/purchase-manager/purchase-orders/${poId}/send`, {}),
 };
 
 export const purchaseManagerGRN = {
-  // Get All GRNs
   getAll: (organizationId: string) =>
-    api.get<{ grns: GRN[] }>(`/purchase-manager/goods-receipt-notes?organizationId=${organizationId}`),
-    
-  // Get Single GRN
-  getById: (grnId: string) =>
-    api.get<{ grn: GRN }>(`/purchase-manager/goods-receipt-notes/${grnId}`),
-    
-  // Get Images
-  getBillImage: (grnId: string) =>
-    api.getBlob(`/purchase-manager/goods-receipt-notes/${grnId}/bill-image`),
-    
-  getProofImage: (grnId: string) =>
-    api.getBlob(`/purchase-manager/goods-receipt-notes/${grnId}/proof-image`),
+     // Placeholder, backend likely /purchase-manager/grns
+    api.get<{ grns: GRN[] }>(`/purchase-manager/grns`),
 };

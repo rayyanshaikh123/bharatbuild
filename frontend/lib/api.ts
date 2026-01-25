@@ -5,13 +5,17 @@ async function fetcher<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers = { ...(options.headers as Record<string, string>) };
+  
+  // Only set JSON content type if not FormData (browser sets boundary for FormData)
+  if (!headers["Content-Type"] && !(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     credentials: "include", // ← CRITICAL: This sends cookies with requests
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -34,23 +38,29 @@ async function fetcher<T>(
 export const api = {
   get: <T>(endpoint: string) => fetcher<T>(endpoint),
   
-  post: <T>(endpoint: string, data: unknown) =>
-    fetcher<T>(endpoint, {
+  post: <T>(endpoint: string, data: unknown) => {
+    const isFormData = data instanceof FormData;
+    return fetcher<T>(endpoint, {
       method: "POST",
-      body: JSON.stringify(data),
-    }),
+      body: isFormData ? (data as FormData) : JSON.stringify(data),
+    });
+  },
     
-  put: <T>(endpoint: string, data: unknown) =>
-    fetcher<T>(endpoint, {
+  put: <T>(endpoint: string, data: unknown) => {
+    const isFormData = data instanceof FormData;
+    return fetcher<T>(endpoint, {
       method: "PUT",
-      body: JSON.stringify(data),
-    }),
+      body: isFormData ? (data as FormData) : JSON.stringify(data),
+    });
+  },
 
-  patch: <T>(endpoint: string, data: unknown) =>
-    fetcher<T>(endpoint, {
+  patch: <T>(endpoint: string, data: unknown) => {
+    const isFormData = data instanceof FormData;
+    return fetcher<T>(endpoint, {
       method: "PATCH",
-      body: JSON.stringify(data),
-    }),
+      body: isFormData ? (data as FormData) : JSON.stringify(data),
+    });
+  },
     
   delete: <T>(endpoint: string, data?: Record<string, unknown>) =>
     fetcher<T>(endpoint, { 

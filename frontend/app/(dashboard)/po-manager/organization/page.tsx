@@ -42,7 +42,12 @@ export default function PurchaseManagerOrganizationPage() {
         purchaseManagerOrganization.getMyRequests()
       ]);
       setMyOrgs(orgsRes.organizations || []);
-      setPendingRequests(reqsRes.requests || []);
+      // Cast the status string to our specific union type since backend returns string
+      const typedRequests = (reqsRes.requests || []).map(r => ({
+          ...r,
+          status: r.status as "PENDING" | "APPROVED" | "REJECTED"
+      }));
+      setPendingRequests(typedRequests);
       
       // If no orgs but attempting to join, switch to join tab
       if ((orgsRes.organizations || []).length === 0 && activeTab === "my-org") {
@@ -72,7 +77,11 @@ export default function PurchaseManagerOrganizationPage() {
       toast.success("Join request sent successfully");
       // Refresh requests
       const reqsRes = await purchaseManagerOrganization.getMyRequests();
-      setPendingRequests(reqsRes.requests || []);
+      const typedRequests = (reqsRes.requests || []).map(r => ({
+          ...r,
+          status: r.status as "PENDING" | "APPROVED" | "REJECTED"
+      }));
+      setPendingRequests(typedRequests);
     } catch (err: any) {
       console.error("Failed to join:", err);
       toast.error(err.response?.data?.error || "Failed to send join request");
@@ -150,9 +159,9 @@ export default function PurchaseManagerOrganizationPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                        <Building2 className="text-primary" />
-                       {org.org_name}
+                       {org.name}
                     </CardTitle>
-                    <CardDescription>{org.org_address}</CardDescription>
+                    <CardDescription>{org.address}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2 text-green-600 font-medium bg-green-500/10 p-2 rounded-lg w-fit">

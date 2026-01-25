@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Users, Loader2, ArrowLeft, Star, Briefcase, Clock, Plus, X } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Users, Loader2, ArrowLeft, Star, Briefcase, Clock, Plus, Building2, Phone, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -12,18 +12,19 @@ import {
   SubcontractorPerformance,
   Organization
 } from "@/lib/api/owner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { DataTable, Column } from "@/components/ui/DataTable";
 
 export default function OwnerSubcontractorsPage() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
-  const [performance, setPerformance] = useState<SubcontractorPerformance | null>(null);
+  const [selectedPerformance, setSelectedPerformance] = useState<SubcontractorPerformance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPerf, setIsLoadingPerf] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isPerformanceOpen, setIsPerformanceOpen] = useState(false);
 
   // New subcontractor form state
   const [formData, setFormData] = useState({
@@ -81,24 +82,86 @@ export default function OwnerSubcontractorsPage() {
     }
   };
 
-  const handleSelectSub = async (id: string) => {
-    if (selectedSub === id) {
-      setSelectedSub(null);
-      setPerformance(null);
-      return;
-    }
-
-    setSelectedSub(id);
+  const handleViewPerformance = async (id: string) => {
     try {
       setIsLoadingPerf(true);
+      setIsPerformanceOpen(true); // Open modal immediately, show loading inside
+      setSelectedPerformance(null);
       const res = await ownerSubcontractors.getPerformance(id);
-      setPerformance(res);
+      setSelectedPerformance(res);
     } catch (err) {
       console.error("Failed to fetch performance:", err);
     } finally {
       setIsLoadingPerf(false);
     }
   };
+
+  // Define Columns
+  const columns: Column<Subcontractor>[] = useMemo(() => [
+    {
+      key: "name",
+      label: "Company",
+      sortable: true,
+      render: (value: string, row: Subcontractor) => (
+         <div>
+             <div className="font-bold flex items-center gap-2">
+                 <Briefcase size={14} className="text-primary" />
+                 {value}
+             </div>
+             {row.specialization && (
+                 <div className="text-xs text-muted-foreground mt-0.5 ml-5">
+                    {row.specialization}
+                 </div>
+             )}
+         </div>
+      )
+    },
+    {
+       key: "contact_name",
+       label: "Contact Person",
+       sortable: true,
+       render: (value: string) => (
+           <div className="flex items-center gap-2">
+               <User size={14} className="text-muted-foreground" />
+               <span className="font-medium">{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+       key: "contact_phone",
+       label: "Phone",
+       render: (value: string) => (
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+               <Phone size={14} />
+               <span>{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+       key: "contact_email",
+       label: "Email",
+       render: (value: string) => (
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+               <Mail size={14} />
+               <span className="truncate max-w-[150px]" title={value}>{value || "-"}</span>
+           </div>
+       )
+    },
+    {
+        key: "id",
+        label: "Action",
+        width: "140px",
+        render: (_: unknown, row: Subcontractor) => (
+             <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => handleViewPerformance(row.id)}
+             >
+                 View Performance
+             </Button>
+        )
+    }
+  ], []);
 
   if (isLoading) {
     return (
@@ -209,113 +272,90 @@ export default function OwnerSubcontractorsPage() {
         </Dialog>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* List Section */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="font-bold text-foreground mb-4">All Subcontractors ({subcontractors.length})</h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-              {subcontractors.map((sub) => (
-                <div
-                  key={sub.id}
-                  onClick={() => handleSelectSub(sub.id)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    selectedSub === sub.id
-                      ? "bg-primary/10 border-primary"
-                      : "bg-muted/30 border-border/50 hover:bg-muted/50"
-                  }`}
-                >
-                  <h4 className="font-bold text-foreground">{sub.name}</h4>
-                  {sub.specialization && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <Briefcase size={12} /> {sub.specialization}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+     {/* Data Table */}
+      <DataTable 
+          data={subcontractors} 
+          columns={columns} 
+          searchable 
+          searchKeys={["name", "specialization", "contact_name"]}
+          itemsPerPage={10}
+      />
 
-        {/* Details Section */}
-        <div className="lg:col-span-2">
-          {selectedSub && performance ? (
-            <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-               <div className="flex justify-between items-start">
-                 <div>
-                   <h2 className="text-2xl font-bold text-foreground">{performance.subcontractor_name}</h2>
-                   <div className="flex gap-4 mt-2">
-                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                       <Briefcase size={14} /> Completed Tasks: <span className="text-foreground font-semibold">{performance.total_tasks_completed}</span>
-                     </div>
-                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                       <Building2 size={14} /> Projects: <span className="text-foreground font-semibold">{performance.projects_involved}</span>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-
-               {/* Performance Metrics */}
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
-                   <div className="flex items-center justify-center gap-2 text-yellow-600 mb-1">
-                     <Clock size={20} />
-                     <span className="font-semibold">Speed Rating</span>
-                   </div>
-                   <div className="text-3xl font-black text-foreground">
-                     {performance.avg_speed_rating.toFixed(1)}/5.0
-                   </div>
-                 </div>
-                 <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
-                   <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
-                     <Star size={20} />
-                     <span className="font-semibold">Quality Rating</span>
-                   </div>
-                   <div className="text-3xl font-black text-foreground">
-                     {performance.avg_quality_rating.toFixed(1)}/5.0
-                   </div>
-                 </div>
-               </div>
-
-               {/* Task History */}
-               <div>
-                 <h3 className="font-bold text-foreground mb-3">Recent Tasks</h3>
-                 <div className="space-y-2">
-                   {performance.task_breakdown.map((task) => (
-                     <div key={task.task_id} className="p-3 bg-muted/20 rounded-lg text-sm border border-border/50">
-                       <div className="flex justify-between font-semibold text-foreground">
-                         <span>{task.task_name}</span>
-                         <span className="text-muted-foreground text-xs">{task.project_name}</span>
+      {/* Performance Modal */}
+      <Dialog open={isPerformanceOpen} onOpenChange={setIsPerformanceOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                  <DialogTitle>Performance Review</DialogTitle>
+                  <DialogDescription>Detailed performance metrics and history.</DialogDescription>
+              </DialogHeader>
+              
+              {isLoadingPerf ? (
+                  <div className="py-12 flex justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+              ) : selectedPerformance ? (
+                  <div className="space-y-6 pt-2">
+                       <div className="flex justify-between items-start">
+                           <div>
+                               <h2 className="text-xl font-bold text-foreground">{selectedPerformance.subcontractor_name}</h2>
+                               <div className="flex gap-4 mt-2">
+                                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                       <Briefcase size={14} /> Tasks: <span className="text-foreground font-semibold">{selectedPerformance.total_tasks_completed}</span>
+                                   </div>
+                                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                       <Building2 size={14} /> Projects: <span className="text-foreground font-semibold">{selectedPerformance.projects_involved}</span>
+                                   </div>
+                               </div>
+                           </div>
                        </div>
-                       <div className="flex gap-4 mt-2 text-xs">
-                         {task.speed_rating && <span className="flex items-center gap-1 text-yellow-600"><Clock size={12} /> Speed: {task.speed_rating}</span>}
-                         {task.quality_rating && <span className="flex items-center gap-1 text-green-600"><Star size={12} /> Quality: {task.quality_rating}</span>}
+
+                       <div className="grid grid-cols-2 gap-4">
+                           <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
+                               <div className="flex items-center justify-center gap-2 text-yellow-600 mb-1">
+                                   <Clock size={20} />
+                                   <span className="font-semibold">Speed Rating</span>
+                               </div>
+                               <div className="text-3xl font-black text-foreground">
+                                   {selectedPerformance.avg_speed_rating.toFixed(1)}/5.0
+                               </div>
+                           </div>
+                           <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                               <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
+                                   <Star size={20} />
+                                   <span className="font-semibold">Quality Rating</span>
+                               </div>
+                               <div className="text-3xl font-black text-foreground">
+                                   {selectedPerformance.avg_quality_rating.toFixed(1)}/5.0
+                               </div>
+                           </div>
                        </div>
-                     </div>
-                   ))}
-                   {performance.task_breakdown.length === 0 && (
-                     <p className="text-muted-foreground text-sm italic">No completed tasks yet.</p>
-                   )}
-                 </div>
-               </div>
-            </div>
-          ) : selectedSub && isLoadingPerf ? (
-            <div className="h-full flex items-center justify-center bg-card border border-border rounded-xl">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center bg-card border border-border rounded-xl text-muted-foreground p-12">
-              <Users className="h-16 w-16 mb-4 opacity-20" />
-              <p>Select a subcontractor to view details & performance</p>
-            </div>
-          )}
-        </div>
-      </div>
+
+                       <div>
+                           <h3 className="font-bold text-foreground mb-3">Task History</h3>
+                           <div className="space-y-2">
+                               {selectedPerformance.task_breakdown.map((task) => (
+                                   <div key={task.task_id} className="p-3 bg-muted/20 rounded-lg text-sm border border-border/50">
+                                       <div className="flex justify-between font-semibold text-foreground">
+                                           <span>{task.task_name}</span>
+                                           <span className="text-muted-foreground text-xs">{task.project_name}</span>
+                                       </div>
+                                       <div className="flex gap-4 mt-2 text-xs">
+                                           {task.speed_rating && <span className="flex items-center gap-1 text-yellow-600"><Clock size={12} /> Speed: {task.speed_rating}</span>}
+                                           {task.quality_rating && <span className="flex items-center gap-1 text-green-600"><Star size={12} /> Quality: {task.quality_rating}</span>}
+                                       </div>
+                                   </div>
+                               ))}
+                               {selectedPerformance.task_breakdown.length === 0 && (
+                                   <p className="text-muted-foreground text-sm italic">No completed tasks yet.</p>
+                               )}
+                           </div>
+                       </div>
+                  </div>
+              ) : (
+                  <div className="py-8 text-center text-muted-foreground">Failed to load performance data.</div>
+              )}
+          </DialogContent>
+      </Dialog>
     </div>
   );
-}
-
-// Minimal icon component to fix import error if needed
-function Building2({ size, className }: { size?: number, className?: string }) {
-    return <Briefcase size={size} className={className} />;
 }

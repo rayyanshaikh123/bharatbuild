@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Shield, Loader2, ArrowLeft, Building2, Briefcase, Plus, X, Check, Trash2 } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Shield, Loader2, ArrowLeft, Briefcase, Plus, X, Check, Trash2, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import {
@@ -15,6 +15,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DataTable, Column } from "@/components/ui/DataTable";
 
 export default function ManagerQAEngineersPage() {
   const [activeTab, setActiveTab] = useState<"requests" | "assignments">("requests");
@@ -30,6 +31,100 @@ export default function ManagerQAEngineersPage() {
 
   // Stats
   const [approvedQAs, setApprovedQAs] = useState<QAEngineerRequest[]>([]); // For assignment dropdown
+
+  const pendingColumns: Column<QAEngineerRequest>[] = useMemo(
+    () => [
+      {
+        key: "name",
+        label: "Engineer Name",
+        sortable: true,
+        render: (value: string) => <span className="font-semibold">{value}</span>,
+      },
+      {
+        key: "email",
+        label: "Contact",
+        render: (_: any, row: QAEngineerRequest) => (
+            <div className="flex flex-col text-sm text-muted-foreground">
+                <span className="flex items-center gap-1"><Mail size={12}/> {row.email}</span>
+                {row.phone && <span className="flex items-center gap-1"><Phone size={12}/> {row.phone}</span>}
+            </div>
+        )
+      },
+      {
+        key: "organization_name",
+        label: "Organization",
+        render: (value: string) => <span className="text-sm">{value}</span>
+      },
+      {
+          key: "id",
+          label: "Actions",
+          width: "180px",
+          render: (id: string) => (
+            <div className="flex gap-2">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/30 text-red-600 hover:bg-red-500/10 h-8"
+                    disabled={isProcessing === id}
+                    onClick={() => handleDecision(id, "REJECT")}
+                >
+                    <X size={14} className="mr-1" /> Reject
+                </Button>
+                <Button
+                    size="sm"
+                    className="h-8"
+                    disabled={isProcessing === id}
+                    onClick={() => handleDecision(id, "APPROVE")}
+                >
+                    {isProcessing === id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check size={14} className="mr-1" /> Approve</>}
+                </Button>
+            </div>
+          )
+      }
+    ],
+    [isProcessing]
+  );
+
+  const assignedColumns: Column<ProjectQAEngineer>[] = useMemo(
+      () => [
+        {
+          key: "name",
+          label: "Engineer",
+          sortable: true,
+          render: (value: string) => (
+             <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                     <Shield size={14} />
+                 </div>
+                 <span className="font-medium">{value}</span>
+             </div>
+          )
+        },
+        {
+          key: "assigned_at",
+          label: "Assigned Date",
+          sortable: true,
+          render: (value: string) => <span className="text-sm">{new Date(value).toLocaleDateString()}</span>
+        },
+        {
+            key: "qa_engineer_id",
+            label: "Actions",
+            width: "100px",
+            render: (id: string, row: ProjectQAEngineer) => (
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={isProcessing === id}
+                    onClick={() => handleRemoveFromProject(id)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                >
+                    {isProcessing === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={16} />}
+                </Button>
+            )
+        }
+      ],
+      [isProcessing]
+  );
 
   useEffect(() => {
     fetchInitialData();
@@ -176,135 +271,84 @@ export default function ManagerQAEngineersPage() {
       </div>
 
       {/* Content */}
-      {activeTab === "requests" ? (
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
-            Pending Approval ({pendingRequests.length})
-          </h3>
-          
-          {pendingRequests.length === 0 ? (
-            <div className="text-center py-12">
-              <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No pending requests found.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingRequests.map((req) => (
-                <div key={req.id} className="flex items-center gap-4 p-4 bg-muted/30 border border-border/50 rounded-xl">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                    <Shield size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-foreground">{req.name}</h4>
-                    <p className="text-xs text-muted-foreground">{req.email} • {req.organization_name}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-500/30 text-red-600 hover:bg-red-500/10"
-                      disabled={isProcessing === req.id}
-                      onClick={() => handleDecision(req.id, "REJECT")}
-                    >
-                      <X size={16} className="mr-1" /> Reject
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={isProcessing === req.id}
-                      onClick={() => handleDecision(req.id, "APPROVE")}
-                    >
-                      {isProcessing === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check size={16} className="mr-1" /> Approve</>}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Project Selector */}
-          {projects.length > 0 && (
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Briefcase className="text-muted-foreground" size={20} />
-                <span className="font-semibold text-foreground">Select Project:</span>
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <AssignEngineerDialog 
-                onAssign={handleAssignToProject} 
-                isProcessing={isProcessing === "assign"}
+      <div className="bg-card border border-border rounded-2xl p-6">
+        {activeTab === "requests" ? (
+           <>
+              <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
+                Pending Approval ({pendingRequests.length})
+              </h3>
+              <DataTable
+                 data={pendingRequests}
+                 columns={pendingColumns}
+                 searchable
+                 searchKeys={["name", "email", "organization_name"]}
+                 emptyMessage="No pending requests found."
               />
-            </div>
-          )}
+           </>
+        ) : (
+           <div className="space-y-6">
+            {/* Project Selector */}
+            {projects.length > 0 && (
+                <div className="bg-muted/30 border border-border rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Briefcase className="text-muted-foreground" size={20} />
+                    <span className="font-semibold text-foreground">Select Project:</span>
+                    <Select value={selectedProject} onValueChange={setSelectedProject}>
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                
+                <AssignEngineerDialog 
+                    onAssign={handleAssignToProject} 
+                    isProcessing={isProcessing === "assign"}
+                />
+                </div>
+            )}
 
-          {/* Engineers List */}
-          <div className="bg-card border border-border rounded-2xl p-6">
-             <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
-               Assigned Engineers ({projectEngineers.length})
-             </h3>
-             
-             {isLoadingProject ? (
-               <div className="flex justify-center py-8">
-                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
-               </div>
-             ) : projectEngineers.length === 0 ? (
-               <div className="text-center py-12">
-                 <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                 <p className="text-muted-foreground">No QA Engineers assigned to this project.</p>
-               </div>
-             ) : (
-               <div className="grid md:grid-cols-2 gap-4">
-                 {projectEngineers.map((eng) => (
-                   <div key={eng.id} className="p-4 border border-border rounded-xl flex items-center justify-between">
-                     <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-600">
-                         <Shield size={20} />
-                       </div>
-                       <div>
-                         <h4 className="font-bold text-foreground">{eng.name}</h4>
-                         <p className="text-xs text-muted-foreground">Assigned: {new Date(eng.assigned_at).toLocaleDateString()}</p>
-                       </div>
-                     </div>
-                     <Button
-                       size="sm"
-                       variant="ghost"
-                       disabled={isProcessing === eng.qa_engineer_id}
-                       onClick={() => handleRemoveFromProject(eng.qa_engineer_id)}
-                       className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                     >
-                       {isProcessing === eng.qa_engineer_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={16} />}
-                     </Button>
-                   </div>
-                 ))}
-               </div>
-             )}
-          </div>
-        </div>
-      )}
+            <div>
+                <h3 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wide">
+                Assigned Engineers ({projectEngineers.length})
+                </h3>
+                {isLoadingProject ? (
+                    <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                ) : (
+                    <DataTable
+                        data={projectEngineers}
+                        columns={assignedColumns}
+                        searchable
+                        searchKeys={["name", "email"]}
+                        emptyMessage="No QA Engineers assigned to this project."
+                    />
+                )}
+            </div>
+           </div>
+        )}
+      </div>
     </div>
   );
 
   function handleDecision(id: string, action: "APPROVE" | "REJECT") {
     handleOrgDecision(id, action);
   }
+
+  // Define handleOrgDecision if it wasn't captured in previous context or ensure it is accessible. 
+  // It was defined in the component scope in previous versions. 
+  // We need to make sure we didn't remove it or scope it out.
+  // Ideally, handleDecision calls the handleOrgDecision defined in the component.
 }
 
+// Dialog Component
 function AssignEngineerDialog({ onAssign, isProcessing }: { onAssign: (id: string) => void, isProcessing: boolean }) {
   const [qaId, setQaId] = useState("");
-  // Note: ideally we fetch list of APPROVED qa engineers in organization to populate this list
-  // For simplicity, inputting ID for now as per minimal implementation, usually would be a dropdown of available engineers
-  // But wait, owner can view all site engineers. Manager should ideally see list of APPROVED org engineers.
   
   return (
     <Dialog>
