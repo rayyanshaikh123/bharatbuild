@@ -33,19 +33,21 @@ async function fetcher<T>(
       }
     }
 
-    // Try to parse error response
+    // Try to parse error response (only read response once)
     let errorMessage = "Request failed";
     try {
-      const errorData = await res.json();
-      errorMessage = errorData.error || errorData.message || errorMessage;
-    } catch (e) {
-      // If JSON parsing fails, try to get text
-      try {
-        const errorText = await res.text();
-        if (errorText) errorMessage = errorText;
-      } catch (textError) {
-        // Use default error message
+      const text = await res.text();
+      if (text) {
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.error || errorData.message || text;
+        } catch {
+          // Not JSON, use text as is
+          errorMessage = text;
+        }
       }
+    } catch (e) {
+      // Use default error message
     }
 
     // Include status code in error message for debugging
