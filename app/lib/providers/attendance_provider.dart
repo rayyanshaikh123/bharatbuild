@@ -15,9 +15,9 @@ final todayAttendanceProvider = FutureProvider.autoDispose<Map<String, dynamic>?
 final checkInProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, Map<String, dynamic>>((ref, params) async {
   final authService = ref.watch(authServiceProvider);
   final attendance = await authService.checkIn(
-    params['projectId'].toString(),
-    params['lat'] as double,
-    params['lon'] as double,
+    params['projectId']?.toString() ?? '',
+    (params['lat'] as num?)?.toDouble() ?? 0.0,
+    (params['lon'] as num?)?.toDouble() ?? 0.0,
   );
   ref.invalidate(todayAttendanceProvider);
   ref.invalidate(attendanceHistoryProvider);

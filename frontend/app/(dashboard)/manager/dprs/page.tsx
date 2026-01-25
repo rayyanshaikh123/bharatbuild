@@ -8,33 +8,26 @@ import { managerProjects, Project, managerOrganization } from "@/lib/api/manager
 import { managerDpr } from "@/lib/api/dpr";
 import {
   Loader2,
-  FileText,
   Filter,
   Eye,
-  Calendar,
-  MapPin,
   CheckCircle,
   AlertCircle,
   Clock,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-// Helper for status badge
+// Status badge component (Aligned with Owner Design)
 function StatusBadge({ status }: { status: string }) {
-  const config = {
-    APPROVED: { color: "bg-green-500/20 text-green-400", label: "Approved", icon: CheckCircle },
-    PENDING: { color: "bg-amber-500/20 text-amber-400", label: "Pending", icon: Clock },
-    REJECTED: { color: "bg-red-500/20 text-red-400", label: "Rejected", icon: AlertCircle },
+  const config: Record<string, { color: string; label: string }> = {
+    PENDING: { color: "bg-amber-500/20 text-amber-400 border-amber-500/20", label: "Pending" },
+    APPROVED: { color: "bg-green-500/20 text-green-400 border-green-500/20", label: "Approved" },
+    REJECTED: { color: "bg-red-500/20 text-red-400 border-red-500/20", label: "Rejected" },
   };
 
-  const { color, label, icon: Icon } = config[status as keyof typeof config] || {
-    color: "bg-gray-500/20 text-gray-400",
-    label: status,
-    icon: AlertCircle,
-  };
+  const { color, label } = config[status] || { color: "bg-muted text-muted-foreground", label: status };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${color}`}>
-      <Icon size={12} />
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${color}`}>
       {label}
     </span>
   );
@@ -66,7 +59,34 @@ function ProjectSelector({
   );
 }
 
-import { useRouter } from "next/navigation";
+// Status filter component (Added to match Owner Design)
+function StatusFilter({
+  selected,
+  onSelect,
+}: {
+  selected: string | null;
+  onSelect: (status: string | null) => void;
+}) {
+  const statuses = [null, "PENDING", "APPROVED", "REJECTED"];
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-muted/30 rounded-lg">
+      {statuses.map((status) => (
+        <button
+          key={status ?? "all"}
+          onClick={() => onSelect(status)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+            selected === status
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+        >
+          {status ?? "All"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function ManagerDprPage() {
   const router = useRouter();
@@ -76,6 +96,7 @@ export default function ManagerDprPage() {
   const [dprs, setDprs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDprs, setIsLoadingDprs] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -112,36 +133,44 @@ export default function ManagerDprPage() {
     fetchProjects();
   }, [user]);
 
-  // Fetch DPRs when project is selected
-  const fetchDprs = async () => {
-    if (!selectedProjectId) {
-      setDprs([]);
-      return;
-    }
-    
-    try {
-      setIsLoadingDprs(true);
-      const res = await managerDpr.getAll(selectedProjectId);
-      setDprs(res.dprs || []);
-    } catch (err) {
-      console.error("Failed to fetch DPRs:", err);
-    } finally {
-      setIsLoadingDprs(false);
-    }
-  };
-
+  // Fetch DPRs when project or status filter changes
   useEffect(() => {
-    fetchDprs();
-  }, [selectedProjectId]);
+    const fetchDprs = async () => {
+      if (!selectedProjectId) {
+        setDprs([]);
+        return;
+      }
+      
+      try {
+        setIsLoadingDprs(true);
+        let res;
 
-  // Handle Review Action
-  // Review logic moved to [id]/page.tsx
+        if (statusFilter === "PENDING") {
+          res = await managerDpr.getPending(selectedProjectId);
+        } else if (statusFilter === "APPROVED") {
+           res = await managerDpr.getApproved(selectedProjectId);
+        } else if (statusFilter === "REJECTED") {
+           res = await managerDpr.getRejected(selectedProjectId);
+        } else {
+           res = await managerDpr.getAll(selectedProjectId);
+        }
+
+        setDprs(res.dprs || []);
+      } catch (err) {
+        console.error("Failed to fetch DPRs:", err);
+      } finally {
+        setIsLoadingDprs(false);
+      }
+    };
+
+    fetchDprs();
+  }, [selectedProjectId, statusFilter]);
 
   // Table columns
   const columns: Column<any>[] = useMemo(
     () => [
       {
-        key: "date",
+        key: "report_date", // Changed from 'date' to 'report_date' to match Owner/API common
         label: "Date",
         sortable: true,
         width: "120px",
@@ -155,7 +184,7 @@ export default function ManagerDprPage() {
           <div className="font-medium text-foreground">{value}</div>
         ),
       },
-      {
+       {
         key: "status",
         label: "Status",
         width: "120px",
@@ -165,7 +194,9 @@ export default function ManagerDprPage() {
         key: "work_description",
         label: "Work Description",
         render: (value: string) => (
-          <span className="text-sm text-muted-foreground line-clamp-1">{value}</span>
+          <div className="max-w-md truncate" title={value}>
+            {value}
+          </div>
         ),
       },
       {
@@ -173,7 +204,7 @@ export default function ManagerDprPage() {
         label: "Manpower",
         width: "100px",
         render: (value: number) => (
-          <span className="font-mono text-sm">{value}</span>
+          <span className="font-mono text-sm">{value || "-"}</span>
         ),
       },
       {
@@ -199,7 +230,7 @@ export default function ManagerDprPage() {
         ),
       },
     ],
-    []
+    [router]
   );
 
   if (isLoading) {
@@ -216,18 +247,17 @@ export default function ManagerDprPage() {
 
       {/* Filters Bar */}
       <div className="glass-card rounded-2xl p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Filter size={16} />
-              <span>Filters:</span>
-            </div>
-            <ProjectSelector projects={projects} selected={selectedProjectId} onSelect={setSelectedProjectId} />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter size={16} />
+            <span>Filters:</span>
           </div>
+          <ProjectSelector projects={projects} selected={selectedProjectId} onSelect={setSelectedProjectId} />
+          {selectedProjectId && (
+            <StatusFilter selected={statusFilter} onSelect={setStatusFilter} />
+          )}
         </div>
       </div>
-
-      {/* Stats Cards could go here */}
 
       {/* DPR Table */}
       {isLoadingDprs ? (

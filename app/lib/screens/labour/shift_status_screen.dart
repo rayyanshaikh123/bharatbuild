@@ -33,6 +33,7 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
   Position? _currentLocalPos;
   Map<String, dynamic>? _localValidation;
   final GeofenceService _geofenceService = GeofenceService();
+  bool _isCheckingOut = false;
 
   @override
   void initState() {
@@ -461,22 +462,7 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
           ),
           const SizedBox(width: 12),
         ],
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.surface,
-            foregroundColor: theme.colorScheme.onSurface,
-            minimumSize: const Size(72, 72),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
-            ),
-            elevation: 0,
-          ),
-          child: const Icon(Icons.restaurant_rounded, size: 24),
-        ),
-        const SizedBox(width: 12),
+
         if (isWorking)
           Expanded(
             child: Container(
@@ -496,9 +482,11 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
                 ],
               ),
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.logout_rounded, size: 22),
-                label: Text('finish_shift'.tr(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                onPressed: () => _handleCheckOut(context),
+                icon: _isCheckingOut 
+                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.logout_rounded, size: 22),
+                label: Text(_isCheckingOut ? 'checking_out'.tr() : 'finish_shift'.tr(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                onPressed: _isCheckingOut ? null : () => _handleCheckOut(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   foregroundColor: Colors.white,
@@ -541,11 +529,38 @@ class _ShiftStatusScreenState extends ConsumerState<ShiftStatusScreen> {
     );
 
     if (confirmed == true) {
+      setState(() => _isCheckingOut = true);
       try {
         await ref.read(checkOutProvider.future);
-        if (context.mounted) Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        
+        // Ensure all providers are invalidated for fresh data
+        ref.invalidate(todayAttendanceProvider);
+        ref.invalidate(attendanceHistoryProvider);
+        ref.invalidate(liveStatusProvider);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checked_out_successfully'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Use pushNamedAndRemoveUntil to ensure clean navigation
+          Navigator.pushNamedAndRemoveUntil(context, '/labour-dashboard', (route) => false);
+        }
       } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checkout_failed'.tr() + ': $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isCheckingOut = false);
+        }
       }
     }
   }

@@ -1,21 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'auth_service.dart';
+import '../config.dart';
+import '../services/auth_service.dart';
 
 class MaterialStockService {
-  static const String baseUrl = AuthService.baseUrl;
+  static final String baseUrl = API_BASE_URL;
 
   static Future<List<MaterialStock>> getProjectStock(String projectId) async {
-    final token = await AuthService.getToken();
-    if (token == null) {
-      throw Exception('Not authenticated');
-    }
+    final auth = AuthService();
+    final client = auth.client;
 
-    final response = await http.get(
-      Uri.parse(
-          '$baseUrl/engineer/material-stock/projects/$projectId/material-stock'),
+    final response = await client.get(
+      Uri.parse('$baseUrl/engineer/material-stock/projects/$projectId/material-stock'),
       headers: {
-        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
     );
@@ -26,7 +23,7 @@ class MaterialStockService {
           .map((item) => MaterialStock.fromJson(item))
           .toList();
     } else {
-      throw Exception('Failed to load material stock');
+      throw Exception('Failed to load material stock: ${response.body}');
     }
   }
 }

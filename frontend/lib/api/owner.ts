@@ -307,6 +307,9 @@ export const ownerDpr = {
     api.get<{ dprs: DprEntry[] }>(
       `/owner/dpr/projects/${projectId}/dprs/date/${date}/rejected`,
     ),
+
+  getImage: (dprId: string) =>
+    api.getBlob(`/owner/dpr/dprs/${dprId}/image`),
 };
 
 // ==================== OWNER TIMELINE API (READ-ONLY) ====================

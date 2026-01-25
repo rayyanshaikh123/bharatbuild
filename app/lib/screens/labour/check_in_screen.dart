@@ -25,6 +25,7 @@ class CheckInScreen extends ConsumerStatefulWidget {
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Position? _currentPosition;
   bool _isLoadingLocation = false;
+  bool _isCheckingIn = false;
   String? _selectedProjectId;
   Map<String, dynamic>? _selectedProject;
 
@@ -73,6 +74,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Future<void> _handleCheckIn() async {
     if (_selectedProjectId == null || _currentPosition == null) return;
 
+    if (mounted) setState(() => _isCheckingIn = true);
+
     final authService = ref.read(authServiceProvider);
     final geofenceService = GeofenceService();
 
@@ -89,7 +92,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       }
 
       final labourRequestId = application['labour_request_id']?.toString() ?? 
-                              application['id']?.toString();
+                              application['id']?.toString() ?? 
+                              application['project_id']?.toString();
       
       if (labourRequestId == null) {
         throw Exception('Unable to find labour request ID');
@@ -104,12 +108,15 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         jobDetails,
       );
       
-      if (!validation['isValid'] as bool) {
-        final distance = validation['distance'] as int;
-        final allowedRadius = validation['allowedRadius'] as int;
+      final isValid = (validation['isValid'] as bool?) ?? false;
+      
+      if (!isValid) {
+        final distance = (validation['distance'] as num?)?.toInt() ?? 0;
+        final allowedRadius = (validation['allowedRadius'] as num?)?.toInt() ?? 0;
         
         if (mounted) {
-          showDialog(
+           setState(() => _isCheckingIn = false);
+           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Outside Geofence'),
@@ -138,36 +145,54 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       }).future);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Checked in successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
         // Start tracking
         final user = ref.read(currentUserProvider);
         if (user != null) {
           TrackingService().startTracking(
             project: jobDetails,
             userRole: 'LABOUR',
-            userId: user['id'].toString(),
+            userId: (user['id'] ?? 'unknown_user').toString(),
           );
         }
 
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checked in successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
         // Navigate to shift status screen
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+           (route) => false, // Clear stack
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() => _isCheckingIn = false);
+        final errorMsg = e.toString();
+        
+        if (errorMsg.contains('Already checked in')) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Re-syncing session...'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${errorMsg.replaceAll('Exception: ', '')}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -411,7 +436,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               ),
             ),
           ElevatedButton(
-            onPressed: canCheckIn ? _handleCheckIn : null,
+            onPressed: canCheckIn && !_isCheckingIn ? _handleCheckIn : null,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 64),
               backgroundColor: isInside ? AppColors.primary : Colors.grey[700],
@@ -420,14 +445,14 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               elevation: 4,
               shadowColor: AppColors.primary.withOpacity(0.4),
             ),
-            child: _isLoadingLocation
+            child: (_isLoadingLocation || _isCheckingIn)
                 ? const CircularProgressIndicator(color: Colors.white)
                 : Text(
                     'start_timer'.tr().toUpperCase() + ' (Auto Attendance)',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   ),
           ),
-          if (hasSelected && !isInside && !_isLoadingLocation)
+          if (hasSelected && !isInside && !_isLoadingLocation && !_isCheckingIn)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(

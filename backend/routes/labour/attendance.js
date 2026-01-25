@@ -285,14 +285,8 @@ router.post("/check-out", labourCheck, async (req, res) => {
       max_allowed_exits,
     } = sessionRes.rows[0];
 
-    // 2. Check exit limit
-    if (entry_exit_count >= max_allowed_exits) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        error: "Maximum exit limit reached for today",
-        limit: max_allowed_exits,
-      });
-    }
+    // 2. Check exit limit (Removed enforcement)
+    // if (entry_exit_count >= max_allowed_exits) { ... }
 
     // 3. Close session
     const updatedSession = await client.query(
@@ -581,7 +575,8 @@ router.post("/track", labourCheck, async (req, res) => {
         attendance.id,
       ]);
 
-      // Check for blacklisting: ONLY if entry_exit_count > max_allowed_exits
+      // Check for blacklisting: ONLY if entry_exit_count > max_allowed_exits (Removed enforcement)
+      /*
       if (entryExitCount > maxAllowedExits) {
         await pool.query(
           `INSERT INTO organization_blacklist (org_id, labour_id, reason)
@@ -591,6 +586,7 @@ router.post("/track", labourCheck, async (req, res) => {
         );
         blacklisted = true;
       }
+      */
     }
 
     // CASE 2: Labour RE-ENTERS geo-fence (was outside, now inside) - RESUME

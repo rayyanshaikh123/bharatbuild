@@ -280,12 +280,17 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       prefixIcon: const Icon(Icons.shopping_cart),
                     ),
-                    items: pos.map((po) {
-                      final poNumber = po['po_number'] ?? 'N/A';
-                      final vendorName = po['vendor_name'] ?? 'Unknown Vendor';
-                      final totalAmount = po['total_amount'] ?? 0;
+                    items: pos.where((p) => p is Map).map<DropdownMenuItem<String>>((item) {
+                      final po = item as Map<String, dynamic>? ?? {}; // Safe cast or empty
+                      final id = po['id']?.toString();
+                      if (id == null) return const DropdownMenuItem(value: '', child: Text('Invalid PO'));
+                      
+                      final poNumber = po['po_number']?.toString() ?? 'N/A';
+                      final vendorName = po['vendor_name']?.toString() ?? 'Unknown Vendor';
+                      final totalAmount = double.tryParse(po['total_amount']?.toString() ?? '0') ?? 0.0;
+                      
                       return DropdownMenuItem<String>(
-                        value: po['id'] as String,
+                        value: id,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -295,13 +300,18 @@ class _GRNScreenState extends ConsumerState<GRNScreen> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }).where((item) => item.value != '').toList(),
                     onChanged: (value) {
-                      if (value != null) {
-                        final po = pos.firstWhere((p) => p['id'] == value);
-                        _selectPurchaseOrder(po);
+                      if (value != null && value.isNotEmpty) {
+                        final po = pos.firstWhere((p) => p is Map && p['id'].toString() == value, orElse: () => null);
+                        if (po != null && po is Map<String, dynamic>) {
+                          _selectPurchaseOrder(po);
+                        } else if (po != null && po is Map) {
+                           _selectPurchaseOrder(Map<String, dynamic>.from(po));
+                        }
                       }
                     },
+
                     validator: (value) => value == null ? 'Please select a purchase order' : null,
                   );
                 },

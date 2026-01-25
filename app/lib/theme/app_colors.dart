@@ -24,8 +24,10 @@ class AppColors {
 
   // Semantic (Shared or adjusted)
   static const Color success = Color(0xFF059669);
+  static const Color successForeground = Color(0xFFFFFFFF);
   static const Color info = Color(0xFF2563EB);
   static const Color danger = Color(0xFFE11D48);
+  static const Color dangerBackground = Color(0xFFFFEBEE);
   static const Color pending = Color(0xFFB45309);
   
   static const Color infoBackground = Color(0xFFF0F9FF);

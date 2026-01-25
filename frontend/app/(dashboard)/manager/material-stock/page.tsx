@@ -44,16 +44,10 @@ export default function MaterialStockPage() {
 
         // Get approved organization
         const orgsRes = await managerOrganization.getMyOrganizations();
-        const approvedOrg = orgsRes.organizations.find(
-          (org: any) => org.status === "APPROVED",
-        );
-
-        if (!approvedOrg) {
-          setIsLoadingProjects(false);
-          return;
-        }
-
-        const res = await managerProjects.getMyProjects(approvedOrg.org_id);
+        // Since backend already filters for APPROVED, we can just take the first one
+        if (orgsRes.organizations && orgsRes.organizations.length > 0) {
+          const approvedOrg = orgsRes.organizations[0];
+          const res = await managerProjects.getMyProjects(approvedOrg.id);
         const activeProjects = res.projects.filter(
           (p: any) =>
             p.my_status === "ACTIVE" &&

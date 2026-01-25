@@ -106,25 +106,41 @@ async function validateUserInsideProjectGeofence({
       throw new Error("Invalid latitude or longitude");
     }
 
-    // Step 1: Verify user belongs to project
+    // Step 1: Verify user belongs to project (using same logic as verifyEngineerAccess)
     let accessCheck;
     if (userRole === "SITE_ENGINEER") {
       accessCheck = await db.query(
-        `SELECT id FROM project_site_engineers 
-         WHERE project_id = $1 AND site_engineer_id = $2 AND status = 'ACTIVE'`,
-        [projectId, userId],
+        `SELECT 
+          (SELECT ose.status FROM organization_site_engineers ose
+           JOIN projects p ON ose.org_id = p.org_id
+           WHERE ose.site_engineer_id = $1 AND p.id = $2 LIMIT 1) as org_status,
+          (SELECT pse.status FROM project_site_engineers pse
+           WHERE pse.site_engineer_id = $1 AND pse.project_id = $2 LIMIT 1) as project_status`,
+        [userId, projectId],
       );
     } else if (userRole === "MANAGER") {
       accessCheck = await db.query(
-        `SELECT id FROM project_managers 
-         WHERE project_id = $1 AND manager_id = $2 AND status = 'ACTIVE'`,
-        [projectId, userId],
+        `SELECT 
+          (SELECT om.status FROM organization_managers om
+           JOIN projects p ON om.org_id = p.org_id
+           WHERE om.manager_id = $1 AND p.id = $2 LIMIT 1) as org_status,
+          (SELECT pm.status FROM project_managers pm
+           WHERE pm.manager_id = $1 AND pm.project_id = $2 LIMIT 1) as project_status`,
+        [userId, projectId],
       );
     } else {
       throw new Error(`Unsupported role: ${userRole}`);
     }
 
     if (accessCheck.rows.length === 0) {
+      throw new Error("Project not found");
+    }
+
+    const row = accessCheck.rows[0];
+    const hasSomeLink = row.org_status !== null || row.project_status !== null;
+    const isRejected = row.org_status === "REJECTED" || row.project_status === "REJECTED";
+
+    if (!hasSomeLink || isRejected) {
       throw new Error("User is not assigned to this project");
     }
 

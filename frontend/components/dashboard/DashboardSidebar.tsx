@@ -64,6 +64,7 @@ const managerNavItems: NavItem[] = [
   { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
   { label: "Wages", href: "/manager/wages", icon: ReceiptIndianRupeeIcon },
   { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
+  { label: "Dangerous Work", href: "/manager/dangerous-work", icon: ShieldAlert },
   { label: "Timeline", href: "/manager/timeline", icon: Clock },
 
   { label: "DPRs", href: "/manager/dprs", icon: FileText },
@@ -76,6 +77,7 @@ const managerNavItems: NavItem[] = [
   { label: "GRN", href: "/manager/grn", icon: ClipboardCheck },
   { label: "Labour-requests", href: "/manager/labour-requests", icon: Users },
   { label: "Analytics", href: "/manager/analytics", icon: TrendingUp },
+  { label: "Audit Logs", href: "/manager/audits", icon: History },
   { label: "Reports", href: "/manager/reports", icon: BarChart },
   { label: "Profile", href: "/manager/profile", icon: Settings },
 ];

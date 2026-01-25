@@ -30,8 +30,15 @@ import '../../providers/location_provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 /// Content-only labour dashboard used in mobile IndexedStack.
-class LabourDashboardContent extends ConsumerWidget {
+class LabourDashboardContent extends ConsumerStatefulWidget {
   const LabourDashboardContent({super.key});
+
+  @override
+  ConsumerState<LabourDashboardContent> createState() => _LabourDashboardContentState();
+}
+
+class _LabourDashboardContentState extends ConsumerState<LabourDashboardContent> {
+  bool _isCheckingOut = false;
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -103,8 +110,58 @@ class LabourDashboardContent extends ConsumerWidget {
     }
   }
 
+  Future<void> _handleCheckOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('finish_shift'.tr()),
+        content: Text('checkout_confirmation'.tr()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('cancel'.tr())),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: Text('confirm'.tr())),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isCheckingOut = true);
+      try {
+        await ref.read(checkOutProvider.future);
+
+        // Ensure all providers are invalidated for fresh data
+        ref.invalidate(todayAttendanceProvider);
+        ref.invalidate(attendanceHistoryProvider);
+        ref.invalidate(liveStatusProvider);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checked_out_successfully'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Use pushReplacementNamed to ensure clean navigation
+          Navigator.pushReplacementNamed(context, '/labour-dashboard');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('checkout_failed'.tr() + ': $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isCheckingOut = false);
+        }
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final displayName = user != null && user['name'] != null ? user['name'] as String : 'Guest';
@@ -183,7 +240,10 @@ class LabourDashboardContent extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const _AttendanceSection(),
+              child: _AttendanceSection(
+                isCheckingOut: _isCheckingOut,
+                onCheckOut: _handleCheckOut,
+              ),
             ),
           ),
 
@@ -1804,10 +1864,17 @@ class ProfileContent extends ConsumerWidget {
       ),
     );
   }
+
 }
 
 class _AttendanceSection extends ConsumerWidget {
-  const _AttendanceSection();
+  final bool isCheckingOut;
+  final Future<void> Function(BuildContext, WidgetRef) onCheckOut;
+
+  const _AttendanceSection({
+    required this.isCheckingOut,
+    required this.onCheckOut,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1946,9 +2013,11 @@ class _AttendanceSection extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: IconButton(
-                    onPressed: () => _handleCheckOut(context, ref),
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    tooltip: 'check_out'.tr(),
+                    onPressed: isCheckingOut ? null : () => onCheckOut(context, ref),
+                    icon: isCheckingOut 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.logout, color: Colors.white),
+                    tooltip: isCheckingOut ? 'checking_out'.tr() : 'check_out'.tr(),
                   ),
                 ),
               ],
@@ -2108,17 +2177,9 @@ class _AttendanceSection extends ConsumerWidget {
       }
     }
   }
-
-  Future<void> _handleCheckOut(BuildContext context, WidgetRef ref) async {
-    try {
-      await ref.read(checkOutProvider.future);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }
 }
+
+
 
 class _AttendancePlaceholder extends StatelessWidget {
   const _AttendancePlaceholder();
