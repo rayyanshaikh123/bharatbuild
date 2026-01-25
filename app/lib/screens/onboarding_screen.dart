@@ -12,6 +12,13 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int currentPage = 0;
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               flex: 14,
               child: PageView.builder(
+                controller: _pageController,
                 itemCount: demoData.length,
                 onPageChanged: (value) {
                   setState(() {
@@ -66,9 +74,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   if (currentPage < demoData.length - 1) {
-                    setState(() {
-                      currentPage++;
-                    });
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.ease,
+                    );
                   } else {
                     Navigator.pushReplacementNamed(
                       context,
