@@ -59,7 +59,6 @@ export default function MaterialStockPage() {
             setSelectedProject(activeProjects[0].id);
           }
         }
-        }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
         toast.error("Failed to load projects");
@@ -356,7 +355,9 @@ function ConsumptionView({
                 <td className="p-4">
                   <div className="text-right">
                     <span className="font-mono font-semibold text-sm">
-                      {record.quantity_used.toFixed(2)}
+                      {parseFloat((record.quantity_used as any) || "0").toFixed(
+                        2,
+                      )}
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">
                       {record.unit}
