@@ -6,6 +6,7 @@ const {
   logAudit,
   getOrganizationIdFromProject,
 } = require("../../util/auditLogger");
+const { calculateWageForAttendance } = require("../../util/wageCalculator");
 
 /* ---------------- GET APPROVED ATTENDANCE FOR WAGES ---------------- */
 // Gets attendance records that are APPROVED but don't have a wage record yet
@@ -39,6 +40,7 @@ router.get("/unprocessed", managerCheck, async (req, res) => {
 });
 
 /* ---------------- GENERATE WAGES ---------------- */
+// Server-side wage calculation using attendance_sessions
 router.post("/generate", managerCheck, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -55,7 +57,7 @@ router.post("/generate", managerCheck, async (req, res) => {
     for (const item of wage_data) {
       const { attendance_id } = item;
 
-      // Get attendance details with labour info
+      // Verify manager has access to this attendance
       const attRes = await client.query(
         `SELECT a.*, l.skill_type, l.categories[1] as category
          FROM attendance a 
@@ -69,38 +71,48 @@ router.post("/generate", managerCheck, async (req, res) => {
 
       const att = attRes.rows[0];
 
-      // Fetch hourly rate from wage_rates
-      const rateRes = await client.query(
-        `SELECT hourly_rate FROM wage_rates 
-         WHERE project_id = $1 AND skill_type = $2 AND category = $3`,
-        [att.project_id, att.skill_type, att.category],
-      );
-
-      if (rateRes.rows.length === 0) {
-        // Skip this attendance if no rate configured
-        continue;
+      // Only generate wages for:
+      // 1. Completed attendance (check_out_time IS NOT NULL), OR
+      // 2. Approved manual attendance
+      if (
+        !att.check_out_time &&
+        !(att.is_manual && att.status === "APPROVED")
+      ) {
+        continue; // Skip active attendance
       }
 
-      const hourly_rate = rateRes.rows[0].hourly_rate;
-      const total_amount = hourly_rate * (att.work_hours || 0);
-
-      const wageRes = await client.query(
-        `INSERT INTO wages (attendance_id, labour_id, project_id, wage_type, rate, total_amount, worked_hours, status)
-         VALUES ($1, $2, $3, 'HOURLY', $4, $5, $6, 'PENDING')
-         ON CONFLICT (attendance_id) DO NOTHING
-         RETURNING *`,
-        [
+      // Use server-side calculation
+      try {
+        const calculation = await calculateWageForAttendance(
+          client,
           attendance_id,
-          att.labour_id,
-          att.project_id,
-          hourly_rate,
-          total_amount,
-          att.work_hours,
-        ],
-      );
+        );
 
-      if (wageRes.rows.length > 0) {
-        createdWages.push(wageRes.rows[0]);
+        const wageRes = await client.query(
+          `INSERT INTO wages (attendance_id, labour_id, project_id, wage_type, rate, total_amount, worked_hours, status)
+           VALUES ($1, $2, $3, 'HOURLY', $4, $5, $6, 'PENDING')
+           ON CONFLICT (attendance_id) DO NOTHING
+           RETURNING *`,
+          [
+            attendance_id,
+            att.labour_id,
+            att.project_id,
+            calculation.hourly_rate,
+            calculation.total_amount,
+            calculation.worked_hours,
+          ],
+        );
+
+        if (wageRes.rows.length > 0) {
+          createdWages.push(wageRes.rows[0]);
+        }
+      } catch (calcErr) {
+        console.error(
+          `Wage calculation failed for attendance ${attendance_id}:`,
+          calcErr.message,
+        );
+        // Skip this attendance if calculation fails
+        continue;
       }
     }
 
@@ -215,6 +227,19 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Check for budget exceeded and send owner alert (if approved)
+    if (status === "APPROVED") {
+      try {
+        const {
+          checkAndAlertBudgetExceeded,
+        } = require("../../services/ownerAlert.service");
+        await checkAndAlertBudgetExceeded(project_id, "Wage Approval", client);
+      } catch (alertErr) {
+        console.error("Failed to check budget exceeded alert:", alertErr);
+        // Don't block the response
+      }
+    }
+
     res.json({ wage: afterState });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -222,6 +247,46 @@ router.patch("/review/:id", managerCheck, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
+  }
+});
+
+/* ---------------- GET WEEKLY WAGE COST ---------------- */
+router.get("/weekly-cost", managerCheck, async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { project_id } = req.query;
+
+    if (!project_id) {
+      return res.status(400).json({ error: "project_id is required" });
+    }
+
+    // Verify access
+    const accessRes = await pool.query(
+      `SELECT id FROM project_managers WHERE manager_id = $1 AND project_id = $2 AND status = 'ACTIVE'`,
+      [managerId, project_id]
+    );
+
+    if (accessRes.rows.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await pool.query(
+      `SELECT 
+         DATE_TRUNC('week', created_at) as week_start, 
+         SUM(total_amount) as total_cost,
+         COUNT(id) as record_count
+       FROM wages
+       WHERE project_id = $1 AND status = 'APPROVED'
+       GROUP BY week_start
+       ORDER BY week_start DESC
+       LIMIT 12`, // Last 12 weeks
+      [project_id]
+    );
+
+    res.json({ weekly_costs: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

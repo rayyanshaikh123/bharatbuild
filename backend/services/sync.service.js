@@ -42,6 +42,7 @@ function validateAction(action) {
     "DELETE_MATERIAL_REQUEST",
     "CREATE_DPR",
     "MANUAL_ATTENDANCE",
+    "TRACK",
   ];
 
   if (!validActions.includes(action.action_type)) {
@@ -117,7 +118,7 @@ async function checkAuthorization(userId, userRole, action) {
       // Check if engineer is ACTIVE in project
       const engineerCheck = await pool.query(
         `SELECT id FROM project_site_engineers 
-         WHERE site_engineer_id = $1::uuid AND project_id = $2::uuid AND status = 'ACTIVE'`,
+         WHERE site_engineer_id = $1::uuid AND project_id = $2::uuid AND status = 'APPROVED'`,
         [userId, project_id],
       );
 
@@ -461,20 +462,46 @@ async function handleCreateDPR(client, action, userId) {
     throw new Error("Missing required fields: title, report_date");
   }
 
+  // Map fields to schema
+  // work_done and manpower_deployed do not exist in schema, so we append them to description
+  let finalDescription = description || "";
+  if (work_done) {
+    finalDescription += `\n\nWork Done:\n${work_done}`;
+  }
+  if (manpower_deployed) {
+    finalDescription += `\n\nManpower Deployed:\n${manpower_deployed}`;
+  }
+
+  // Map materials_used to material_usage (JSONB)
+  // Ensure it is a valid JSON array or stringified JSON
+  let finalMaterialUsage = "[]";
+  if (materials_used) {
+    if (typeof materials_used === "string") {
+      // If it's a string, try to parse it to ensure validity, else wrap
+      try {
+        JSON.parse(materials_used);
+        finalMaterialUsage = materials_used;
+      } catch (e) {
+        // Not JSON, ignore or wrap? Assuming app sends JSON string or object
+        console.warn("Invalid JSON for materials_used, using empty");
+      }
+    } else if (Array.isArray(materials_used)) {
+      finalMaterialUsage = JSON.stringify(materials_used);
+    }
+  }
+
   // Insert DPR
   const result = await client.query(
-    `INSERT INTO dprs (project_id, site_engineer_id, title, description, report_date, work_done, materials_used, manpower_deployed, submitted_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    `INSERT INTO dprs (project_id, site_engineer_id, title, description, report_date, material_usage, submitted_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
      RETURNING id`,
     [
       project_id,
       userId,
       title,
-      description || "",
+      finalDescription,
       report_date,
-      work_done || "",
-      materials_used || "",
-      manpower_deployed || "",
+      finalMaterialUsage,
     ],
   );
 
@@ -514,6 +541,149 @@ async function handleManualAttendance(client, action, userId) {
   );
 
   return result.rows[0].id;
+}
+
+/**
+ * Handle TRACK action (Geofence monitoring)
+ */
+async function handleTrack(client, action, userId) {
+  const { project_id, payload } = action;
+  const { latitude, longitude, timestamp } = payload;
+
+  if (latitude === undefined || longitude === undefined || !timestamp) {
+    throw new Error("Missing required fields: latitude, longitude, timestamp");
+  }
+
+  // 1. Find active attendance
+  const attendanceRes = await client.query(
+    `SELECT a.*, p.org_id 
+     FROM attendance a
+     JOIN projects p ON a.project_id = p.id
+     WHERE a.labour_id = $1::uuid AND a.project_id = $2::uuid 
+     AND a.attendance_date = ($3::timestamp)::date
+     ORDER BY a.id DESC LIMIT 1`,
+    [userId, project_id, timestamp],
+  );
+
+  if (attendanceRes.rows.length === 0) {
+    throw new Error("No active attendance session found for the given date");
+  }
+
+  const attendance = attendanceRes.rows[0];
+  const orgId = attendance.org_id;
+  const maxAllowedExits = attendance.max_allowed_exits || 3;
+
+  // 2. Already blacklisted?
+  const blacklistCheck = await client.query(
+    `SELECT id FROM organization_blacklist 
+     WHERE org_id = $1 AND labour_id = $2 
+     AND created_at + interval '3 days' > NOW()`,
+    [orgId, userId],
+  );
+
+  if (blacklistCheck.rows.length > 0) {
+    throw new Error("Labour is currently blacklisted");
+  }
+
+  // 3. Validate Geofence
+  const geofenceResult = await validateGeofence(
+    client,
+    project_id,
+    latitude,
+    longitude,
+  );
+
+  const isCurrentlyBreached = !geofenceResult.isValid;
+  let entryExitCount = attendance.entry_exit_count || 0;
+
+  // CASE 1: EXIT (Inside -> Outside)
+  if (isCurrentlyBreached && !attendance.is_currently_breached) {
+    const activeSessionRes = await client.query(
+      `SELECT id, check_in_time FROM attendance_sessions 
+       WHERE attendance_id = $1 AND check_out_time IS NULL
+       ORDER BY check_in_time DESC LIMIT 1`,
+      [attendance.id],
+    );
+
+    if (activeSessionRes.rows.length > 0) {
+      const sessionId = activeSessionRes.rows[0].id;
+      const checkInTime = activeSessionRes.rows[0].check_in_time;
+
+      await client.query(
+        `UPDATE attendance_sessions 
+         SET check_out_time = $1,
+             worked_minutes = EXTRACT(EPOCH FROM ($1::timestamp - check_in_time)) / 60
+         WHERE id = $2`,
+        [timestamp, sessionId],
+      );
+    }
+
+    entryExitCount += 1;
+
+    // Update total work hours
+    const totalRes = await client.query(
+      `SELECT SUM(worked_minutes) as total_minutes 
+       FROM attendance_sessions 
+       WHERE attendance_id = $1 AND check_out_time IS NOT NULL`,
+      [attendance.id],
+    );
+
+    const work_hours = (totalRes.rows[0].total_minutes || 0) / 60;
+    await client.query(`UPDATE attendance SET work_hours = $1 WHERE id = $2`, [
+      work_hours,
+      attendance.id,
+    ]);
+
+    // Blacklist if exceeded
+    if (entryExitCount > maxAllowedExits) {
+      await client.query(
+        `INSERT INTO organization_blacklist (org_id, labour_id, reason)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (org_id, labour_id) DO NOTHING`,
+        [orgId, userId, "Exceeded maximum allowed exits"],
+      );
+    }
+  }
+
+  // CASE 2: RE-ENTRY (Outside -> Inside)
+  if (!isCurrentlyBreached && attendance.is_currently_breached) {
+    if (entryExitCount <= maxAllowedExits) {
+      const activeSessionCheck = await client.query(
+        `SELECT id FROM attendance_sessions 
+         WHERE attendance_id = $1 AND check_out_time IS NULL`,
+        [attendance.id],
+      );
+
+      if (activeSessionCheck.rows.length === 0) {
+        await client.query(
+          `INSERT INTO attendance_sessions (attendance_id, check_in_time)
+           VALUES ($1, $2)`,
+          [attendance.id, timestamp],
+        );
+      }
+    }
+  }
+
+  // 4. Update attendance state
+  await client.query(
+    `UPDATE attendance 
+     SET last_known_lat = $1, 
+         last_known_lng = $2, 
+         is_currently_breached = $3,
+         entry_exit_count = $4,
+         last_event_at = $5
+     WHERE id = $6`,
+    [
+      latitude,
+      longitude,
+      isCurrentlyBreached,
+      entryExitCount,
+      timestamp,
+      attendance.id,
+    ],
+  );
+
+  return attendance.id;
 }
 
 /**
@@ -560,6 +730,10 @@ async function applyAction(action, userId, userRole) {
 
       case "MANUAL_ATTENDANCE":
         entityId = await handleManualAttendance(client, action, userId);
+        break;
+
+      case "TRACK":
+        entityId = await handleTrack(client, action, userId);
         break;
 
       default:

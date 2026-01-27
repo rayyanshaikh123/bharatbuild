@@ -95,6 +95,27 @@
         margin: 10px 0;
         font-size: 12px;
       }
+      /* New styles for form groups */
+      .form-group {
+        margin-bottom: 15px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #34495e;
+      }
+      .form-group input[type="text"],
+      .form-group input[type="date"],
+      .form-group input[type="number"],
+      .form-group textarea,
+      .form-group select {
+        width: calc(100% - 16px); /* Account for padding */
+        padding: 8px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -176,6 +197,226 @@
       </div>
       <button onclick="requestToJoinProject()" class="warning">
         Request to Join Project
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>3️⃣ Daily Progress Reports (DPR)</h2>
+
+      <button onclick="getMyDPRs()">Get My DPRs</button>
+      <button onclick="getProjectPlanItems()">
+        Get Plan Items (for dropdown)
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Create DPR</h3>
+      <div class="form-group">
+        <label>Report Date:</label>
+        <input type="date" id="dprDate" />
+      </div>
+      <div class="form-group">
+        <label>Title:</label>
+        <input type="text" id="dprTitle" placeholder="e.g., Foundation work" />
+      </div>
+      <div class="form-group">
+        <label>Description:</label>
+        <textarea
+          id="dprDescription"
+          rows="3"
+          placeholder="Detailed work description"
+        ></textarea>
+      </div>
+      <div class="form-group">
+        <label>Plan Item ID (optional):</label>
+        <input
+          type="text"
+          id="dprPlanItemId"
+          placeholder="Paste plan item ID"
+        />
+      </div>
+      <button onclick="createDPR()" class="success">Create DPR</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">View/Edit DPR</h3>
+      <div class="input-group">
+        <label>DPR ID:</label>
+        <input type="text" id="dprIdToView" placeholder="Paste DPR ID" />
+      </div>
+      <button onclick="viewDPR()">View DPR</button>
+      <button onclick="deleteDPR()" class="danger">Delete DPR</button>
+    </div>
+
+    <div class="section">
+      <h2>4️⃣ Material Requests</h2>
+
+      <button onclick="getMyMaterialRequests()">
+        Get My Material Requests
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Create Material Request</h3>
+      <div class="form-group">
+        <label>Title:</label>
+        <input
+          type="text"
+          id="matReqTitle"
+          placeholder="e.g., Cement for foundation"
+        />
+      </div>
+      <div class="form-group">
+        <label>Category:</label>
+        <select id="matReqCategory">
+          <option value="">-- Select Category --</option>
+          <option value="CEMENT">Cement</option>
+          <option value="STEEL">Steel</option>
+          <option value="SAND">Sand</option>
+          <option value="AGGREGATE">Aggregate</option>
+          <option value="BRICK">Brick</option>
+          <option value="PAINT">Paint</option>
+          <option value="ELECTRICAL">Electrical</option>
+          <option value="PLUMBING">Plumbing</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Quantity:</label>
+        <input
+          type="number"
+          id="matReqQuantity"
+          placeholder="e.g., 100"
+          step="0.01"
+        />
+      </div>
+      <div class="form-group">
+        <label>Description:</label>
+        <textarea
+          id="matReqDescription"
+          rows="3"
+          placeholder="Additional details"
+        ></textarea>
+      </div>
+      <div class="form-group">
+        <label>DPR ID (optional - leave empty for standalone request):</label>
+        <input type="text" id="matReqDprId" placeholder="Paste DPR ID" />
+      </div>
+      <button onclick="createMaterialRequest()" class="success">
+        Create Material Request
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">
+        View/Edit Material Request
+      </h3>
+      <div class="input-group">
+        <label>Material Request ID:</label>
+        <input
+          type="text"
+          id="matReqIdToView"
+          placeholder="Paste material request ID"
+        />
+      </div>
+      <button onclick="viewMaterialRequest()">View Material Request</button>
+      <button onclick="deleteMaterialRequest()" class="danger">
+        Delete Material Request
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>5️⃣ Material Bills</h2>
+
+      <button onclick="getMyMaterialBills()">Get My Material Bills</button>
+      <button onclick="getPendingMaterialBills()">
+        Get Pending Material Bills
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Create Material Bill</h3>
+      <div class="form-group">
+        <label>Material Request ID:</label>
+        <input
+          type="text"
+          id="billMatReqId"
+          placeholder="Paste material request ID"
+        />
+      </div>
+      <div class="form-group">
+        <label>Vendor Name:</label>
+        <input type="text" id="billVendor" placeholder="e.g., ABC Suppliers" />
+      </div>
+      <div class="form-group">
+        <label>Amount:</label>
+        <input
+          type="number"
+          id="billAmount"
+          placeholder="e.g., 50000"
+          step="0.01"
+        />
+      </div>
+      <div class="form-group">
+        <label>Quantity Received:</label>
+        <input
+          type="number"
+          id="billQuantity"
+          placeholder="e.g., 95"
+          step="0.01"
+        />
+      </div>
+      <div class="form-group">
+        <label>Invoice Number:</label>
+        <input type="text" id="billInvoice" placeholder="e.g., INV-2024-001" />
+      </div>
+      <div class="form-group">
+        <label>Remarks:</label>
+        <textarea
+          id="billRemarks"
+          rows="2"
+          placeholder="Additional notes"
+        ></textarea>
+      </div>
+      <button onclick="createMaterialBill()" class="success">
+        Create Material Bill
+      </button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">View Material Bill</h3>
+      <div class="input-group">
+        <label>Material Bill ID:</label>
+        <input type="text" id="billIdToView" placeholder="Paste bill ID" />
+      </div>
+      <button onclick="viewMaterialBill()">View Material Bill</button>
+    </div>
+
+    <div class="section">
+      <h2>6️⃣ Project Breaks</h2>
+
+      <button onclick="getActiveProjectBreak()">Get Active Break</button>
+      <button onclick="getProjectBreakHistory()">Get Break History</button>
+
+      <hr style="margin: 20px 0; border: 1px solid #ecf0f1" />
+
+      <h3 style="color: #34495e; margin-top: 20px">Create Project Break</h3>
+      <div class="form-group">
+        <label>Duration (minutes, 60-120):</label>
+        <input
+          type="number"
+          id="breakDuration"
+          placeholder="e.g., 60"
+          min="60"
+          max="120"
+        />
+      </div>
+      <div class="form-group">
+        <label>Reason:</label>
+        <input type="text" id="breakReason" placeholder="e.g., Lunch break" />
+      </div>
+      <button onclick="createProjectBreak()" class="warning">
+        Start Project Break
       </button>
     </div>
 
@@ -361,6 +602,259 @@
           alert("Logged out successfully!");
           window.location.href = "auth.html";
         }
+      }
+
+      // 3️⃣ DPR Management
+      async function getMyDPRs() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/dpr/projects/${currentProjectId}/dprs/my`,
+        );
+      }
+
+      async function getProjectPlanItems() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/dpr/projects/${currentProjectId}/plans/items`,
+        );
+      }
+
+      async function createDPR() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+
+        const date = document.getElementById("dprDate").value;
+        const title = document.getElementById("dprTitle").value;
+        const description = document.getElementById("dprDescription").value;
+        const planItemId = document.getElementById("dprPlanItemId").value;
+
+        if (!date || !title || !description) {
+          alert("Please fill in date, title and description");
+          return;
+        }
+
+        const body = {
+          report_date: date,
+          title: title,
+          description: description,
+        };
+
+        if (planItemId) {
+          body.plan_item_id = planItemId;
+        }
+
+        await apiCall(
+          "POST",
+          `/engineer/dpr/projects/${currentProjectId}/dprs`,
+          body,
+        );
+      }
+
+      async function viewDPR() {
+        const dprId = document.getElementById("dprIdToView").value;
+        if (!dprId) {
+          alert("Please enter DPR ID");
+          return;
+        }
+        await apiCall("GET", `/engineer/dpr/dprs/${dprId}`);
+      }
+
+      async function deleteDPR() {
+        const dprId = document.getElementById("dprIdToView").value;
+        if (!dprId) {
+          alert("Please enter DPR ID");
+          return;
+        }
+        if (!confirm("Are you sure you want to delete this DPR?")) {
+          return;
+        }
+        await apiCall("DELETE", `/engineer/dpr/dprs/${dprId}`);
+      }
+
+      // 4️⃣ Material Request Management
+      async function getMyMaterialRequests() {
+        if (!currentProjectId) {
+          alert("Please get your projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/material/requests?project_id=${currentProjectId}`,
+        );
+      }
+
+      async function createMaterialRequest() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+
+        const title = document.getElementById("matReqTitle").value;
+        const category = document.getElementById("matReqCategory").value;
+        const quantity = document.getElementById("matReqQuantity").value;
+        const description = document.getElementById("matReqDescription").value;
+        const dprId = document.getElementById("matReqDprId").value;
+
+        if (!title || !category || !quantity || !description) {
+          alert("Please fill in all required fields");
+          return;
+        }
+
+        const body = {
+          project_id: currentProjectId,
+          title: title,
+          category: category,
+          quantity: parseFloat(quantity),
+          description: description,
+        };
+
+        if (dprId) {
+          body.dpr_id = dprId;
+        }
+
+        await apiCall("POST", "/engineer/material/request", body);
+      }
+
+      async function viewMaterialRequest() {
+        const reqId = document.getElementById("matReqIdToView").value;
+        if (!reqId) {
+          alert("Please enter material request ID");
+          return;
+        }
+        await apiCall("GET", `/engineer/material/requests/${reqId}`);
+      }
+
+      async function deleteMaterialRequest() {
+        const reqId = document.getElementById("matReqIdToView").value;
+        if (!reqId) {
+          alert("Please enter material request ID");
+          return;
+        }
+        if (
+          !confirm("Are you sure you want to delete this material request?")
+        ) {
+          return;
+        }
+        await apiCall("DELETE", `/engineer/material/requests/${reqId}`);
+      }
+
+      // 5️⃣ Material Bill Management
+      async function getMyMaterialBills() {
+        if (!currentProjectId) {
+          alert("Please get your projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/material/bills?project_id=${currentProjectId}`,
+        );
+      }
+
+      async function getPendingMaterialBills() {
+        if (!currentProjectId) {
+          alert("Please get your projects first");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/material/bills/pending?project_id=${currentProjectId}`,
+        );
+      }
+
+      async function createMaterialBill() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+
+        const matReqId = document.getElementById("billMatReqId").value;
+        const vendor = document.getElementById("billVendor").value;
+        const amount = document.getElementById("billAmount").value;
+        const quantity = document.getElementById("billQuantity").value;
+        const invoice = document.getElementById("billInvoice").value;
+        const remarks = document.getElementById("billRemarks").value;
+
+        if (!matReqId || !vendor || !amount || !quantity || !invoice) {
+          alert("Please fill in all required fields");
+          return;
+        }
+
+        const body = {
+          project_id: currentProjectId,
+          material_request_id: matReqId,
+          vendor_name: vendor,
+          amount: parseFloat(amount),
+          quantity_received: parseFloat(quantity),
+          invoice_number: invoice,
+          remarks: remarks || "",
+        };
+
+        await apiCall("POST", "/engineer/material/bill", body);
+      }
+
+      async function viewMaterialBill() {
+        const billId = document.getElementById("billIdToView").value;
+        if (!billId) {
+          alert("Please enter material bill ID");
+          return;
+        }
+        await apiCall("GET", `/engineer/material/bills/${billId}`);
+      }
+
+      // 6️⃣ Project Break Management
+      async function getActiveProjectBreak() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+        await apiCall(
+          "GET",
+          `/engineer/projects/${currentProjectId}/break/active`,
+        );
+      }
+
+      async function getProjectBreakHistory() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+        await apiCall("GET", `/engineer/projects/${currentProjectId}/breaks`);
+      }
+
+      async function createProjectBreak() {
+        if (!currentProjectId) {
+          alert("Please get your projects first to set project ID");
+          return;
+        }
+
+        const duration = document.getElementById("breakDuration").value;
+        const reason = document.getElementById("breakReason").value;
+
+        if (!duration || !reason) {
+          alert("Please fill in duration and reason");
+          return;
+        }
+
+        const durationNum = parseInt(duration);
+        if (durationNum < 60 || durationNum > 120) {
+          alert("Duration must be between 60 and 120 minutes");
+          return;
+        }
+
+        await apiCall("POST", `/engineer/projects/${currentProjectId}/break`, {
+          duration_minutes: durationNum,
+          reason: reason,
+        });
       }
 
       // Auto-load profile on page load

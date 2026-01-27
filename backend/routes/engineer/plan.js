@@ -34,9 +34,15 @@ router.get("/plans/:projectId", engineerCheck, async (req, res) => {
 
     const plan = planResult.rows[0];
 
-    // Get plan items
+    // Get plan items with subcontractor assignment
+    // Engineers don't necessarily need the speed rating, but knowing the subcontractor is useful.
     const itemsResult = await pool.query(
-      `SELECT * FROM plan_items WHERE plan_id = $1 ORDER BY period_start, created_at`,
+      `SELECT pi.*, 
+              ts.subcontractor_id
+       FROM plan_items pi
+       LEFT JOIN task_subcontractors ts ON pi.id = ts.task_id
+       WHERE pi.plan_id = $1 
+       ORDER BY pi.period_start, pi.created_at`,
       [plan.id],
     );
 

@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:intl/intl.dart';
 import 'persistent_client.dart';
 import '../config.dart';
@@ -10,15 +13,19 @@ class AuthService {
   // shared persistent client used for requests so cookies are preserved
   final http.Client _client = PersistentClient();
 
+  http.Client get client => _client;
+
   /// Helper method to extract error message from response
   String _extractErrorMessage(http.Response response) {
     try {
       final body = jsonDecode(response.body);
-      if (body is Map && body.containsKey('error')) {
-        return body['error'] as String;
-      }
-      if (body is Map && body.containsKey('message')) {
-        return body['message'] as String;
+      if (body is Map) {
+        if (body.containsKey('error') && body['error'] != null) {
+          return body['error'].toString();
+        }
+        if (body.containsKey('message') && body['message'] != null) {
+          return body['message'].toString();
+        }
       }
     } catch (_) {
       // If parsing fails, return the raw body
@@ -151,6 +158,15 @@ class AuthService {
     }
   }
 
+  Future<void> logoutQAEngineer() async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/logout');
+    final res = await _client.post(uri);
+    await PersistentClient.clearCookies();
+    if (res.statusCode != 200) {
+      throw Exception('Logout failed: ${res.body}');
+    }
+  }
+
   /// Check current labour session. Returns user map if authenticated, null otherwise.
   Future<Map<String, dynamic>?> checkLabourSession() async {
     final uri = Uri.parse('$_base/labour/check-auth');
@@ -185,11 +201,13 @@ class AuthService {
   /// Fetch labour profile from backend (requires session cookie)
   Future<Map<String, dynamic>?> getLabourProfile() async {
     final uri = Uri.parse('$_base/labour/profile');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['labour'] as Map<String, dynamic>?;
-    }
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['labour'] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -202,7 +220,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return data['labour'] as Map<String, dynamic>?;
@@ -213,10 +231,14 @@ class AuthService {
   /// Fetch engineer profile from backend (requires session cookie)
   Future<Map<String, dynamic>?> getEngineerProfile() async {
     final uri = Uri.parse('$_base/engineer/profile');
-    final res = await _client.get(uri);
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['engineer'] as Map<String, dynamic>?;
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return data['engineer'] as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      // Timeout or network error
     }
     return null;
   }
@@ -230,7 +252,7 @@ class AuthService {
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return data['engineer'] as Map<String, dynamic>?;
@@ -477,8 +499,7 @@ class AuthService {
     final uri = Uri.parse('$_base/labour/jobs/$jobId');
     final res = await _client.get(uri);
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['job'] as Map<String, dynamic>;
+      return jsonDecode(res.body) as Map<String, dynamic>;
     }
     throw Exception('Failed to fetch job details: ${res.body}');
   }
@@ -563,7 +584,9 @@ class AuthService {
     );
     if (res.statusCode == 201) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      return data['attendance'] as Map<String, dynamic>;
+      // Backend returns { attendance_id, session, message }
+      // We wrap it or return it directly. The provider expects a Map.
+      return data;
     }
     throw Exception('Check-in failed: ${res.body}');
   }
@@ -594,6 +617,19 @@ class AuthService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'latitude': lat, 'longitude': lon}),
     );
+  }
+
+  Future<Map<String, dynamic>> scanQRCode(String qrToken) async {
+    final uri = Uri.parse('$_base/labour/tools/scan');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'qrToken': qrToken}),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Scan failed: ${res.body}');
   }
 
   Future<List<dynamic>> getAttendanceHistory() async {
@@ -715,7 +751,47 @@ class AuthService {
     }
   }
 
+  Future<List<dynamic>> getUnpaidWages(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/wages?projectId=$projectId&status=APPROVED');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      // Filter filtering out already paid ones if API returns them (though API filter logic should handle it usually)
+      final wages = data['wages'] as List<dynamic>;
+      return wages.where((w) => w['paid_at'] == null).toList();
+    }
+    throw Exception('Failed to fetch unpaid wages: ${res.body}');
+  }
+
+  Future<void> markWagePaid(String wageId) async {
+    final uri = Uri.parse('$_base/engineer/wages/$wageId/mark-paid');
+    final res = await _client.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to mark wage as paid: ${res.body}');
+    }
+  }
+
   /* ---------------- OFFLINE SYNC ---------------- */
+  Future<Map<String, dynamic>> syncBatch(String role, List<Map<String, dynamic>> actions) async {
+    final endpoint = role == 'LABOUR' ? '/sync/labour' : '/sync/engineer';
+    final uri = Uri.parse('$_base$endpoint');
+    
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'actions': actions}),
+    );
+
+    if (res.statusCode >= 400) {
+      throw Exception('Batch sync failed (${res.statusCode}): ${res.body}');
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   Future<void> syncQueueItem({
     required String endpoint,
     required String method,
@@ -867,5 +943,401 @@ class AuthService {
     if (res.statusCode != 200) {
       throw Exception('Failed to mark notification as read: ${res.body}');
     }
+  }
+
+  /* ---------------- PURCHASE ORDERS (ENGINEER) ---------------- */
+  Future<List<dynamic>> getSentPurchaseOrders(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/sent/list')
+        .replace(queryParameters: {'projectId': projectId});
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['purchase_orders'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch purchase orders: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getPurchaseOrder(String poId) async {
+    final uri = Uri.parse('$_base/engineer/purchase-orders/$poId');
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch purchase order: ${res.body}');
+  }
+
+  /* ---------------- GRN (ENGINEER) ---------------- */
+  Future<Map<String, dynamic>> createGRN({
+    required String projectId,
+    required String purchaseOrderId,
+    required String materialRequestId,
+    required List<Map<String, dynamic>> receivedItems,
+    String? remarks,
+    required File billImage,
+    required File proofImage,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final uri = Uri.parse('$_base/engineer/grns');
+    
+    // Create multipart request
+    final request = http.MultipartRequest('POST', uri);
+    
+    // Add images
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'bill_image',
+        billImage.path,
+        filename: 'bill.jpg',
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+    
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'proof_image',
+        proofImage.path,
+        filename: 'proof.jpg',
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+
+    // Add form fields
+    request.fields['projectId'] = projectId;
+    request.fields['purchaseOrderId'] = purchaseOrderId;
+    request.fields['materialRequestId'] = materialRequestId;
+    request.fields['receivedItems'] = jsonEncode(receivedItems);
+    if (remarks != null && remarks.isNotEmpty) {
+      request.fields['remarks'] = remarks;
+    }
+    if (latitude != null) {
+      request.fields['latitude'] = latitude.toString();
+    }
+    if (longitude != null) {
+      request.fields['longitude'] = longitude.toString();
+    }
+
+    // Send request
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 201) {
+      _throwError('GRN creation failed', response);
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> getGRNs(String projectId) async {
+    final uri = Uri.parse('$_base/engineer/grns')
+        .replace(queryParameters: {'projectId': projectId});
+    final res = await _client.get(uri);
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['grns'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch GRNs: ${res.body}');
+  }
+
+  // ==================== TOOLS MANAGEMENT ====================
+  
+  /// Create a new tool
+  Future<Map<String, dynamic>> createTool(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_base/engineer/tools');
+    try {
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to create tool: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Tool creation took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get all tools for a project
+  Future<List<dynamic>> getProjectTools({required String projectId, String? status}) async {
+    final queryParams = {'projectId': projectId};
+    if (status != null) queryParams['status'] = status;
+    
+    final uri = Uri.parse('$_base/engineer/tools')
+        .replace(queryParameters: queryParams);
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['tools'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tools: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching tools took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete a tool
+  Future<void> deleteTool(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId');
+    try {
+      final res = await _client.delete(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) {
+        throw Exception('Failed to delete tool: ${res.body}');
+      }
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Tool deletion took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Generate QR code for a tool
+  Future<Map<String, dynamic>> generateToolQR(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId/qr');
+    try {
+      print('[AuthService] Generating QR for tool: $toolId');
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+      
+      print('[AuthService] Response status: ${res.statusCode}');
+      print('[AuthService] Response body length: ${res.body.length}');
+      
+      if (res.statusCode == 201 || res.statusCode == 200) {
+        if (res.body.isEmpty) {
+          throw Exception('Empty response from server');
+        }
+        
+        try {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          print('[AuthService] Parsed QR data keys: ${body.keys}');
+          
+          // Validate response structure
+          if (!body.containsKey('qr')) {
+            throw Exception('Invalid response: missing "qr" field');
+          }
+          
+          return body;
+        } catch (e) {
+          print('[AuthService] JSON decode error: $e');
+          print('[AuthService] Response body: ${res.body.substring(0, res.body.length > 200 ? 200 : res.body.length)}');
+          throw Exception('Failed to parse QR response: $e');
+        }
+      }
+      
+      // Try to extract error message
+      String errorMsg = 'Failed to generate QR';
+      try {
+        final errorBody = jsonDecode(res.body) as Map<String, dynamic>;
+        errorMsg = errorBody['error'] ?? errorBody['message'] ?? res.body;
+      } catch (_) {
+        errorMsg = res.body.isNotEmpty ? res.body : 'Unknown error';
+      }
+      
+      throw Exception(errorMsg);
+    } on SocketException catch (e) {
+      print('[AuthService] SocketException: ${e.message}');
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      print('[AuthService] ClientException: ${e.message}');
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      print('[AuthService] TimeoutException');
+      throw Exception('Request timeout: QR generation took too long');
+    } catch (e) {
+      print('[AuthService] Generic error: $e');
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get transaction history for a tool
+  Future<List<dynamic>> getToolHistory(String toolId) async {
+    final uri = Uri.parse('$_base/engineer/tools/$toolId/history');
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['transactions'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tool history: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching history took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  // ==================== LABOUR TOOLS MANAGEMENT ====================
+  
+  /// Scan QR code to issue/return tool
+  Future<Map<String, dynamic>> scanToolQR(String qrToken) async {
+    final uri = Uri.parse('$_base/labour/tools/scan');
+    try {
+      final res = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'qrToken': qrToken}),
+          )
+          .timeout(const Duration(seconds: 30));
+      
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      
+      String errorMsg = 'Failed to scan QR code';
+      try {
+        final errorBody = jsonDecode(res.body) as Map<String, dynamic>;
+        errorMsg = errorBody['error'] ?? errorBody['message'] ?? res.body;
+      } catch (_) {
+        errorMsg = res.body.isNotEmpty ? res.body : 'Unknown error';
+      }
+      
+      throw Exception(errorMsg);
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: QR scan took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get my issued tools
+  Future<List<dynamic>> getMyIssuedTools() async {
+    final uri = Uri.parse('$_base/labour/tools/my-tools');
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['tools'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch issued tools: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching tools took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get my tool history
+  Future<List<dynamic>> getMyToolHistory({String? projectId, String? status}) async {
+    final queryParams = <String, String>{};
+    if (projectId != null) queryParams['projectId'] = projectId;
+    if (status != null) queryParams['status'] = status;
+    
+    final uri = Uri.parse('$_base/labour/tools/my-history')
+        .replace(queryParameters: queryParams);
+    try {
+      final res = await _client.get(uri).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        return body['transactions'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch tool history: ${res.body}');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Connection error: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Request timeout: Fetching history took too long');
+    } catch (e) {
+      if (e.toString().contains('Connection closed')) {
+        throw Exception('Connection closed by server. Please try again.');
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> qaEngineerLogin(String email, String password) async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/login');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    ).timeout(const Duration(seconds: 60));
+    
+    if (res.statusCode != 200) {
+      _throwError('Login failed', res);
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> qaEngineerRegister(
+    String name,
+    String email,
+    String phone,
+    String password,
+  ) async {
+    final uri = Uri.parse('$_base/auth/qa-engineer/register');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+      }),
+    ).timeout(const Duration(seconds: 60));
+    
+    if (res.statusCode != 201) {
+      _throwError('Register failed', res);
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
   }
 }

@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _role = 'engineer';
   bool _didInitArgs = false;
   bool _otpSent = false;
+  bool _obscurePassword = true;
 
   bool _isLoading = false;
 
@@ -83,19 +84,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      if (!_formKey.currentState!.validate()) {
-        setState(() => _isLoading = false);
+      if (_role == 'engineer') {
+        if (!_formKey.currentState!.validate()) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
+        if (res['user'] != null) {
+          ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+        }
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/engineer-dashboard');
         return;
       }
 
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
-      final res = await ref.read(engineerLoginProvider({'email': email, 'password': password}).future);
-      if (res['user'] != null) {
-        ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+      if (_role == 'qa_engineer') {
+        if (!_formKey.currentState!.validate()) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        final res = await ref.read(qaEngineerLoginProvider({'email': email, 'password': password}).future);
+        if (res['user'] != null) {
+          ref.read(currentUserProvider.notifier).setUser(res['user'] as Map<String, dynamic>);
+        }
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/qa-flow');
+        return;
       }
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/engineer-dashboard');
     } catch (e) {
       if (!mounted) return;
       String errorMsg = e.toString();
@@ -145,6 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     items: [
                       DropdownMenuItem(value: 'engineer', child: Text('engineer'.tr())),
                       DropdownMenuItem(value: 'labour', child: Text('labour'.tr())),
+                      DropdownMenuItem(value: 'qa_engineer', child: Text('QA Engineer')),
                     ],
                     onChanged: (v) => setState(() {
                       final newRole = v ?? 'engineer';
@@ -188,8 +210,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16.0),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: InputDecoration(hintText: 'password'.tr()),
-                            obscureText: true,
+                            decoration: InputDecoration(
+                              hintText: 'password'.tr(),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                            ),
+                            obscureText: _obscurePassword,
                             validator: (v) => (v ?? '').isEmpty ? 'required'.tr() : null,
                           ),
                         ],

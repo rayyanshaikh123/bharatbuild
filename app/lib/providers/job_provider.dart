@@ -23,3 +23,9 @@ final jobDetailsProvider = FutureProvider.autoDispose.family<Map<String, dynamic
   final authService = ref.watch(authServiceProvider);
   return await authService.getJobDetails(id);
 });
+
+final allProjectsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final authService = ref.watch(authServiceProvider);
+  final response = await authService.getAllProjects();
+  return (response['projects'] as List? ?? []);
+});

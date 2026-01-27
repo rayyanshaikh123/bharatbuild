@@ -58,3 +58,28 @@ final labourRegisterProvider =
       final svc = ref.read(authServiceProvider);
       return await svc.labourRegister(args['name']!, args['phone']!);
     });
+
+/// QA Engineer login
+final qaEngineerLoginProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>((
+      ref,
+      args,
+    ) async {
+      final svc = ref.read(authServiceProvider);
+      return await svc.qaEngineerLogin(args['email']!, args['password']!);
+    });
+
+/// QA Engineer register
+final qaEngineerRegisterProvider =
+    FutureProvider.family<Map<String, dynamic>, Map<String, String>>((
+      ref,
+      args,
+    ) async {
+      final svc = ref.read(authServiceProvider);
+      return await svc.qaEngineerRegister(
+        args['name']!,
+        args['email']!,
+        args['phone']!,
+        args['password']!,
+      );
+    });

@@ -34,12 +34,15 @@ router.get("/projects/:projectId/dprs", managerCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -58,10 +61,12 @@ router.get("/projects/:projectId/dprs", managerCheck, async (req, res) => {
 
 /* ---------------- REVIEW DPR ---------------- */
 router.patch("/dprs/:dprId/review", managerCheck, async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const managerId = req.user.id;
     const { dprId } = req.params;
-    const { status, remarks } = req.body;
+    const { status, remarks, material_usage } = req.body;
 
     // Validate status
     if (!["APPROVED", "REJECTED"].includes(status)) {
@@ -70,27 +75,137 @@ router.patch("/dprs/:dprId/review", managerCheck, async (req, res) => {
       });
     }
 
-    // Get project_id from DPR
-    const dprCheck = await pool.query(
-      `SELECT project_id FROM dprs WHERE id = $1`,
-      [dprId],
-    );
+    await client.query("BEGIN");
+
+    // Get DPR details
+    const dprCheck = await client.query(`SELECT * FROM dprs WHERE id = $1`, [
+      dprId,
+    ]);
 
     if (dprCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "DPR not found" });
     }
 
-    const projectId = dprCheck.rows[0].project_id;
+    const dpr = dprCheck.rows[0];
+    const projectId = dpr.project_id;
 
     // Check if manager is ACTIVE in project
     const isActive = await managerProjectStatusCheck(managerId, projectId);
     if (!isActive) {
+      await client.query("ROLLBACK");
       return res.status(403).json({
         error: "Access denied. Not an active manager in the project.",
       });
     }
 
-    const result = await pool.query(
+    // NEW: Use stored material_usage from DPR if not provided in request
+    let finalMaterialUsage = material_usage;
+
+    if (status === "APPROVED") {
+      // If no material_usage in request, fetch from DPR
+      if (!finalMaterialUsage || finalMaterialUsage.length === 0) {
+        finalMaterialUsage = dpr.material_usage || [];
+      }
+
+      // If manager provided additional materials, merge them
+      if (
+        material_usage &&
+        material_usage.length > 0 &&
+        dpr.material_usage &&
+        dpr.material_usage.length > 0
+      ) {
+        // Combine both arrays (manager can add additional materials)
+        finalMaterialUsage = [...dpr.material_usage, ...material_usage];
+      }
+    }
+
+    // If APPROVED and material_usage exists, validate and deduct stock
+    if (
+      status === "APPROVED" &&
+      finalMaterialUsage &&
+      Array.isArray(finalMaterialUsage) &&
+      finalMaterialUsage.length > 0
+    ) {
+      // Validate stock availability for each material
+      for (const usage of finalMaterialUsage) {
+        const { material_name, unit, quantity_used } = usage;
+
+        if (!material_name || !unit || !quantity_used || quantity_used <= 0) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error: `Invalid material usage data for ${material_name || "unknown material"}`,
+          });
+        }
+
+        // Check current stock
+        const stockCheck = await client.query(
+          `SELECT available_quantity FROM project_material_stock
+           WHERE project_id = $1 AND material_name = $2 AND unit = $3`,
+          [projectId, material_name, unit],
+        );
+
+        const availableQty =
+          stockCheck.rows.length > 0
+            ? parseFloat(stockCheck.rows[0].available_quantity)
+            : 0;
+
+        if (availableQty < parseFloat(quantity_used)) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error: `Insufficient stock for ${material_name}. Available: ${availableQty} ${unit}, Required: ${quantity_used} ${unit}`,
+          });
+        }
+      }
+
+      // All stock validations passed - proceed with consumption
+      for (const usage of finalMaterialUsage) {
+        const { material_name, unit, quantity_used } = usage;
+
+        // Insert into material_consumption_records
+        await client.query(
+          `INSERT INTO material_consumption_records
+           (project_id, dpr_id, material_name, unit, quantity_used, recorded_by, recorded_by_role)
+           VALUES ($1, $2, $3, $4, $5, $6, 'MANAGER')`,
+          [
+            projectId,
+            dprId,
+            material_name,
+            unit,
+            parseFloat(quantity_used),
+            managerId,
+          ],
+        );
+
+        // Deduct from project_material_stock
+        await client.query(
+          `UPDATE project_material_stock
+           SET available_quantity = available_quantity - $1,
+               last_updated_at = NOW()
+           WHERE project_id = $2 AND material_name = $3 AND unit = $4`,
+          [parseFloat(quantity_used), projectId, material_name, unit],
+        );
+
+        // Insert OUT entry in material_ledger for audit
+        await client.query(
+          `INSERT INTO material_ledger
+           (project_id, dpr_id, material_name, unit, quantity, movement_type, source, recorded_by_role, recorded_by, remarks)
+           VALUES ($1, $2, $3, $4, $5, 'OUT', 'AI_DPR', 'MANAGER', $6, $7)`,
+          [
+            projectId,
+            dprId,
+            material_name,
+            unit,
+            parseFloat(quantity_used),
+            managerId,
+            `DPR consumption - Approved by Manager`,
+          ],
+        );
+      }
+    }
+
+    // Update DPR status
+    const result = await client.query(
       `UPDATE dprs SET 
        status = $1, 
        remarks = $2,
@@ -102,25 +217,48 @@ router.patch("/dprs/:dprId/review", managerCheck, async (req, res) => {
 
     const updatedDpr = result.rows[0];
 
+    await client.query("COMMIT");
+
     // Create notification for site engineer
     try {
-      const { createNotification } = require("../../services/notification.service");
+      const {
+        createNotification,
+      } = require("../../services/notification.service");
       await createNotification({
         userId: updatedDpr.site_engineer_id,
-        userRole: 'SITE_ENGINEER',
+        userRole: "SITE_ENGINEER",
         title: `DPR ${status}`,
         message: `Your DPR for ${new Date(updatedDpr.report_date).toLocaleDateString()} has been ${status.toLowerCase()}.`,
-        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
-        projectId: updatedDpr.project_id
+        type: status === "APPROVED" ? "SUCCESS" : "ERROR",
+        projectId: updatedDpr.project_id,
       });
     } catch (notifErr) {
       console.error("Failed to create DPR review notification:", notifErr);
     }
 
-    res.json({ dpr: updatedDpr });
+    // Check for orphan DPR and send owner alert if approved
+    if (status === "APPROVED") {
+      try {
+        const {
+          checkAndAlertOrphanDPR,
+        } = require("../../services/ownerAlert.service");
+        await checkAndAlertOrphanDPR(updatedDpr);
+      } catch (alertErr) {
+        console.error("Failed to check orphan DPR alert:", alertErr);
+        // Don't block the response
+      }
+    }
+
+    res.json({
+      dpr: updatedDpr,
+      material_consumed: material_usage || [],
+    });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 
@@ -143,12 +281,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -185,12 +326,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -227,12 +371,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -279,14 +426,19 @@ router.get("/dprs/:dprId", managerCheck, async (req, res) => {
     const result = await pool.query(
       `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
+              pr.name AS project_name,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
+       JOIN projects pr ON d.project_id = pr.id
        LEFT JOIN plans p ON d.plan_id = p.id
        LEFT JOIN plan_items pi ON d.plan_item_id = pi.id
        WHERE d.id = $1`,
@@ -417,12 +569,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -459,12 +614,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -501,12 +659,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id
@@ -543,12 +704,15 @@ router.get(
       const result = await pool.query(
         `SELECT d.*, 
               se.name AS engineer_name, 
+              se.name AS submitted_by_name,
               se.phone AS engineer_phone,
               p.start_date AS plan_start_date,
               p.end_date AS plan_end_date,
               pi.task_name AS plan_item_task_name,
+              COALESCE(d.description, pi.task_name, 'No description') AS work_description,
               pi.period_start AS plan_item_period_start,
-              pi.period_end AS plan_item_period_end
+              pi.period_end AS plan_item_period_end,
+              (SELECT count(*)::int FROM attendance a WHERE a.project_id = d.project_id AND a.attendance_date = d.report_date AND a.status = 'APPROVED') as manpower_total
        FROM dprs d
        JOIN site_engineers se ON d.site_engineer_id = se.id
        LEFT JOIN plans p ON d.plan_id = p.id

@@ -65,14 +65,23 @@ router.get("/available", labourCheck, async (req, res) => {
            AND lr.category = wr.category
       WHERE lr.status = 'OPEN'
       AND lr.request_date >= CURRENT_DATE
+      AND (SELECT COUNT(*) FROM attendance WHERE project_id = lr.project_id AND attendance_date = lr.request_date AND status = 'APPROVED') < lr.required_count
+      AND NOT EXISTS (
+        SELECT 1 FROM organization_blacklist ob 
+        WHERE ob.org_id = p.org_id AND ob.labour_id = $${paramIdx}
+      )
     `;
+    params.push(labourId);
+    paramIdx++;
 
     // Optional: Filter by labour's registered categories if any
+    /* 
     if (categories.length > 0) {
       query += ` AND lr.category = ANY($${paramIdx})`;
       params.push(categories);
       paramIdx++;
     }
+    */
 
     if (lat && lon) {
       query += ` ORDER BY distance_meters ASC, lr.created_at DESC`;
@@ -86,11 +95,16 @@ router.get("/available", labourCheck, async (req, res) => {
     const jobs = rows.map((job) => {
       let canApply = true;
       if (lat && lon && job.distance_meters !== null) {
-        const projRadius = job.geofence_radius ||
-          (job.geofence && job.geofence.type === 'CIRCLE' ? job.geofence.radius_meters : 0) || 0;
+        const projRadius =
+          job.geofence_radius ||
+          (job.geofence && job.geofence.type === "CIRCLE"
+            ? job.geofence.radius_meters
+            : 0) ||
+          0;
 
         // Union logic: Distance <= LabourRange + ProjectRange
-        canApply = parseFloat(job.distance_meters) <= (DEFAULT_LABOUR_RADIUS + projRadius);
+        canApply =
+          parseFloat(job.distance_meters) <= DEFAULT_LABOUR_RADIUS + projRadius;
       }
       return { ...job, can_apply: canApply };
     });
@@ -122,35 +136,61 @@ router.post("/:id/apply", labourCheck, async (req, res) => {
       return res.status(400).json({ error: "Job is no longer open" });
     }
 
+    // Check if blacklisted
+    const blacklistCheck = await pool.query(
+      `SELECT 1 FROM organization_blacklist 
+       WHERE labour_id = $1 AND org_id = (SELECT org_id FROM projects WHERE id = (SELECT project_id FROM labour_requests WHERE id = $2))`,
+      [labourId, requestId],
+    );
+
+    if (blacklistCheck.rows.length > 0) {
+      return res.status(403).json({
+        error: "Unauthorized. You are blacklisted from this organization.",
+      });
+    }
+
     // Check if application is allowed based on distance
     const labourLoc = await pool.query(
       `SELECT primary_latitude, primary_longitude FROM labours WHERE id = $1`,
       [labourId],
     );
-    const { primary_latitude: lLat, primary_longitude: lLon } = labourLoc.rows[0];
+    const { primary_latitude: lLat, primary_longitude: lLon } =
+      labourLoc.rows[0];
 
     if (lLat && lLon) {
       const projLoc = await pool.query(
         `SELECT latitude, longitude, geofence, geofence_radius FROM projects WHERE id = (SELECT project_id FROM labour_requests WHERE id = $1)`,
         [requestId],
       );
-      const { latitude: pLat, longitude: pLon, geofence, geofence_radius } = projLoc.rows[0];
+      const {
+        latitude: pLat,
+        longitude: pLon,
+        geofence,
+        geofence_radius,
+      } = projLoc.rows[0];
 
       // Use Haversine distance calculation (similar to SQL logic but in JS for validation)
       const R = 6371000; // meters
-      const dLat = (pLat - lLat) * Math.PI / 180;
-      const dLon = (pLon - lLon) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lLat * Math.PI / 180) * Math.cos(pLat * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const dLat = ((pLat - lLat) * Math.PI) / 180;
+      const dLon = ((pLon - lLon) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lLat * Math.PI) / 180) *
+          Math.cos((pLat * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distance = R * c;
 
-      const projRadius = geofence_radius ||
-        (geofence && geofence.type === 'CIRCLE' ? geofence.radius_meters : 0) || 0;
+      const projRadius =
+        geofence_radius ||
+        (geofence && geofence.type === "CIRCLE" ? geofence.radius_meters : 0) ||
+        0;
 
-      if (distance > (DEFAULT_LABOUR_RADIUS + projRadius)) {
-        return res.status(403).json({ error: "Job is too far from your primary location" });
+      if (distance > DEFAULT_LABOUR_RADIUS + projRadius) {
+        return res
+          .status(403)
+          .json({ error: "Job is too far from your primary location" });
       }
     }
 
@@ -174,7 +214,7 @@ router.get("/my-applications", labourCheck, async (req, res) => {
     // Return all applications with project geofence data, regardless of status
     const result = await pool.query(
       `SELECT lrp.*, lr.category, lr.request_date, lr.project_id, 
-              p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence,
+              p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence, p.geofence_radius,
               p.status as project_status
              FROM labour_request_participants lrp
              JOIN labour_requests lr ON lrp.labour_request_id = lr.id
@@ -202,8 +242,8 @@ router.get("/:id", labourCheck, async (req, res) => {
   try {
     const requestId = req.params.id;
     const result = await pool.query(
-      `SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence,
-                    p.description as project_description, p.budget, p.status as project_status
+      `SELECT lr.*, p.name as project_name, p.location_text, p.latitude, p.longitude, p.geofence, p.geofence_radius,
+                    p.budget, p.status as project_status
              FROM labour_requests lr
              JOIN projects p ON lr.project_id = p.id
              WHERE lr.id = $1`,
@@ -228,7 +268,7 @@ router.get("/:id", labourCheck, async (req, res) => {
 
     res.json({
       job,
-      wage_options: wagesResult.rows
+      wage_options: wagesResult.rows,
     });
   } catch (err) {
     console.error(err);

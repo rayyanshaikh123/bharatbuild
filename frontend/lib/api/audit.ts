@@ -41,7 +41,7 @@ export const managerAudit = {
    */
   getLogs: (filters: AuditFilters = {}) => {
     const queryString = buildAuditQueryString(filters);
-    const url = `/manager/audits${queryString ? `?${queryString}` : ""}`;
+    const url = `/manager/audit${queryString ? `?${queryString}` : ""}`;
     return api.get<AuditResponse>(url);
   },
 };

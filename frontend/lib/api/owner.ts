@@ -73,23 +73,48 @@ export interface ProjectManager {
 // ==================== OWNER ORGANIZATION API ====================
 
 export const ownerOrganization = {
-  create: (data: { name: string; address: string; phone: string; org_type: string }) =>
-    api.post<{ organization: Organization }>("/owner/organization/create-organization", data),
+  create: (data: {
+    name: string;
+    address: string;
+    phone: string;
+    org_type: string;
+  }) =>
+    api.post<{ organization: Organization }>(
+      "/owner/organization/create-organization",
+      data,
+    ),
 
   // FIX: Added get() method for single organization
   get: async (): Promise<{ organization: Organization | null }> => {
-    const result = await api.get<{ organizations: Organization[] }>("/owner/organization/organizations");
+    const result = await api.get<{ organizations: Organization[] }>(
+      "/owner/organization/organizations",
+    );
     return { organization: result.organizations?.[0] || null };
   },
 
   getAll: () =>
-    api.get<{ organizations: Organization[] }>("/owner/organization/organizations"),
+    api.get<{ organizations: Organization[] }>(
+      "/owner/organization/organizations",
+    ),
 
   getById: (id: string) =>
-    api.get<{ organization: Organization }>(`/owner/organization/organization/${id}`),
+    api.get<{ organization: Organization }>(
+      `/owner/organization/organization/${id}`,
+    ),
 
-  update: (id: string, data: Partial<{ name: string; address: string; phone: string; org_type: string }>) =>
-    api.patch<{ organization: Organization }>(`/owner/organization/organization/${id}`, data),
+  update: (
+    id: string,
+    data: Partial<{
+      name: string;
+      address: string;
+      phone: string;
+      org_type: string;
+    }>,
+  ) =>
+    api.patch<{ organization: Organization }>(
+      `/owner/organization/organization/${id}`,
+      data,
+    ),
 
   delete: (id: string) =>
     api.delete<{ message: string }>(`/owner/organization/organization/${id}`),
@@ -99,7 +124,15 @@ export const ownerOrganization = {
 
 export const ownerProfile = {
   get: () =>
-    api.get<{ owner: { id: string; name: string; email: string; phone: string; role: string } }>("/owner/profile"),
+    api.get<{
+      owner: {
+        id: string;
+        name: string;
+        email: string;
+        phone: string;
+        role: string;
+      };
+    }>("/owner/profile"),
 };
 
 // ==================== OWNER MANAGER REQUESTS API ====================
@@ -109,45 +142,57 @@ export const ownerRequests = {
     api.post<{ managers: ManagerRequest[] }>(`/owner/requests/`, { orgId }),
 
   getPending: (orgId: string) =>
-    api.get<{ managers: ManagerRequest[] }>(`/owner/requests/pending?orgId=${orgId}`),
+    api.get<{ managers: ManagerRequest[] }>(
+      `/owner/requests/pending?orgId=${orgId}`,
+    ),
 
   getAccepted: (orgId: string) =>
-    api.get<{ managers: ManagerRequest[] }>(`/owner/requests/accepted?orgId=${orgId}`),
+    api.get<{ managers: ManagerRequest[] }>(
+      `/owner/requests/accepted?orgId=${orgId}`,
+    ),
 
   getRejected: (orgId: string) =>
-    api.get<{ managers: ManagerRequest[] }>(`/owner/requests/rejected?orgId=${orgId}`),
+    api.get<{ managers: ManagerRequest[] }>(
+      `/owner/requests/rejected?orgId=${orgId}`,
+    ),
 
   updateStatus: (requestId: string, status: "APPROVED" | "REJECTED") =>
-    api.patch<{ request: ManagerRequest }>(`/owner/requests/${requestId}`, { status }),
+    api.patch<{ request: ManagerRequest }>(`/owner/requests/${requestId}`, {
+      status,
+    }),
 };
 
 // ==================== OWNER PROJECT API ====================
 
 export const ownerProjects = {
   getAll: (organizationId: string) =>
-    api.get<{ projects: Project[] }>(`/owner/project/all/projects?organizationId=${organizationId}`),
+    api.get<{ projects: Project[] }>(
+      `/owner/project/all/projects?organizationId=${organizationId}`,
+    ),
 
   getById: (projectId: string, organizationId: string) =>
-    api.get<{ project: Project }>(`/owner/project/project/${projectId}?organizationId=${organizationId}`),
+    api.get<{ project: Project }>(
+      `/owner/project/project/${projectId}?organizationId=${organizationId}`,
+    ),
 
   getActiveManagers: (projectId: string, organizationId: string) =>
     api.get<{ managers: ProjectManager[] }>(
-      `/owner/project/project-managers/active?projectId=${projectId}&organizationId=${organizationId}`
+      `/owner/project/project-managers/active?projectId=${projectId}&organizationId=${organizationId}`,
     ),
 
   getPendingManagers: (projectId: string, organizationId: string) =>
     api.get<{ managers: ProjectManager[] }>(
-      `/owner/project/project-managers/pending?projectId=${projectId}&organizationId=${organizationId}`
+      `/owner/project/project-managers/pending?projectId=${projectId}&organizationId=${organizationId}`,
     ),
 
   getRejectedManagers: (projectId: string, organizationId: string) =>
     api.get<{ managers: ProjectManager[] }>(
-      `/owner/project/project-managers/rejected?projectId=${projectId}&organizationId=${organizationId}`
+      `/owner/project/project-managers/rejected?projectId=${projectId}&organizationId=${organizationId}`,
     ),
 
   getProjectOwner: (projectId: string, organizationId: string) =>
     api.get<{ manager: ProjectManager | null }>(
-      `/owner/project/project-manager/owner?projectId=${projectId}&organizationId=${organizationId}`
+      `/owner/project/project-manager/owner?projectId=${projectId}&organizationId=${organizationId}`,
     ),
 };
 
@@ -186,7 +231,9 @@ export interface PlanItem {
 
 export const ownerPlans = {
   getByProjectId: (projectId: string) =>
-    api.get<{ plan: Plan; items: PlanItem[] }>(`/owner/plan/plans/${projectId}`),
+    api.get<{ plan: Plan; items: PlanItem[] }>(
+      `/owner/plan/plans/${projectId}`,
+    ),
 };
 
 // ==================== OWNER DPR API (READ-ONLY) ====================
@@ -224,28 +271,45 @@ export const ownerDpr = {
     api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs`),
 
   getPending: (projectId: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/pending`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/pending`,
+    ),
 
   getApproved: (projectId: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/approved`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/approved`,
+    ),
 
   getRejected: (projectId: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/rejected`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/rejected`,
+    ),
 
   getById: (dprId: string) =>
     api.get<{ dpr: DprEntry }>(`/owner/dpr/dprs/${dprId}`),
 
   getByDate: (projectId: string, date: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/date/${date}`,
+    ),
 
   getByDatePending: (projectId: string, date: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/pending`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/date/${date}/pending`,
+    ),
 
   getByDateApproved: (projectId: string, date: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/approved`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/date/${date}/approved`,
+    ),
 
   getByDateRejected: (projectId: string, date: string) =>
-    api.get<{ dprs: DprEntry[] }>(`/owner/dpr/projects/${projectId}/dprs/date/${date}/rejected`),
+    api.get<{ dprs: DprEntry[] }>(
+      `/owner/dpr/projects/${projectId}/dprs/date/${date}/rejected`,
+    ),
+
+  getImage: (dprId: string) =>
+    api.getBlob(`/owner/dpr/dprs/${dprId}/image`),
 };
 
 // ==================== OWNER TIMELINE API (READ-ONLY) ====================
@@ -282,9 +346,10 @@ export interface MaterialRequest {
   id: string;
   project_id: string;
   site_engineer_id: string;
-  material_name: string;
+  title: string;
+  category: string;
   quantity: number;
-  unit: string;
+  description?: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;
   project_name?: string;
@@ -317,14 +382,18 @@ export const ownerMaterials = {
     const params = new URLSearchParams();
     if (filters?.project_id) params.append("project_id", filters.project_id);
     if (filters?.status) params.append("status", filters.status);
-    return api.get<{ requests: MaterialRequest[] }>(`/owner/material/requests?${params}`);
+    return api.get<{ requests: MaterialRequest[] }>(
+      `/owner/material/requests?${params}`,
+    );
   },
 
   getBills: (filters?: { project_id?: string; status?: string }) => {
     const params = new URLSearchParams();
     if (filters?.project_id) params.append("project_id", filters.project_id);
     if (filters?.status) params.append("status", filters.status);
-    return api.get<{ bills: MaterialBill[] }>(`/owner/material/bills?${params}`);
+    return api.get<{ bills: MaterialBill[] }>(
+      `/owner/material/bills?${params}`,
+    );
   },
 
   updateBill: (id: string, data: Partial<MaterialBill>) =>
@@ -360,8 +429,7 @@ export interface ProjectAnalytics {
 }
 
 export const ownerAnalytics = {
-  getOverview: () =>
-    api.get<AnalyticsOverview>("/owner/analytics/overview"),
+  getOverview: () => api.get<AnalyticsOverview>("/owner/analytics/overview"),
 
   getProjectAnalytics: (projectId: string) =>
     api.get<ProjectAnalytics>(`/owner/analytics/project/${projectId}`),
@@ -380,7 +448,9 @@ export interface DelayedItem {
 
 export const ownerDelays = {
   getProjectDelays: (projectId: string) =>
-    api.get<{ delayed_items: DelayedItem[] }>(`/owner/delays/project/${projectId}`),
+    api.get<{ delayed_items: DelayedItem[] }>(
+      `/owner/delays/project/${projectId}`,
+    ),
 };
 
 // ==================== OWNER WAGES API ====================
@@ -413,18 +483,543 @@ export const ownerWages = {
 export interface LabourRequest {
   id: string;
   project_id: string;
-  site_engineer_id: string;
-  request_date: string;
-  labour_type: string;
+  site_engineer_id?: string;
+  category: string;
   required_count: number;
-  status: string;
+  search_radius_meters: number;
+  request_date: string;
+  status: "OPEN" | "LOCKED" | "CLOSED";
+  copied_from?: string;
   created_at: string;
 }
 
 export const ownerLabourRequests = {
   getByProject: (projectId: string) =>
-    api.get<{ labour_requests: LabourRequest[] }>(`/owner/labour-request/labour-requests?projectId=${projectId}`),
+    api.get<{ labour_requests: LabourRequest[] }>(
+      `/owner/labour-request/labour-requests?projectId=${projectId}`,
+    ),
 };
 
+// ==================== OWNER BLACKLIST API ====================
 
+export interface BlacklistEntry {
+  id: string;
+  org_id: string;
+  labour_id: string;
+  reason: string;
+  created_at: string;
+  labour_name: string;
+  labour_phone: string;
+  skill_type: string;
+  organization_name: string;
+}
 
+export const ownerBlacklist = {
+  getAll: () => api.get<{ blacklist: BlacklistEntry[] }>("/owner/blacklist"),
+
+  remove: (id: string) =>
+    api.delete<{ message: string }>(`/owner/blacklist/${id}`),
+};
+
+// ==================== OWNER PURCHASE MANAGER REQUESTS API ====================
+
+export interface PurchaseManagerRequest {
+  id: string;
+  org_id: string;
+  purchase_manager_id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  approved_at?: string;
+  purchase_manager_name: string;
+  purchase_manager_email: string;
+  purchase_manager_phone: string;
+}
+
+export const ownerPurchaseManagerRequests = {
+  getAll: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(
+      `/owner/purchase-manager-requests?orgId=${orgId}`,
+    ),
+
+  getPending: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(
+      `/owner/purchase-manager-requests/pending?orgId=${orgId}`,
+    ),
+
+  getAccepted: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(
+      `/owner/purchase-manager-requests/accepted?orgId=${orgId}`,
+    ),
+
+  getRejected: (orgId: string) =>
+    api.get<{ purchase_managers: PurchaseManagerRequest[] }>(
+      `/owner/purchase-manager-requests/rejected?orgId=${orgId}`,
+    ),
+
+  updateStatus: (requestId: string, status: "APPROVED" | "REJECTED") =>
+    api.patch<{ request: PurchaseManagerRequest }>(
+      `/owner/purchase-manager-requests/${requestId}`,
+      { status },
+    ),
+};
+
+// ==================== OWNER MATERIAL OVERSIGHT API ====================
+
+export interface InvestmentSummaryProject {
+  id: string;
+  project_name: string;
+  budget: number;
+  current_invested: number;
+  budget_used_percentage: number;
+  status: string;
+  manager_name: string | null;
+}
+
+export interface InvestmentSummary {
+  projects: InvestmentSummaryProject[];
+  summary: {
+    total_budget: number;
+    total_invested: number;
+    overall_percentage: string;
+  };
+}
+
+export interface MaterialStockOverview {
+  id: string;
+  project_id: string;
+  material_name: string;
+  category: string | null;
+  unit: string;
+  available_quantity: number;
+  last_updated_at: string;
+}
+
+export interface GRNOverview {
+  id: string;
+  po_number: string;
+  vendor_name: string;
+  po_amount: number;
+  status: string;
+  received_by_name: string;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+}
+
+export interface GRNAuditRecord {
+  audit_id: string;
+  grn_id: string;
+  action: string;
+  project_name: string;
+  manager_name: string;
+  po_number: string;
+  action_timestamp: string;
+  change_summary: any;
+}
+
+export interface MaterialConsumptionRecord {
+  id: string;
+  project_id: string;
+  dpr_id: string | null;
+  material_name: string;
+  unit: string;
+  quantity_used: number;
+  recorded_at: string;
+  report_date: string | null;
+  dpr_title: string | null;
+  engineer_name: string | null;
+}
+
+export const ownerMaterialOversight = {
+  // Get investment summary across all projects
+  getInvestmentSummary: () =>
+    api.get<InvestmentSummary>(
+      "/owner/material-oversight/projects/investment-summary",
+    ),
+
+  // Get material stock for a specific project
+  getProjectStock: (projectId: string) =>
+    api.get<{ stock: MaterialStockOverview[] }>(
+      `/owner/material-oversight/projects/${projectId}/material-stock`,
+    ),
+
+  // Get GRNs for a specific project
+  getProjectGRNs: (projectId: string) =>
+    api.get<{ grns: GRNOverview[] }>(
+      `/owner/material-oversight/projects/${projectId}/grns`,
+    ),
+
+  // Get GRN approval audit trail
+  getGRNAudit: () =>
+    api.get<{ audit_records: GRNAuditRecord[] }>(
+      "/owner/material-oversight/grns/audit",
+    ),
+
+  // Get material consumption for a specific project
+  getProjectConsumption: (projectId: string) =>
+    api.get<{ consumption: MaterialConsumptionRecord[] }>(
+      `/owner/material-oversight/projects/${projectId}/material-consumption`,
+    ),
+};
+
+// ==================== OWNER QA ENGINEER REQUESTS API ====================
+
+export interface QAEngineerRequest {
+  id: string;
+  org_id: string;
+  qa_engineer_id: string;
+  approved_by?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  approved_at?: string;
+  created_at: string;
+  name: string;
+  email: string;
+  phone: string;
+  organization_name: string;
+}
+
+export const ownerQAEngineerRequests = {
+  getPending: () =>
+    api.get<{ pending_engineers: QAEngineerRequest[] }>("/owner/qa-engineer-requests/organization-pending"),
+};
+
+// ==================== OWNER SITE ENGINEERS API ====================
+
+export interface SiteEngineer {
+  id: string;
+  org_id: string;
+  site_engineer_id: string;
+  approved_by?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  approved_at?: string;
+  created_at: string;
+}
+
+export const ownerSiteEngineers = {
+  getAll: (organizationId: string) =>
+    api.get<{ siteEngineers: SiteEngineer[] }>(`/owner/organization-engineers/all/site-engineers?organizationId=${organizationId}`),
+
+  getById: (engineerId: string, organizationId: string) =>
+    api.get<{ siteEngineer: SiteEngineer }>(`/owner/organization-engineers/site-engineer/${engineerId}?organizationId=${organizationId}`),
+};
+
+// ==================== OWNER GRN API ====================
+
+export interface GRN {
+  id: string;
+  project_id: string;
+  purchase_order_id: string;
+  material_request_id: string;
+  site_engineer_id: string;
+  status: "CREATED" | "VERIFIED";
+  received_items: any;
+  remarks?: string;
+  verified_by?: string;
+  created_at: string;
+  received_at: string;
+  verified_at?: string;
+  bill_image_mime?: string;
+  proof_image_mime?: string;
+  project_name: string;
+  po_number: string;
+  vendor_name: string;
+  material_request_title: string;
+  engineer_name: string;
+  verified_by_name?: string;
+}
+
+export const ownerGRN = {
+  getByProject: (projectId: string) =>
+    api.get<{ grns: GRN[] }>(`/owner/grns?projectId=${projectId}`),
+
+  getBillImage: (grnId: string) =>
+    api.getBlob(`/owner/grns/${grnId}/bill-image`),
+
+  getProofImage: (grnId: string) =>
+    api.getBlob(`/owner/grns/${grnId}/proof-image`),
+};
+
+// ==================== OWNER PURCHASE ORDERS API ====================
+
+export interface PurchaseOrder {
+  id: string;
+  project_id: string;
+  material_request_id: string;
+  po_number: string;
+  vendor_name: string;
+  vendor_contact?: string;
+  items: any;
+  total_amount: number;
+  status: "DRAFT" | "SENT" | "ACKNOWLEDGED";
+  created_by: string;
+  created_at: string;
+  sent_at?: string;
+  po_pdf_mime?: string;
+  material_request_title: string;
+  material_request_description?: string;
+  project_name: string;
+  created_by_name: string;
+}
+
+export const ownerPurchaseOrders = {
+  getByProject: (projectId: string) =>
+    api.get<{ purchase_orders: PurchaseOrder[] }>(`/owner/purchase-orders?projectId=${projectId}`),
+
+  getById: (poId: string) =>
+    api.get<{ purchase_order: PurchaseOrder }>(`/owner/purchase-orders/${poId}`),
+
+  getPDF: (poId: string) =>
+    api.getBlob(`/owner/purchase-orders/${poId}/pdf`),
+};
+
+// ==================== OWNER LEDGER API ====================
+
+export interface LedgerEntry {
+  id: string;
+  project_id: string;
+  transaction_type: string;
+  category: string;
+  amount: number;
+  description?: string;
+  reference_id?: string;
+  created_at: string;
+  created_by: string;
+  created_by_role: string;
+}
+
+export interface ProjectLedger {
+  entries: LedgerEntry[];
+  summary: {
+    total_debit: number;
+    total_credit: number;
+    balance: number;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total_count: number;
+  };
+}
+
+export const ownerLedger = {
+  getProjectLedger: (projectId: string, filters?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("start_date", filters.startDate);
+    if (filters?.endDate) params.append("end_date", filters.endDate);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.page) params.append("page", filters.page.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+    return api.get<ProjectLedger>(`/owner/ledger/project/${projectId}?${params}`);
+  },
+};
+
+// ==================== OWNER SUBCONTRACTORS API ====================
+
+export interface Subcontractor {
+  id: string;
+  org_id: string;
+  name: string;
+  specialization?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  created_at: string;
+}
+
+export interface SubcontractorPerformance {
+  subcontractor_id: string;
+  subcontractor_name: string;
+  avg_speed_rating: number;
+  avg_quality_rating: number;
+  total_tasks_completed: number;
+  projects_involved: number;
+  task_breakdown: Array<{
+    task_id: string;
+    task_name: string;
+    project_id: string;
+    project_name: string;
+    speed_rating?: number;
+    quality_rating?: number;
+    task_start_date?: string;
+    task_completed_at?: string;
+  }>;
+}
+
+export const ownerSubcontractors = {
+  create: (data: {
+    org_id: string;
+    name: string;
+    specialization?: string;
+    contact_name?: string;
+    contact_phone?: string;
+    contact_email?: string;
+  }) =>
+    api.post<{ subcontractor: Subcontractor }>("/owner/subcontractors", data),
+
+  getAll: (orgId?: string) => {
+    const params = orgId ? `?org_id=${orgId}` : "";
+    return api.get<{ subcontractors: Subcontractor[] }>(`/owner/subcontractors${params}`);
+  },
+
+  getById: (id: string) =>
+    api.get<{ subcontractor: Subcontractor }>(`/owner/subcontractors/${id}`),
+
+  getPerformance: (id: string) =>
+    api.get<SubcontractorPerformance>(`/owner/subcontractors/${id}/performance`),
+};
+
+// ==================== OWNER DANGEROUS WORK API ====================
+
+export interface DangerousTask {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_by: string;
+  created_by_role: string;
+  created_at: string;
+  created_by_name: string;
+  project_name: string;
+  project_location: string;
+  total_requests: number;
+  approved_requests: number;
+  pending_requests: number;
+  rejected_requests: number;
+  expired_requests: number;
+}
+
+export interface DangerousTaskRequest {
+  id: string;
+  dangerous_task_id: string;
+  labour_id: string;
+  project_id: string;
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "EXPIRED";
+  requested_at: string;
+  approved_at?: string;
+  approved_by?: string;
+  approval_method: string;
+  task_name: string;
+  task_description?: string;
+  task_is_active: boolean;
+  labour_name: string;
+  labour_phone: string;
+  labour_skill: string;
+  approved_by_name?: string;
+  project_name: string;
+  project_location: string;
+}
+
+export interface DangerousWorkStatistics {
+  organization_statistics: {
+    total_projects: number;
+    total_dangerous_tasks: number;
+    active_tasks: number;
+    total_requests: number;
+    approved_requests: number;
+    pending_requests: number;
+    rejected_requests: number;
+    expired_requests: number;
+    unique_labours_involved: number;
+    unique_engineers_involved: number;
+    avg_approval_time_minutes: number;
+    approval_rate_percentage: number;
+  };
+  project_breakdown: Array<{
+    id: string;
+    name: string;
+    location_text: string;
+    project_status: string;
+    dangerous_tasks: number;
+    total_requests: number;
+    approved_requests: number;
+    pending_requests: number;
+  }>;
+  top_dangerous_tasks: Array<{
+    id: string;
+    name: string;
+    is_active: boolean;
+    project_name: string;
+    request_count: number;
+    approved_count: number;
+  }>;
+  skill_type_compliance: Array<{
+    skill_type: string;
+    unique_labours: number;
+    total_requests: number;
+    approved_requests: number;
+    expired_requests: number;
+  }>;
+}
+
+export interface ComplianceReport {
+  organization_name: string;
+  report_generated_at: string;
+  date_range: {
+    start: string;
+    end: string;
+  };
+  compliance_records: Array<{
+    request_id: string;
+    status: string;
+    requested_at: string;
+    approved_at?: string;
+    task_name: string;
+    task_description?: string;
+    labour_name: string;
+    labour_phone: string;
+    labour_skill: string;
+    project_name: string;
+    project_location: string;
+    engineer_name: string;
+    approved_by_name?: string;
+    approval_time_minutes?: number;
+  }>;
+}
+
+export const ownerDangerousWork = {
+  getTasks: (organizationId: string, projectId?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (projectId) params.append("projectId", projectId);
+    return api.get<{ dangerous_tasks: DangerousTask[] }>(`/owner/dangerous-work/tasks?${params}`);
+  },
+
+  getRequests: (filters: {
+    organizationId: string;
+    projectId?: string;
+    status?: string;
+    labourId?: string;
+    taskId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams();
+    params.append("organizationId", filters.organizationId);
+    if (filters.projectId) params.append("projectId", filters.projectId);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.labourId) params.append("labourId", filters.labourId);
+    if (filters.taskId) params.append("taskId", filters.taskId);
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    return api.get<{ task_requests: DangerousTaskRequest[] }>(`/owner/dangerous-work/requests?${params}`);
+  },
+
+  getStatistics: (organizationId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return api.get<DangerousWorkStatistics>(`/owner/dangerous-work/statistics?${params}`);
+  },
+
+  getComplianceReport: (organizationId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ organizationId });
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    return api.get<ComplianceReport>(`/owner/dangerous-work/compliance-report?${params}`);
+  },
+};

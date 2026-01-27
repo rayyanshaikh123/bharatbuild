@@ -56,7 +56,6 @@ router.get("/project/:projectId", async (req, res) => {
     const planId = planResult.rows[0].id;
 
     // Get all plan items with delay calculation
-    const now = new Date();
     const planItemsResult = await pool.query(
       `SELECT 
         id as plan_item_id,
@@ -66,20 +65,20 @@ router.get("/project/:projectId", async (req, res) => {
         status,
         priority,
         completed_at,
-        delay,
+        delay_info,
         CASE 
           WHEN status = 'COMPLETED' AND completed_at > period_end 
-            THEN EXTRACT(DAY FROM (completed_at - period_end))
+            THEN EXTRACT(DAY FROM (completed_at::timestamp - period_end::timestamp))
           WHEN status = 'DELAYED'
-            THEN EXTRACT(DAY FROM (COALESCE(completed_at, $2::timestamp) - period_end))
-          WHEN status != 'COMPLETED' AND $2::timestamp > period_end
-            THEN EXTRACT(DAY FROM ($2::timestamp - period_end))
+            THEN EXTRACT(DAY FROM (COALESCE(completed_at::timestamp, CURRENT_TIMESTAMP) - period_end::timestamp))
+          WHEN status != 'COMPLETED' AND CURRENT_TIMESTAMP > period_end::timestamp
+            THEN EXTRACT(DAY FROM (CURRENT_TIMESTAMP - period_end::timestamp))
           ELSE 0
         END as delay_days
        FROM plan_items
        WHERE plan_id = $1
        ORDER BY period_start ASC, priority DESC, task_name ASC`,
-      [planId, now],
+      [planId],
     );
 
     // Calculate statistics
@@ -98,7 +97,10 @@ router.get("/project/:projectId", async (req, res) => {
       }
 
       // Auto-detect delays for non-completed items past deadline
-      if (item.status !== "COMPLETED" && new Date(item.period_end) < now) {
+      if (
+        item.status !== "COMPLETED" &&
+        new Date(item.period_end) < new Date()
+      ) {
         if (item.status !== "DELAYED") {
           delayedTasks++;
           pendingTasks = Math.max(0, pendingTasks - 1);
@@ -118,7 +120,7 @@ router.get("/project/:projectId", async (req, res) => {
       status: item.status,
       priority: item.priority,
       delay_days: Math.max(0, Math.round(parseFloat(item.delay_days) || 0)),
-      delay_info: item.delay || null,
+      delay_info: item.delay_info || null,
     }));
 
     res.json({
@@ -132,7 +134,7 @@ router.get("/project/:projectId", async (req, res) => {
     });
   } catch (err) {
     console.error("[Manager Timeline API] Error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 

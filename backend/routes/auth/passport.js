@@ -7,6 +7,8 @@ const pool = require("../../db");
 require("./managerPassport");
 require("./engineerPassport");
 require("./labourPassport");
+require("./purchaseManagerPassport");
+require("./qaEngineerPassport");
 
 // Configure owner-local strategy
 passport.use(
@@ -17,7 +19,7 @@ passport.use(
       try {
         const result = await pool.query(
           "SELECT id, name, email, phone, password_hash, role FROM owners WHERE email = $1",
-          [email]
+          [email],
         );
         if (result.rows.length === 0)
           return done(null, false, { message: "User not found" });
@@ -31,11 +33,11 @@ passport.use(
       } catch (err) {
         return done(err);
       }
-    }
-  )
+    },
+  ),
 );
 
-// Session handling (supports OWNER, MANAGER, SITE_ENGINEER)
+// Session handling (supports OWNER, MANAGER, SITE_ENGINEER, LABOUR, PURCHASE_MANAGER)
 passport.serializeUser((user, done) => {
   // store role with id so we can fetch from correct table
   done(null, { id: user.id, role: user.role });
@@ -60,11 +62,17 @@ passport.deserializeUser(async (key, done) => {
     } else if (role === "LABOUR") {
       table = "labours";
       columns = "id, name, phone, role";
+    } else if (role === "PURCHASE_MANAGER") {
+      table = "purchase_managers";
+      columns = "id, name, email, phone, role";
+    } else if (role === "QA_ENGINEER") {
+      table = "qa_engineers";
+      columns = "id, name, email, phone, role";
     } else return done(null, false);
 
     const result = await pool.query(
       `SELECT ${columns} FROM ${table} WHERE id = $1`,
-      [key.id]
+      [key.id],
     );
     if (result.rows.length === 0) return done(null, false);
     done(null, result.rows[0]);

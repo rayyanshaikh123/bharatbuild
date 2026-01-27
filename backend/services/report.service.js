@@ -191,6 +191,7 @@ async function getFinancialReport(userId, userType, filters) {
       budget_utilization: summary.budget_utilization,
       total_material_cost: summary.total_material_cost,
       total_wages: summary.total_wages,
+      total_adjustments: 0,
     },
     breakdown: {
       by_project: projectBreakdown.rows,
@@ -259,7 +260,7 @@ async function getProjectProgressReport(userId, userType, filters) {
       pi.delay_info,
       p.project_id,
       proj.name as project_name,
-      EXTRACT(DAY FROM (pi.completed_at - pi.period_end)) as delay_days
+      EXTRACT(DAY FROM (pi.completed_at::timestamp - pi.period_end::timestamp)) as delay_days
      FROM plan_items pi
      JOIN plans p ON pi.plan_id = p.id
      JOIN projects proj ON p.project_id = proj.id
@@ -529,7 +530,7 @@ async function getAuditReport(userId, userType, filters) {
     auditQuery = `
       SELECT 
         COUNT(*) as total_audits,
-        COUNT(DISTINCT user_id) as unique_users,
+        COUNT(DISTINCT acted_by_id) as unique_users,
         COUNT(DISTINCT category) as unique_categories
       FROM audit_logs
       WHERE organization_id = $1::uuid
@@ -541,7 +542,7 @@ async function getAuditReport(userId, userType, filters) {
     auditQuery = `
       SELECT 
         COUNT(*) as total_audits,
-        COUNT(DISTINCT user_id) as unique_users,
+        COUNT(DISTINCT acted_by_id) as unique_users,
         COUNT(DISTINCT category) as unique_categories
       FROM audit_logs
       WHERE project_id = ANY($1)
@@ -552,40 +553,51 @@ async function getAuditReport(userId, userType, filters) {
 
   const auditSummary = await pool.query(auditQuery, auditParams);
 
+  // Helper for dynamic query generation
+  const isOrgLevel = userType === "owner" && orgId && !filters.project_id;
+  const targetId = isOrgLevel ? orgId : projectIds;
+  const targetColumn = isOrgLevel ? "organization_id" : "project_id";
+  const targetParamType = isOrgLevel ? "uuid" : "uuid[]";
+  const operator = isOrgLevel ? "=" : "= ANY";
+
   // Breakdown by category
   const categoryBreakdown = await pool.query(
     `SELECT category, action, COUNT(*) as count
      FROM audit_logs
-     WHERE project_id = ANY($1)
+     WHERE ${targetColumn} ${operator}($1::${targetParamType})
        AND created_at >= $2 AND created_at <= $3
      GROUP BY category, action
      ORDER BY count DESC`,
-    [projectIds, filters.start_date, filters.end_date],
+    [targetId, filters.start_date, filters.end_date],
   );
 
   // Breakdown by user role
   const roleBreakdown = await pool.query(
     `SELECT acted_by_role, COUNT(*) as count
      FROM audit_logs
-     WHERE project_id = ANY($1::uuid[])
+     WHERE ${targetColumn} ${operator}($1::${targetParamType})
        AND created_at >= $2 AND created_at <= $3
      GROUP BY acted_by_role
      ORDER BY count DESC`,
-    [projectIds, filters.start_date, filters.end_date],
+    [targetId, filters.start_date, filters.end_date],
   );
 
-  // Recent critical audits (financial changes)
-  const criticalAudits = await pool.query(
+  // Pagination
+  const page = parseInt(filters.page) || 1;
+  const limit = parseInt(filters.limit) || 50;
+  const offset = (page - 1) * limit;
+
+  // Recent audits (paginated)
+  const recentAudits = await pool.query(
     `SELECT 
       id, entity_type, entity_id, category, action,
       acted_by_role, created_at, change_summary
      FROM audit_logs
-     WHERE project_id = ANY($1::uuid[])
-       AND category IN ('MATERIAL_BILL', 'WAGES', 'LEDGER_ADJUSTMENT')
+     WHERE ${targetColumn} ${operator}($1::${targetParamType})
        AND created_at >= $2 AND created_at <= $3
      ORDER BY created_at DESC
-     LIMIT 20`,
-    [projectIds, filters.start_date, filters.end_date],
+     LIMIT $4 OFFSET $5`,
+    [targetId, filters.start_date, filters.end_date, limit, offset],
   );
 
   return {
@@ -600,7 +612,13 @@ async function getAuditReport(userId, userType, filters) {
       by_category: categoryBreakdown.rows,
       by_role: roleBreakdown.rows,
     },
-    recent_critical_audits: criticalAudits.rows,
+    recent_audits: recentAudits.rows,
+    pagination: {
+      page,
+      limit,
+      total: parseInt(auditSummary.rows[0].total_audits),
+      total_pages: Math.ceil(parseInt(auditSummary.rows[0].total_audits) / limit),
+    },
   };
 }
 

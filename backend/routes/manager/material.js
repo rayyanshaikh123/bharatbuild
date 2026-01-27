@@ -96,17 +96,22 @@ router.patch("/requests/:id", managerCheck, async (req, res) => {
 
     // Create notification for site engineer
     try {
-      const { createNotification } = require("../../services/notification.service");
+      const {
+        createNotification,
+      } = require("../../services/notification.service");
       await createNotification({
         userId: beforeState.site_engineer_id,
-        userRole: 'SITE_ENGINEER',
+        userRole: "SITE_ENGINEER",
         title: `Material Request ${status}`,
         message: `Your material request for "${beforeState.title}" has been ${status.toLowerCase()}.`,
-        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
-        projectId: project_id
+        type: status === "APPROVED" ? "SUCCESS" : "ERROR",
+        projectId: project_id,
       });
     } catch (notifErr) {
-      console.error("Failed to create material request notification:", notifErr);
+      console.error(
+        "Failed to create material request notification:",
+        notifErr,
+      );
     }
 
     res.json({ request: afterState });
@@ -246,16 +251,35 @@ router.patch("/bills/:id", managerCheck, async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Check for budget exceeded and send owner alert (if approved)
+    if (status === "APPROVED") {
+      try {
+        const {
+          checkAndAlertBudgetExceeded,
+        } = require("../../services/ownerAlert.service");
+        await checkAndAlertBudgetExceeded(
+          project_id,
+          "Material Bill Approval",
+          client,
+        );
+      } catch (alertErr) {
+        console.error("Failed to check budget exceeded alert:", alertErr);
+        // Don't block the response
+      }
+    }
+
     // Create notification for site engineer (outside transaction to avoid delays)
     try {
-      const { createNotification } = require("../../services/notification.service");
+      const {
+        createNotification,
+      } = require("../../services/notification.service");
       await createNotification({
         userId: beforeState.uploaded_by,
-        userRole: 'SITE_ENGINEER',
+        userRole: "SITE_ENGINEER",
         title: `Material Bill ${status}`,
         message: `Your bill submission (Bill #${beforeState.bill_number}) for ${beforeState.vendor_name} has been ${status.toLowerCase()}.`,
-        type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
-        projectId: project_id
+        type: status === "APPROVED" ? "SUCCESS" : "ERROR",
+        projectId: project_id,
       });
     } catch (notifErr) {
       console.error("Failed to create material bill notification:", notifErr);

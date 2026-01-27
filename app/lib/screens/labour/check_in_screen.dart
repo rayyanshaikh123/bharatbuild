@@ -8,8 +8,11 @@ import '../../providers/attendance_provider.dart';
 import '../../providers/auth_providers.dart';
 import '../../services/auth_service.dart';
 import '../../map/geofence_service.dart';
+import '../../providers/user_provider.dart';
 import '../../widgets/site_map_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../services/tracking_service.dart';
+import '../../theme/app_colors.dart';
 import 'shift_status_screen.dart';
 
 class CheckInScreen extends ConsumerStatefulWidget {
@@ -22,6 +25,7 @@ class CheckInScreen extends ConsumerStatefulWidget {
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Position? _currentPosition;
   bool _isLoadingLocation = false;
+  bool _isCheckingIn = false;
   String? _selectedProjectId;
   Map<String, dynamic>? _selectedProject;
 
@@ -70,6 +74,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Future<void> _handleCheckIn() async {
     if (_selectedProjectId == null || _currentPosition == null) return;
 
+    if (mounted) setState(() => _isCheckingIn = true);
+
     final authService = ref.read(authServiceProvider);
     final geofenceService = GeofenceService();
 
@@ -86,7 +92,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       }
 
       final labourRequestId = application['labour_request_id']?.toString() ?? 
-                              application['id']?.toString();
+                              application['id']?.toString() ?? 
+                              application['project_id']?.toString();
       
       if (labourRequestId == null) {
         throw Exception('Unable to find labour request ID');
@@ -101,12 +108,15 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         jobDetails,
       );
       
-      if (!validation['isValid'] as bool) {
-        final distance = validation['distance'] as int;
-        final allowedRadius = validation['allowedRadius'] as int;
+      final isValid = (validation['isValid'] as bool?) ?? false;
+      
+      if (!isValid) {
+        final distance = (validation['distance'] as num?)?.toInt() ?? 0;
+        final allowedRadius = (validation['allowedRadius'] as num?)?.toInt() ?? 0;
         
         if (mounted) {
-          showDialog(
+           setState(() => _isCheckingIn = false);
+           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Outside Geofence'),
@@ -135,26 +145,54 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       }).future);
       
       if (mounted) {
+        // Start tracking
+        final user = ref.read(currentUserProvider);
+        if (user != null) {
+          TrackingService().startTracking(
+            project: jobDetails,
+            userRole: 'LABOUR',
+            userId: (user['id'] ?? 'unknown_user').toString(),
+          );
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Checked in successfully'),
             backgroundColor: Colors.green,
           ),
         );
+
         // Navigate to shift status screen
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+           (route) => false, // Clear stack
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() => _isCheckingIn = false);
+        final errorMsg = e.toString();
+        
+        if (errorMsg.contains('Already checked in')) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Re-syncing session...'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ShiftStatusScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${errorMsg.replaceAll('Exception: ', '')}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -163,327 +201,117 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final applicationsAsync = ref.watch(myApplicationsProvider);
+    final todayStatusAsync = ref.watch(todayAttendanceProvider);
+
+    // Automatic redirection if already checked in
+    todayStatusAsync.whenData((att) {
+      if (att != null && att['active_session'] != null && att['active_session']['is_active'] == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ShiftStatusScreen()));
+        });
+      }
+    });
     
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: Text('check_in'.tr()),
+        title: Text('check_in'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: theme.colorScheme.onSurface,
       ),
       body: applicationsAsync.when(
         data: (applications) {
-          // Show all projects regardless of status, but prioritize APPROVED
-          final allProjects = List<Map<String, dynamic>>.from(applications);
-          allProjects.sort((a, b) {
-            final statusA = a['status'] as String? ?? '';
-            final statusB = b['status'] as String? ?? '';
-            if (statusA == 'APPROVED' && statusB != 'APPROVED') return -1;
-            if (statusA != 'APPROVED' && statusB == 'APPROVED') return 1;
-            return 0;
-          });
-          
-          // For check-in, only allow APPROVED projects, but show all for reference
-          final approvedProjects = allProjects.where((a) => a['status'] == 'APPROVED').toList();
-          
-          if (allProjects.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.work_off, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text('no_projects_found'.tr()),
-                ],
-              ),
-            );
+          if (applications.isEmpty) {
+            return _buildEmptyState(theme);
           }
 
-          // Prepare projects data for map (show all projects, not just approved)
-          final projectsForMap = allProjects.map((app) {
-            return {
-              'id': app['project_id'],
-              'name': app['project_name'] ?? 'Project',
-              'latitude': app['latitude'] ?? 0.0,
-              'longitude': app['longitude'] ?? 0.0,
-              'location_text': app['location_text'] ?? '',
-              'geofence': app['geofence'],
-            };
-          }).toList();
+          // Sort by distance if location is available
+          final List<dynamic> sortedProjects = List.from(applications);
+          if (_currentPosition != null) {
+             sortedProjects.sort((a, b) {
+               final distA = a['distance_meters'] ?? double.infinity;
+               final distB = b['distance_meters'] ?? double.infinity;
+               return distA.compareTo(distB);
+             });
+
+             // Automatic Selection: If not selected and inside geofence, auto-pick
+             if (_selectedProjectId == null) {
+                final geofenceService = GeofenceService();
+                for (final app in sortedProjects) {
+                  final validation = geofenceService.validateGeofence(
+                    _currentPosition!.latitude, 
+                    _currentPosition!.longitude, 
+                    app
+                  );
+                  if (validation['isValid'] == true) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      setState(() {
+                        _selectedProjectId = app['project_id'].toString();
+                        _selectedProject = app;
+                      });
+                    });
+                    break;
+                  }
+                }
+             }
+          }
 
           return Column(
             children: [
-              // Map Section
-              Expanded(
-                flex: 2,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: SiteMapWidget(
-                      projectsData: projectsForMap,
-                      geofences: [],
-                    ),
-                  ),
-                ),
-              ),
+              _buildSiteMapHeader(sortedProjects),
               
-              // Project List Section
               Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'select_project'.tr(),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: theme.scaffoldBackgroundColor,
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('active_sites'.tr(), style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 20)),
+                          TextButton.icon(
+                            onPressed: _getCurrentLocation,
+                            icon: Icon(Icons.my_location, size: 16, color: AppColors.primary),
+                            label: Text('refresh'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: allProjects.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final app = allProjects[index];
-                          final status = app['status'] as String? ?? '';
-                          final isApproved = status == 'APPROVED';
-                          final isPending = status == 'PENDING';
-                          final isRejected = status == 'REJECTED';
-                          final isSelected = _selectedProjectId == app['project_id'].toString();
-                          
-                          return Card(
-                            elevation: isSelected ? 4 : 1,
-                            color: isRejected 
-                                ? Colors.grey.withOpacity(0.1)
-                                : isPending
-                                    ? Colors.orange.withOpacity(0.05)
-                                    : null,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: isSelected 
-                                    ? theme.colorScheme.primary 
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: InkWell(
-                              onTap: isApproved ? () {
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: sortedProjects.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            final app = sortedProjects[index];
+                            final isSelected = _selectedProjectId == app['project_id'].toString();
+                            
+                            return _ProjectSelectionCard(
+                              project: app,
+                              isSelected: isSelected,
+                              onTap: () {
                                 setState(() {
                                   _selectedProjectId = app['project_id'].toString();
                                   _selectedProject = app;
                                 });
-                              } : null,
-                              borderRadius: BorderRadius.circular(16),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            app['project_name'] ?? 'Project',
-                                            style: theme.textTheme.titleMedium?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: isRejected 
-                                                  ? Colors.grey
-                                                  : null,
-                                            ),
-                                          ),
-                                        ),
-                                        // Status badge
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isApproved
-                                                ? Colors.green.withOpacity(0.1)
-                                                : isPending
-                                                    ? Colors.orange.withOpacity(0.1)
-                                                    : Colors.grey.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            status,
-                                            style: TextStyle(
-                                              color: isApproved
-                                                  ? Colors.green
-                                                  : isPending
-                                                      ? Colors.orange
-                                                      : Colors.grey,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ),
-                                        if (isSelected && isApproved)
-                                          const SizedBox(width: 8),
-                                        if (isSelected && isApproved)
-                                          Icon(
-                                            Icons.check_circle,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            app['location_text'] ?? 'Unknown Location',
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (app['distance_meters'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.straighten,
-                                            size: 16,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${app['distance_meters'].round()}m away',
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                    if (!isApproved) ...[
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: isPending
-                                              ? Colors.orange.withOpacity(0.1)
-                                              : Colors.grey.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              isPending ? Icons.hourglass_empty : Icons.block,
-                                              size: 16,
-                                              color: isPending ? Colors.orange : Colors.grey,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                isPending
-                                                    ? 'Waiting for approval'
-                                                    : 'Application rejected',
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: isPending ? Colors.orange : Colors.grey,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                              },
+                              theme: theme,
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               
-              // Check-in Button
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    if (_isLoadingLocation)
-                      const LinearProgressIndicator()
-                    else if (_currentPosition == null)
-                      ElevatedButton.icon(
-                        onPressed: _getCurrentLocation,
-                        icon: const Icon(Icons.location_searching),
-                        label: const Text('Get Location'),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                      )
-                    else
-                      Column(
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.my_location, size: 16, color: Colors.green),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Location: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _selectedProjectId == null ? null : _handleCheckIn,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 50),
-                              backgroundColor: theme.colorScheme.primary,
-                            ),
-                            child: Text(
-                              'check_in'.tr(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
+              _buildBottomAction(theme),
             ],
           );
         },
@@ -492,4 +320,240 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       ),
     );
   }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
+            child: Icon(Icons.work_outline, size: 64, color: Colors.grey[400]),
+          ),
+          const SizedBox(height: 24),
+          Text('no_projects_found'.tr(), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey[700])),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'find_work_hint'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[500], height: 1.5),
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: Text('explore_work'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSiteMapHeader(List<dynamic> projects) {
+    final projectsForMap = projects.map((app) => {
+      'id': app['project_id'],
+      'name': app['project_name'] ?? 'Project',
+      'latitude': app['latitude'] ?? 0.0,
+      'longitude': app['longitude'] ?? 0.0,
+      'location_text': app['location_text'] ?? '',
+      'geofence': app['geofence'],
+    }).toList();
+
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        children: [
+          SiteMapWidget(projectsData: projectsForMap, geofences: const []),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white.withOpacity(0.8), Colors.transparent],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomAction(ThemeData theme) {
+    final hasSelected = _selectedProjectId != null;
+    final canCheckIn = hasSelected && !_isLoadingLocation;
+    
+    // Check if inside geofence if location is available
+    bool isInside = false;
+    Map<String, dynamic>? validation;
+    if (_currentPosition != null && _selectedProject != null) {
+      validation = GeofenceService().validateGeofence(
+        _currentPosition!.latitude, 
+        _currentPosition!.longitude, 
+        _selectedProject
+      );
+      isInside = validation['isValid'] == true;
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_currentPosition != null && hasSelected)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isInside ? Icons.verified_user : Icons.warning_amber_rounded, 
+                    size: 16, 
+                    color: isInside ? Colors.green : Colors.orange
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isInside ? 'Inside Site' : 'Outside site (${validation?['distance'] ?? '...'}m away)',
+                    style: TextStyle(
+                      color: isInside ? Colors.green[700] : Colors.orange[700], 
+                      fontSize: 12, 
+                      fontWeight: FontWeight.bold
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ElevatedButton(
+            onPressed: canCheckIn && !_isCheckingIn ? _handleCheckIn : null,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 64),
+              backgroundColor: isInside ? AppColors.primary : Colors.grey[700],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 4,
+              shadowColor: AppColors.primary.withOpacity(0.4),
+            ),
+            child: (_isLoadingLocation || _isCheckingIn)
+                ? const CircularProgressIndicator(color: Colors.white)
+                : Text(
+                    'start_timer'.tr().toUpperCase() + ' (Auto Attendance)',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+          ),
+          if (hasSelected && !isInside && !_isLoadingLocation && !_isCheckingIn)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Move closer to project location to begin high-precision tracking.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
+
+class _ProjectSelectionCard extends StatelessWidget {
+  final dynamic project;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final ThemeData theme;
+
+  const _ProjectSelectionCard({
+    required this.project,
+    required this.isSelected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.05) : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : theme.colorScheme.outline.withOpacity(0.1),
+            width: 2,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+          ] : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.grey[100],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.business_rounded, 
+                color: isSelected ? Colors.white : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    project['project_name'] ?? 'Project',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isSelected ? AppColors.primary : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          project['location_text'] ?? '',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle, color: AppColors.primary)
+            else if (project['distance_meters'] != null)
+              Text(
+                '${(project['distance_meters'] / 1000).toStringAsFixed(1)}km',
+                style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

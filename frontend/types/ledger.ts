@@ -78,14 +78,12 @@ export interface AuditLog {
   entity_id: string; // UUID
   category: AuditCategory;
   action: AuditAction;
-  user_id: string; // UUID
-  user_type: string;
+  acted_by_id: string; // UUID - was user_id
+  acted_by_role: string; // was user_type
   project_id: string | null; // UUID
   project_name: string | null;
   organization_id: string; // UUID
-  changed_fields: string[] | null;
-  before: Record<string, unknown> | null;
-  after: Record<string, unknown> | null;
+  change_summary: any | null; // was string | null
   created_at: string;
 }
 

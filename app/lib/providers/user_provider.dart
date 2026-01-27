@@ -37,7 +37,7 @@ class UserNotifier extends StateNotifier<Map<String, dynamic>?> {
 
 /// Role-aware profile fetcher that updates currentUserProvider
 final profileProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
-  final current = ref.watch(currentUserProvider);
+  final current = ref.read(currentUserProvider);
   if (current == null) return null;
   
   final role = current['role']?.toString().toUpperCase() ?? 'LABOUR';

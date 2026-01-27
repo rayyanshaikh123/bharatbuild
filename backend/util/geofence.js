@@ -22,6 +22,40 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
+ * Check if point is inside a polygon (ray-casting algorithm)
+ */
+function isPointInsidePolygon(point, polygon) {
+  const x = point[1]; // longitude
+  const y = point[0]; // latitude
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][1],
+      yi = polygon[i][0];
+    const xj = polygon[j][1],
+      yj = polygon[j][0];
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Calculate distance from point to nearest polygon vertex
+ */
+function distanceToPolygon(lat, lon, polygon) {
+  const inside = isPointInsidePolygon([lat, lon], polygon);
+  if (inside) return -1; // Indicate inside
+
+  let minDist = Infinity;
+  for (const p of polygon) {
+    const d = calculateDistance(lat, lon, p[0], p[1]);
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
+}
+
+/**
  * Validate if coordinates are within project geofence
  * @param {Object} pool - Database connection pool
  * @param {string} projectId - Project UUID
@@ -46,17 +80,31 @@ async function validateGeofence(pool, projectId, latitude, longitude) {
     geofence,
   } = result.rows[0];
 
+  const GRACE_BUFFER = 30; // 30 meters grace period for GPS drift
+
   // PRIORITY 1: Use geofence JSONB if present
   if (geofence && typeof geofence === "object") {
-    // Support CIRCLE type geofencing
-    if (
-      geofence.type === "CIRCLE" &&
-      geofence.center &&
-      geofence.radius_meters
-    ) {
-      const { center, radius_meters } = geofence;
+    // Handle GeoJSON format
+    if (geofence.type === "Feature" && geofence.geometry) {
+      const geom = geofence.geometry;
+      if (geom.type === "Polygon" && geom.coordinates && geom.coordinates[0]) {
+        const polygon = geom.coordinates[0].map((c) => [c[1], c[0]]); // Swap Lng/Lat to Lat/Lng
+        const dist = distanceToPolygon(latitude, longitude, polygon);
+        return {
+          isValid: dist <= GRACE_BUFFER,
+          distance: Math.round(Math.max(0, dist)),
+          allowedRadius: 0,
+          source: "geofence_geojson",
+          geofenceType: "POLYGON",
+        };
+      }
+    }
 
-      // Validate center coordinates
+    const type = (geofence.type || "NONE").toUpperCase();
+
+    // Support CIRCLE type geofencing
+    if (type === "CIRCLE" && geofence.center && geofence.radius_meters) {
+      const { center, radius_meters } = geofence;
       if (typeof center.lat === "number" && typeof center.lng === "number") {
         const distance = calculateDistance(
           latitude,
@@ -64,9 +112,8 @@ async function validateGeofence(pool, projectId, latitude, longitude) {
           center.lat,
           center.lng,
         );
-
         return {
-          isValid: distance <= radius_meters,
+          isValid: distance <= radius_meters + GRACE_BUFFER,
           distance: Math.round(distance),
           allowedRadius: radius_meters,
           source: "geofence_jsonb",
@@ -75,23 +122,33 @@ async function validateGeofence(pool, projectId, latitude, longitude) {
       }
     }
 
-    // Future: Support POLYGON type
-    // if (geofence.type === 'POLYGON') { ... }
+    // Support POLYGON type geofencing
+    if (type === "POLYGON" && geofence.polygon) {
+      // Apply India-specific Lat/Lng swap heuristic for robustness
+      const polygon = geofence.polygon.map((p) => {
+        if (p[0] > 50 && p[1] < 45) return [p[1], p[0]]; // [lng, lat] -> [lat, lon]
+        return p;
+      });
+      const dist = distanceToPolygon(latitude, longitude, polygon);
+      return {
+        isValid: dist <= GRACE_BUFFER,
+        distance: Math.round(Math.max(0, dist)),
+        allowedRadius: 0,
+        source: "geofence_jsonb",
+        geofenceType: "POLYGON",
+      };
+    }
   }
 
   // PRIORITY 2: Fallback to legacy fields for backward compatibility
-  if (
-    projLat !== null &&
-    projLon !== null &&
-    geofence_radius !== null &&
-    geofence_radius > 0
-  ) {
+  if (projLat !== null && projLon !== null) {
+    const radius = parseFloat(geofence_radius || 200);
     const distance = calculateDistance(latitude, longitude, projLat, projLon);
 
     return {
-      isValid: distance <= geofence_radius,
+      isValid: distance <= radius + GRACE_BUFFER,
       distance: Math.round(distance),
-      allowedRadius: geofence_radius,
+      allowedRadius: radius,
       source: "legacy_fields",
       geofenceType: "CIRCLE",
     };

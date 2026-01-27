@@ -1,67 +1,90 @@
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'offline_queue_service.dart';
+import '../storage/sqlite_service.dart';
 import '../services/auth_service.dart';
+import '../providers/user_provider.dart';
+import '../providers/attendance_provider.dart';
 
-final syncServiceProvider = Provider((ref) => SyncService());
+final syncServiceProvider = Provider((ref) => SyncService(ref));
 
 class SyncService {
+  final Ref _ref;
   final AuthService _auth = AuthService();
 
+  SyncService(this._ref) {
+    _initConnectivityListener();
+  }
+
+  void _initConnectivityListener() {
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      if (results.isNotEmpty && !results.contains(ConnectivityResult.none)) {
+        syncPending();
+      }
+    });
+  }
+
   Future<void> syncPending() async {
-    final conn = await Connectivity().checkConnectivity();
-    if (conn == ConnectivityResult.none) return;
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) return;
 
-    final items = await OfflineQueueService.pending();
-    for (final it in items) {
-      final id = it['id'] as int;
-      final endpoint = it['endpoint'] as String;
-      final method = it['method'] as String;
-      final payloadStr = it['payload'] as String?;
+    final user = _ref.read(currentUserProvider);
+    if (user == null) return;
+    final String role = user['role'] ?? 'LABOUR';
+
+    final pending = await SQLiteService.getPendingActions();
+    if (pending.isEmpty) return;
+
+    // Convert to format backend expects
+    final actions = pending.map((a) {
+      return {
+        'id': a['id'],
+        'action_type': a['action_type'],
+        'entity_type': a['entity_type'],
+        'project_id': a['project_id'],
+        'payload': jsonDecode(a['payload']),
+      };
+    }).toList();
+
+    try {
+      final result = await _auth.syncBatch(role, actions);
       
-      Map<String, dynamic>? payload;
-      if (payloadStr != null) {
-        payload = jsonDecode(payloadStr);
+      // Process result
+      final List<dynamic> applied = result['applied'] ?? [];
+      final List<dynamic> rejected = result['rejected'] ?? [];
+      
+      for (final actionId in applied) {
+        await SQLiteService.updateActionStatus(actionId.toString(), 'SYNCED');
       }
 
-      try {
-        await _auth.syncQueueItem(
-          endpoint: endpoint,
-          method: method,
-          payload: payload,
+      for (final reject in rejected) {
+        await SQLiteService.updateActionStatus(
+          reject['id'].toString(), 
+          'FAILED', 
+          error: reject['reason']?.toString()
         );
-        await OfflineQueueService.markSynced(id);
-      } catch (e) {
-        print('Sync failed for item $id: $e');
-        // keep in queue and try later
       }
+
+      // After sync, trigger state refresh
+      await _refreshAfterSync();
+    } catch (e) {
+      print('Batch sync error: $e');
     }
   }
 
+  Future<void> _refreshAfterSync() async {
+    // Invalidate providers to force refresh from backend
+    _ref.invalidate(liveStatusProvider);
+    _ref.invalidate(attendanceHistoryProvider);
+    _ref.invalidate(todayAttendanceProvider);
+    
+    // Also refresh dangerous work service related if needed, though they are usually methods not providers
+    // But invalidating user/auth state might be good if we have it
+  }
+
   Future<int> performManualSync() async {
-    final conn = await Connectivity().checkConnectivity();
-    if (conn == ConnectivityResult.none) {
-      throw Exception('No internet connection');
-    }
-
-    final pending = await OfflineQueueService.pending();
-    if (pending.isEmpty) return 0;
-
-    int successCount = 0;
-    for (final it in pending) {
-      try {
-        await _auth.syncQueueItem(
-          endpoint: it['endpoint'],
-          method: it['method'],
-          payload: it['payload'] != null ? jsonDecode(it['payload']) : null,
-        );
-        await OfflineQueueService.markSynced(it['id']);
-        successCount++;
-      } catch (e) {
-        print('Manual sync error: $e');
-      }
-    }
-    return successCount;
+    await syncPending();
+    final pending = await SQLiteService.getPendingActions();
+    return pending.length; // Remaining pending
   }
 }

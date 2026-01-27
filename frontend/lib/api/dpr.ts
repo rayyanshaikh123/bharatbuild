@@ -19,6 +19,11 @@ export const managerDpr = {
   getApproved: (projectId: string) => {
     return api.get<DprListResponse>(`/manager/dpr/projects/${projectId}/dprs/approved`);
   },
+
+  // Get rejected DPRs for a project
+  getRejected: (projectId: string) => {
+    return api.get<DprListResponse>(`/manager/dpr/projects/${projectId}/dprs/rejected`);
+  },
   
   // Get single DPR by ID
   getById: (dprId: string) => {
@@ -26,7 +31,17 @@ export const managerDpr = {
   },
   
   // Review DPR (approve/reject)
-  review: (dprId: string, status: 'APPROVED' | 'REJECTED', remarks?: string) => {
-    return api.patch<{ dpr: any }>(`/manager/dpr/dprs/${dprId}/review`, { status, remarks });
+  review: (dprId: string, status: 'APPROVED' | 'REJECTED', remarks?: string, material_usage?: any[]) => {
+    return api.patch<{ dpr: any }>(`/manager/dpr/dprs/${dprId}/review`, { status, remarks, material_usage });
+  },
+
+  // Get DPR image
+  getImage: (dprId: string) => {
+    return api.getBlob(`/manager/dpr/dprs/${dprId}/image`);
+  },
+
+  // Delete DPR (only if not approved)
+  delete: (dprId: string) => {
+    return api.delete<{ message: string }>(`/manager/dpr/dprs/${dprId}`);
   },
 };

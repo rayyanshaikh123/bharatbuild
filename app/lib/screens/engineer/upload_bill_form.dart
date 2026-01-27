@@ -4,9 +4,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/material_provider.dart';
 import '../../providers/current_project_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../services/bill_parser_service.dart';
 
 class UploadBillForm extends ConsumerStatefulWidget {
   final Map<String, dynamic>? request;
@@ -33,29 +35,31 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
     setState(() => _isScanning = true);
     
     try {
-      final bytes = await File(image.path).readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final project = ref.read(currentProjectProvider);
-      
-      final dynamic result = await ref.read(ocrRequestProvider({
-        'image': base64Image,
-        'project_id': project?['project_id'] ?? project?['id'],
-      }).future);
+      // Local OCR parsing
+      final File imageFile = File(image.path);
+      final result = await BillParserService().parseBill(imageFile);
 
-      if (result != null && result['data'] != null) {
-        final data = result['data'] as Map<String, dynamic>;
-        setState(() {
-          if (data['vendor_name'] != null) _vendorController.text = data['vendor_name'].toString();
-          if (data['bill_number'] != null) _billNumberController.text = data['bill_number'].toString();
-          if (data['total_amount'] != null) {
-             final total = double.tryParse(data['total_amount'].toString()) ?? 0.0;
-             final gst = double.tryParse(data['gst_amount']?.toString() ?? '0.0') ?? 0.0;
-             _amountController.text = (total - gst).toStringAsFixed(2);
-             _gstController.text = ((gst / (total - gst)) * 100).toStringAsFixed(0);
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('bill_scanned_success'.tr()), backgroundColor: Colors.green));
-      }
+      setState(() {
+        if (result['vendor_name'] != null) _vendorController.text = result['vendor_name'].toString();
+        if (result['bill_number'] != null) _billNumberController.text = result['bill_number'].toString();
+        if (result['total_amount'] != null) {
+           final total = double.tryParse(result['total_amount'].toString()) ?? 0.0;
+           final gst = double.tryParse(result['gst_amount']?.toString() ?? '0.0') ?? 0.0;
+           
+           // If we found a GST amount, deduce taxable amount. 
+           // If not, assume input is total and let user enter GST %
+           if (gst > 0) {
+              _amountController.text = (total - gst).toStringAsFixed(2);
+              _gstController.text = ((gst / (total - gst)) * 100).toStringAsFixed(0);
+           } else {
+              _amountController.text = total.toStringAsFixed(2);
+              // Default to 18 if not found, or leave as is if user edited
+              if (_gstController.text.isEmpty) _gstController.text = '18';
+           }
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('bill_scanned_success'.tr()), backgroundColor: Colors.green));
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('scan_failed'.tr() + ': $e')));
     } finally {
@@ -91,6 +95,18 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
     final gstAmount = amount * (gstPercent / 100);
     final totalAmount = amount + gstAmount;
 
+    // Get current location for geofence validation
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Location fetch failed, but continue without coordinates (backend will skip validation)
+      print('Failed to get location: $e');
+    }
+
     final data = {
       'material_request_id': widget.request?['id'],
       'project_id': selectedProject['project_id'] ?? selectedProject['id'],
@@ -101,6 +117,8 @@ class _UploadBillFormState extends ConsumerState<UploadBillForm> {
       'gst_amount': gstAmount,
       'total_amount': totalAmount,
       'category': _selectedCategory ?? 'Others',
+      if (position != null) 'latitude': position.latitude,
+      if (position != null) 'longitude': position.longitude,
     };
 
     try {
