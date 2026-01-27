@@ -55,7 +55,6 @@ const ownerNavItems: NavItem[] = [
   { label: "Material-stock", href: "/owner/material-stock", icon: Package },
   { label: "QA Engineers", href: "/owner/qa-engineers", icon: ClipboardCheck },
   { label: "Ledger", href: "/owner/ledger", icon: Receipt },
-  { label: "Materials", href: "/owner/materials", icon: Package },
   { label: "Purchase Orders", href: "/owner/purchase-orders", icon: FileText },
   { label: "GRN", href: "/owner/grn", icon: ClipboardCheck },
   { label: "DPR", href: "/owner/dpr", icon: FileText },
@@ -70,11 +69,6 @@ const managerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/manager", icon: LayoutDashboard },
   { label: "AI Insights", href: "/manager/ai", icon: BrainCircuit },
   { label: "Projects", href: "/manager/projects", icon: Building2 },
-  {
-    label: "Project Requests",
-    href: "/manager/project-requests",
-    icon: FileInput,
-  },
   { label: "Engineers", href: "/manager/engineers", icon: Users },
   { label: "Subcontractors", href: "/manager/subcontractors", icon: UserCog },
   {
@@ -84,7 +78,6 @@ const managerNavItems: NavItem[] = [
   },
   { label: "Ledger", href: "/manager/ledger", icon: ReceiptIndianRupee },
   { label: "Wages", href: "/manager/wages", icon: ReceiptIndianRupeeIcon },
-  { label: "Wage Rates", href: "/manager/wage-rates", icon: Settings },
   { label: "Working Hours", href: "/manager/working-hours", icon: Timer },
   { label: "Blacklist", href: "/manager/blacklist", icon: ShieldAlert },
   {
