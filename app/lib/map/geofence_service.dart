@@ -236,4 +236,12 @@ class GeofenceService {
     }
     return min;
   }
+
+  /// Public helper for UI: distance in meters to site polygon (0 if inside)
+  Future<double> distanceToSite(List<double> point, List<List<double>> polygon) async {
+    if (point.length < 2 || polygon.isEmpty) return double.infinity;
+    final dist = _distanceToPolygon(point[0], point[1], polygon);
+    if (dist.isNaN || dist.isInfinite) return double.infinity;
+    return dist < 0 ? 0.0 : dist;
+  }
 }
