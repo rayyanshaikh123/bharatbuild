@@ -11,27 +11,30 @@ require("./routes/auth/passport");
 
 const app = express();
 const port = process.env.PORT || 3001;
-// CORS Configuration for Live Server (testing harness) and Frontend
-// Live Server runs on port 5500, Frontend on port 3000
-// credentials: true is REQUIRED for session cookies to work cross-origin
-// Note: Live Server can use either localhost or 127.0.0.1, so we allow both
-// app.use(
-//   cors({
-//     origin: [
-//       "http://localhost:5500",
-//       "http://127.0.0.1:5500",
-//       "http://localhost:3000",
-//       "http://127.0.0.1:3000",
-//     ],
-//     credentials: true,
-//   }),
-// );
+// CORS Configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+  "https://bharatbuild-frontend.vercel.app",
+  "https://bharatbuild.vercel.app",
+];
+
 app.use(
   cors({
-    origin: true, // Reflects the request origin (effectively allows all origins)
-    credentials: true, // Essential for cookies/sessions to work
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS", // Explicitly allow all methods
-    allowedHeaders: "Content-Type, Authorization, X-Requested-With, Accept", // Explicitly allow all common headers
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type, Authorization, X-Requested-With, Accept",
   }),
 );
 
@@ -54,22 +57,27 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Session configuration
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(
   session({
     store: new pgSession({
       pool,
       tableName: "session",
-      createTableIfMissing: false, // Table already exists
+      createTableIfMissing: false,
     }),
     secret: process.env.SESSION_SECRET || "dev_secret_change_in_production",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false, // Don't create session until something stored
     cookie: {
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24,
-      secure: false, // For development
-      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
+      secure: isProduction, // true in production (HTTPS required)
+      sameSite: isProduction ? "none" : "lax", // "none" for cross-site in production
+      domain: isProduction ? undefined : undefined, // Let browser handle domain
     },
+    proxy: isProduction, // Trust proxy in production (Render uses proxies)
   }),
 );
 
