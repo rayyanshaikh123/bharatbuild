@@ -212,18 +212,24 @@ const LandingPage = () => {
               </div>
 
               <div className="flex flex-wrap gap-4 pt-8">
-                <Button className="h-14 px-8 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center gap-3 transition-all hover:scale-[1.02]">
+                <a 
+                  href="https://hjnnnxn3zvhgz0ka.public.blob.vercel-storage.com/bharatbuild-app.apk" 
+                  download="BharatBuild-App.apk"
+                  className="h-14 px-8 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white flex items-center gap-3 transition-all hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Smartphone size={20} />
                   <div className="text-left">
-                    <div className="text-[10px] uppercase font-bold opacity-70">Download on</div>
-                    <div className="text-sm font-black">App Store</div>
+                    <div className="text-[10px] uppercase font-bold opacity-90">Download APK</div>
+                    <div className="text-sm font-black">Android App (155 MB)</div>
                   </div>
-                </Button>
-                <Button className="h-14 px-8 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center gap-3 transition-all hover:scale-[1.02]">
-                  <Play size={20} fill="white" />
+                </a>
+                <Button className="h-14 px-8 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white flex items-center gap-3 transition-all hover:scale-[1.02] opacity-50 cursor-not-allowed" disabled>
+                  <Smartphone size={20} />
                   <div className="text-left">
-                    <div className="text-[10px] uppercase font-bold opacity-70">Get it on</div>
-                    <div className="text-sm font-black">Google Play</div>
+                    <div className="text-[10px] uppercase font-bold opacity-70">Coming Soon</div>
+                    <div className="text-sm font-black">iOS App</div>
                   </div>
                 </Button>
               </div>

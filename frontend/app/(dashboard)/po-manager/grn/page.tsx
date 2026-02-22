@@ -91,17 +91,17 @@ export default function POManagerGRNPage() {
   const columns: Column<GRN>[] = useMemo(() => [
     {
       key: "grn_number",
-      header: "GRN Number",
+      label: "GRN Number",
       render: (row) => <span className="font-mono font-medium">{row.grn_number}</span>,
     },
     {
       key: "po_number",
-      header: "PO Number",
+      label: "PO Number",
       render: (row) => <span className="font-mono text-sm">{row.po_number}</span>,
     },
     {
       key: "material_request_title",
-      header: "Material",
+      label: "Material",
       render: (row) => (
         <div>
           <p className="font-medium">{row.material_request_title}</p>
@@ -111,12 +111,12 @@ export default function POManagerGRNPage() {
     },
     {
       key: "quantity_received",
-      header: "Qty Received",
+      label: "Qty Received",
       render: (row) => `${row.quantity_received} ${row.unit}`,
     },
     {
       key: "quality_check_status",
-      header: "Quality Check",
+      label: "Quality Check",
       render: (row) => {
         if (row.quality_check_status === "PASSED") {
           return (
@@ -141,12 +141,12 @@ export default function POManagerGRNPage() {
     },
     {
       key: "engineer_name",
-      header: "Received By",
+      label: "Received By",
       render: (row) => row.engineer_name,
     },
     {
       key: "received_at",
-      header: "Received Date",
+      label: "Received Date",
       render: (row) => new Date(row.received_at).toLocaleDateString(),
     },
   ], []);

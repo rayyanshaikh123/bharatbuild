@@ -35,17 +35,17 @@ export default function OwnerDprDetailPage() {
         setIsLoading(true);
         const res = await ownerDpr.getById(dprId);
 
-        // Parse material_usage if it's a string
-        let dprData = res.dpr;
+        // Parse materials_used if it's a JSON string
+        let dprData: any = res.dpr;
         if (
-          dprData.material_usage &&
-          typeof dprData.material_usage === "string"
+          dprData.materials_used &&
+          typeof dprData.materials_used === "string"
         ) {
           try {
-            dprData.material_usage = JSON.parse(dprData.material_usage);
+            dprData.materials_used = JSON.parse(dprData.materials_used);
           } catch (e) {
-            console.error("Failed to parse material_usage:", e);
-            dprData.material_usage = [];
+            console.error("Failed to parse materials_used:", e);
+            // Keep as string if parsing fails
           }
         }
 

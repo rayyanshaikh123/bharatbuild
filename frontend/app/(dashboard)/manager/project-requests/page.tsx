@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthContext";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DataTable, Column } from "@/components/ui/DataTable";
-import { managerProjectJoinRequests, managerProjects, Project } from "@/lib/api/manager";
+import { managerProjectManagerRequests, managerProjects, managerOrganization, Project, ManagerOrgRequest } from "@/lib/api/manager";
 import { Loader2, CheckCircle, XCircle, Users, Filter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ function ProjectSelector({
 
 export default function ProjectRequestsPage() {
   const { user } = useAuth();
+  const [approvedOrg, setApprovedOrg] = useState<ManagerOrgRequest | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
@@ -45,18 +46,25 @@ export default function ProjectRequestsPage() {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
-  // Fetch projects
+  // Fetch approved organization and projects
   useEffect(() => {
     const fetchProjects = async () => {
-      if (!user?.orgId) {
+      if (!user) {
         setIsLoading(false);
         return;
       }
 
       try {
         setIsLoading(true);
-        const res = await managerProjects.getMyProjects(user.orgId);
-        setProjects(res.projects || []);
+        // Fetch manager's approved organization
+        const reqsRes = await managerOrganization.getMyRequests();
+        const approved = reqsRes.requests?.find((r) => r.status === "APPROVED");
+
+        if (approved) {
+          setApprovedOrg(approved);
+          const res = await managerProjects.getMyProjects(approved.org_id);
+          setProjects(res.projects || []);
+        }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
       } finally {
@@ -65,31 +73,55 @@ export default function ProjectRequestsPage() {
     };
 
     fetchProjects();
-  }, [user?.orgId]);
+  }, [user]);
 
   // Fetch requests
   const fetchRequests = async () => {
+    if (!approvedOrg) return;
+
     try {
       setIsLoadingRequests(true);
-      const res = await managerProjectJoinRequests.getPendingForMyProjects(selectedProjectId || undefined);
-      setRequests(res.requests || []);
+      
+      if (selectedProjectId) {
+        // Fetch requests for specific project
+        const res = await managerProjectManagerRequests.getPending(selectedProjectId, approvedOrg.org_id);
+        setRequests(res.requests || []);
+      } else {
+        // Fetch requests for all projects
+        const allRequests: any[] = [];
+        for (const project of projects) {
+          try {
+            const res = await managerProjectManagerRequests.getPending(project.id, approvedOrg.org_id);
+            allRequests.push(...(res.requests || []));
+          } catch (err) {
+            // Skip projects where we can't fetch requests (non-creators)
+            console.debug(`Skipping project ${project.id}:`, err);
+          }
+        }
+        setRequests(allRequests);
+      }
     } catch (err) {
       console.error("Failed to fetch requests:", err);
+      setRequests([]);
     } finally {
       setIsLoadingRequests(false);
     }
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, [selectedProjectId]);
+    if (approvedOrg && projects.length > 0) {
+      fetchRequests();
+    }
+  }, [selectedProjectId, approvedOrg, projects.length]);
 
   // Handle approve/reject
-  const handleAction = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
+  const handleAction = async (requestId: string, projectId: string, decision: 'ACTIVE' | 'REJECTED') => {
+    if (!approvedOrg) return;
+    
     setActioningId(requestId);
     try {
-      await managerProjectJoinRequests.reviewRequest(requestId, decision);
-      toast.success(`Request ${decision.toLowerCase()}!`);
+      await managerProjectManagerRequests.decide(requestId, decision, projectId, approvedOrg.org_id);
+      toast.success(`Request ${decision === 'ACTIVE' ? 'approved' : 'rejected'}!`);
       fetchRequests(); // Refresh
     } catch (err: any) {
       console.error("Action failed:", err);
@@ -114,15 +146,15 @@ export default function ProjectRequestsPage() {
         render: (val) => <span className="text-sm text-muted-foreground">{val}</span>,
       },
       {
-        key: "project_name",
-        label: "Project",
-        sortable: true,
+        key: "manager_phone",
+        label: "Phone",
+        render: (val) => <span className="text-sm text-muted-foreground">{val}</span>,
       },
       {
-        key: "requested_at",
+        key: "assigned_at",
         label: "Requested",
         sortable: true,
-        render: (val) => new Date(val).toLocaleDateString(),
+        render: (val) => val ? new Date(val).toLocaleDateString() : '-',
       },
       {
         key: "status",
@@ -130,7 +162,7 @@ export default function ProjectRequestsPage() {
         width: "120px",
         render: (val) => (
           <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-            val === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+            val === 'ACTIVE' ? 'bg-green-500/20 text-green-400' :
             val === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
             'bg-amber-500/20 text-amber-400'
           }`}>
@@ -149,7 +181,7 @@ export default function ProjectRequestsPage() {
                 size="sm"
                 variant="outline"
                 className="h-7 px-2 text-green-400 border-green-500/20 hover:bg-green-500/10"
-                onClick={() => handleAction(id, 'APPROVED')}
+                onClick={() => handleAction(id, row.project_id, 'ACTIVE')}
                 disabled={actioningId === id}
               >
                 {actioningId === id ? (
@@ -162,7 +194,7 @@ export default function ProjectRequestsPage() {
                 size="sm"
                 variant="outline"
                 className="h-7 px-2 text-red-400 border-red-500/20 hover:bg-red-500/10"
-                onClick={() => handleAction(id, 'REJECTED')}
+                onClick={() => handleAction(id, row.project_id, 'REJECTED')}
                 disabled={actioningId === id}
               >
                 <XCircle size={14} />
@@ -207,7 +239,7 @@ export default function ProjectRequestsPage() {
             data={requests}
             columns={columns}
             searchable
-            searchKeys={["manager_name", "manager_email", "project_name"]}
+            searchKeys={["manager_name", "manager_email", "manager_phone"]}
             emptyMessage="No pending join requests"
           />
         </div>

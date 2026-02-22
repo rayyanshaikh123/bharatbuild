@@ -57,13 +57,13 @@ function OrganizationStatus({ onApproved }: { onApproved?: (org: ApprovedOrganiz
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-foreground">{organization.org_name}</h3>
+            <h3 className="text-lg font-bold text-foreground">{organization.name}</h3>
             <p className="text-sm text-muted-foreground">Organization Approved</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          {organization.org_address && (
-            <span className="flex items-center gap-1"><MapPin size={14} />{organization.org_address}</span>
+          {organization.address && (
+            <span className="flex items-center gap-1"><MapPin size={14} />{organization.address}</span>
           )}
         </div>
       </div>
@@ -126,28 +126,28 @@ function POManagerDashboardStats({ organizationId }: { organizationId: string })
     <div className="space-y-8">
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Pending Requests" 
-          value={summary?.pending_material_requests || 0} 
-          subtitle="Material Requests" 
-          icon={Clock} 
+        <StatCard
+          title="Pending Requests"
+          value={summary?.pending_requests || 0}
+          subtitle="Material Requests"
+          icon={Clock}
         />
         <StatCard 
-          title="Approved Requests" 
-          value={summary?.approved_material_requests || 0} 
-          subtitle="Ready for PO" 
+          title="POs Generated Today" 
+          value={summary?.pos_generated_today || 0} 
+          subtitle="Today's POs" 
           icon={CheckCircle2} 
         />
         <StatCard 
-          title="Purchase Orders" 
-          value={summary?.purchase_orders_issued || 0} 
-          subtitle="Issued Total" 
+          title="POs This Week" 
+          value={summary?.pos_sent_this_week || 0} 
+          subtitle="Weekly POs" 
           icon={FileText} 
         />
         <StatCard 
-          title="Pending GRNs" 
-          value={summary?.pending_grns || 0} 
-          subtitle="Awaiting Delivery" 
+          title="Total POs" 
+          value={summary?.total_pos || 0} 
+          subtitle="All Purchase Orders" 
           icon={Package} 
         />
       </div>
